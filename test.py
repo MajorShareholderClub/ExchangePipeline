@@ -22,6 +22,7 @@
 
 import asyncio
 from pipe.korea_exchange.rest_client import CoinPresentPriceReponseAPI
+from pipe.foreign_exchange.driver.rest_foreign_exchange import BinanceRest
 
 # from .core.coin_rest_interaction import CoinPresentPriceReponseAPI
 
@@ -30,7 +31,7 @@ async def btc_present_start() -> None:
     """
     bitcoin kafak stream
     """
-    await CoinPresentPriceReponseAPI().total_pull_request("BTC")
+    return await BinanceRest().get_coin_all_info_price("BTC")
 
 
 async def eth_present_start() -> None:
@@ -45,8 +46,8 @@ async def be_present_gether() -> None:
     kafka async stream
     """
     tasks = [
-        asyncio.create_task(btc_present_start()),
-        asyncio.create_task(eth_present_start()),
+        # asyncio.create_task(btc_present_start()),
+        # asyncio.create_task(eth_present_start()),
     ]
     await asyncio.gather(*tasks, return_exceptions=False)
 
@@ -56,4 +57,4 @@ async def data_sending_start() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(data_sending_start())
+    print(asyncio.run(btc_present_start()))
