@@ -1,0 +1,232 @@
+version: '3'
+
+services:
+  zookeeper-1:
+    hostname: zookeeper1
+    container_name: zookeeper1
+
+    image: confluentinc/cp-zookeeper:6.2.0
+    environment:
+      ZOOKEEPER_SERVER_ID: 1
+      ZOOKEEPER_CLIENT_PORT: 12181
+      ZOOKEEPER_DATA_DIR: kafkalogging/zookeeper/data
+      ZOOKEEPER_SERVERS: zookeeper1:22888:23888;zookeeper2:32888:33888;zookeeper3:42888:43888
+    ports:
+      - 12181:12181
+      - 22888:22888
+      - 23888:23888
+    volumes:
+      - .kafkalogging/zookeeper/data/1:/zookeeper/data
+    networks:
+      - kafka-network
+
+  zookeeper-2:
+    hostname: zookeeper2
+    container_name: zookeeper2
+
+    image: confluentinc/cp-zookeeper:6.2.0
+    environment:
+      ZOOKEEPER_SERVER_ID: 2
+      ZOOKEEPER_CLIENT_PORT: 22181
+      ZOOKEEPER_DATA_DIR: kafkalogging/zookeeper/data
+      ZOOKEEPER_SERVERS: zookeeper1:22888:23888;zookeeper2:32888:33888;zookeeper3:42888:43888
+    ports:
+      - 22181:22181
+      - 32888:32888
+      - 33888:33888
+    volumes:
+      - .kafkalogging/zookeeper/data/2:/zookeeper/data
+    networks:
+      - kafka-network
+
+  zookeeper-3:
+    hostname: zookeeper3
+    container_name: zookeeper3
+
+    image: confluentinc/cp-zookeeper:6.2.0
+    environment:
+      ZOOKEEPER_SERVER_ID: 3
+      ZOOKEEPER_CLIENT_PORT: 32181
+      ZOOKEEPER_DATA_DIR: kafkalogging/zookeeper/data
+      ZOOKEEPER_SERVERS: zookeeper1:22888:23888;zookeeper2:32888:33888;zookeeper3:42888:43888
+    ports:
+      - 32181:32181
+      - 42888:42888
+      - 43888:43888
+    volumes:
+      - .kafkalogging/zookeeper/data/3:/zookeeper/data
+    networks:
+      - kafka-network
+
+  kafka-1:
+    image: confluentinc/cp-kafka:6.2.0
+    hostname: kafka1
+    container_name: kafka1
+
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:12181,zookeeper2:22181,zookeeper3:32181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka1:19092
+      KAFKA_LOG_DIRS: kafkalogging/kafka
+    ports:
+      - 19092:19092
+    volumes:
+      - .kafkalogging/kafka/logs/1:/kafka
+    networks:
+      - kafka-network
+
+  kafka-2:
+    image: confluentinc/cp-kafka:6.2.0
+    hostname: kafka2
+    container_name: kafka2
+
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    environment:
+      KAFKA_BROKER_ID: 2
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:12181,zookeeper2:22181,zookeeper3:32181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka2:29092
+      KAFKA_LOG_DIRS: kafkalogging/kafka
+    ports:
+      - 29092:29092
+    volumes:
+      - .kafkalogging/kafka/logs/2:/kafka
+    networks:
+      - kafka-network
+
+  kafka-3:
+    image: confluentinc/cp-kafka:6.2.0
+    hostname: kafka3
+    container_name: kafka3
+
+    depends_on:
+      - zookeeper-1
+      - zookeeper-2
+      - zookeeper-3
+    environment:
+      KAFKA_BROKER_ID: 3
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper1:12181,zookeeper2:22181,zookeeper3:32181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka3:39092
+      KAFKA_LOG_DIRS: kafkalogging/kafka
+    ports:
+      - 39092:39092
+    volumes:
+      - .kafkalogging/kafka/logs/3:/kafka
+    networks:
+      - kafka-network
+
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:6.2.0
+    hostname: kafka-connect
+    container_name: kafka-connect
+    env_file:
+      - ./.env
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka1:19092,kafka2:29092,kafka3:39092
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: kafka-s3-group
+      CONNECT_CONFIG_STORAGE_TOPIC: kafka-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: kafka-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: kafka-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/usr/share/java/kafka-connect/"
+      CONNECT_PARTITION_DURATION_MS: 60000
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    command: 
+      - bash
+      - -c
+      - |
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest
+        /etc/confluent/docker/run
+    ports:
+      - "8083:8083"
+    networks:
+      - kafka-network
+
+  akhq:
+    image: tchiotludo/akhq:latest
+    hostname: akhq
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            kafka:
+              properties:
+                bootstrap.servers: kafka1:19092,kafka2:29092,kafka3:39092
+    ports:
+      - 8081:8080
+    networks:
+      - kafka-network
+
+
+  grafana:
+    image: grafana/grafana-oss:8.2.6
+    container_name: grafana
+    restart: unless-stopped
+    user: "1000:1000"
+#    environment:
+#      - GF_INSTALL_PLUGINS=hamedkarbasi93-kafka-datasource
+#    platform: 'linux/amd64' # hamedkarbasi93-kafka-datasource 이 플러그인에서 arm64를 지원하지 않음
+    ports:
+      - '3000:3000'
+    volumes:
+      - ./visualization/grafana:/var/lib/grafana
+    networks:
+      - kafka-network
+
+  prometheus:
+    image: prom/prometheus
+    user: "1000:1000"
+
+    container_name: prometheus
+    volumes:
+      - ./visualization/prometheus/config:/etc/prometheus
+      - ./visualization/prometheus/volume:/prometheus
+    ports:
+      - "9090:9090"
+    command: # web.enalbe-lifecycle은 api 재시작없이 설정파일들을 reload 할 수 있게 해줌
+      - '--web.enable-lifecycle'
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    restart: unless-stopped
+    networks:
+      - kafka-network
+    
+  kafka-exporter:
+    image: danielqsj/kafka-exporter
+    container_name: kafka-exporter
+    ports:
+      - "9308:9308"
+    command:
+      - --kafka.server=kafka1:19092
+      - --kafka.server=kafka2:29092
+      - --kafka.server=kafka3:39092 
+    networks:
+      - kafka-network
+    restart: unless-stopped
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+
+networks:
+  kafka-network:
+    external: true

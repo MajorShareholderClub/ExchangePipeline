@@ -1,0 +1,10 @@
+requests
+pandas
+numpy
+confluent-kafka
+pydantic
+websocket
+websocket-client
+aiokafka
+cctx
+
