@@ -1,10 +1,9 @@
 import uuid
-from typing import Union, TypedDict, NewType
+from typing import TypedDict, NewType
 from decimal import Decimal
-from dataclasses import dataclass
 
 
-ExchangeResponseData = dict[str, Union[str, int, float]]
+ExchangeResponseData = dict[str, str | int | float]
 
 TIMESTAMP = NewType("TIMESTAMP", int)
 
@@ -27,26 +26,38 @@ KoreaMarketsLoadJson = MarketRequestJsonType
 PriceData = dict[str, Decimal]
 
 
-@dataclass
-class ExchangeData:
+class ExchangeData(TypedDict):
     name: str
     coin_symbol: str
     data: dict[str, Decimal]
 
 
-@dataclass
-class KoreaCoinMarketData:
+class KoreaCoinMarketData(TypedDict):
     """
     모든 마켓 타입 스키마 제작
     -  동일한 컬럼 값의 대한 타입 시스템
-    - dict[str, Union[str, int, dict[str, Decimal]]]
     """
 
     time: int
-    upbit: Union[ExchangeData, bool]
-    bithumb: Union[ExchangeData, bool]
-    coinone: Union[ExchangeData, bool]
-    korbit: Union[ExchangeData, bool]
+    upbit: ExchangeData | bool
+    bithumb: ExchangeData | bool
+    coinone: ExchangeData | bool
+    korbit: ExchangeData | bool
+
+
+class ForeignCoinMarketData(TypedDict):
+    """
+    모든 마켓 타입 스키마 제작
+    -  동일한 컬럼 값의 대한 타입 시스템
+    """
+
+    time: int
+    binance: ExchangeData | bool
+    kraken: ExchangeData | bool
+    okx: ExchangeData | bool
+    gateio: ExchangeData | bool
+    htx: ExchangeData | bool
+    coinbase: ExchangeData | bool
 
 
 UUID = NewType("UUID", str(uuid.uuid4()))
@@ -63,6 +74,19 @@ class TickerWebSocketRequest(TypedDict):
 
 
 UpBithumbSocketParmater = list[TicketUUID, TickerWebSocketRequest]
-CoinoneSocketParamter = dict[str, str | dict[str, str]]
 
-SubScribeFormat = UpBithumbSocketParmater | CoinoneSocketParamter
+
+class CoinoneTopicParameter(TypedDict):
+    quote_currency: str
+    target_currency: str
+
+
+class CoinoneRequestParameter(TypedDict):
+    request_type: str
+    channel: str
+    topic: CoinoneTopicParameter
+
+
+CoinoneSocketParameter = CoinoneRequestParameter
+
+SubScribeFormat = UpBithumbSocketParmater | CoinoneSocketParameter

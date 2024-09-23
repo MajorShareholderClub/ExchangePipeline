@@ -52,3 +52,37 @@ class AbstractExchangeSocketClient(ABC):
             - 무한루프 \n
         """
         raise NotImplementedError()
+
+
+{
+    "symbol": "BTC/USDT",
+    "timestamp": None,
+    "datetime": None,
+    "high": 64733.2,
+    "low": 62370.9,
+    "bid": 63576.4,
+    "bidVolume": None,
+    "ask": 63576.5,
+    "askVolume": None,
+    "vwap": 63486.64602153746,
+    "open": None,
+    "close": 63576.4,
+    "last": 63576.4,
+    "previousClose": None,
+    "change": None,
+    "percentage": 1.03,
+    "average": None,
+    "baseVolume": 2427.491658754,
+    "quoteVolume": 154113303.65955,
+    "info": {
+        "currency_pair": "BTC_USDT",
+        "last": "63576.4",
+        "lowest_ask": "63576.5",
+        "highest_bid": "63576.4",
+        "change_percentage": "1.03",
+        "base_volume": "2427.491658754",
+        "quote_volume": "154113303.65955",
+        "high_24h": "64733.2",
+        "low_24h": "62370.9",
+    },
+}

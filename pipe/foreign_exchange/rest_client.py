@@ -1,30 +1,21 @@
-"""
-Coin async present price kafka data streaming 
-"""
-
 import logging
 import datetime
 import asyncio
-from collections import ChainMap
 
 from typing import Any
-from common.core.types import KoreaCoinMarketData, ExchangeData
+from common.core.types import ForeignCoinMarketData, ExchangeData
 from common.utils.logger import AsyncLogger
-from common.core.data_format import CoinMarketData, KoreaCoinMarket
+from common.core.data_format import CoinMarketData, ForeignCoinMarket
 
 from pydantic.errors import PydanticUserError
 from pydantic import ValidationError
 
-from pipe.korea_exchange.driver.rest_korea_exchange import UpbitRest
-from pipe.korea_exchange.config.json_param_load import load_json
-
-# from coin.core.data_mq.data_interaction import KafkaMessageSender
+from pipe.foreign_exchange.driver.rest_foreign_exchange import BinanceRest
+from pipe.foreign_exchange.config.json_param_load import load_json
 
 
-class CoinPresentPriceReponseAPI:
-    """
-    Coin present price market place
-    """
+class ForeignPresentPriceResponseAPI:
+    """해외거래소 API"""
 
     def __init__(self) -> None:
         self.market_env = load_json("rest")
@@ -50,9 +41,9 @@ class CoinPresentPriceReponseAPI:
             CoinMarketData: pydantic in JSON transformation
         """
         try:
-            api_response = await api.get_coin_all_info_price(coin_name=coin_symbol)
-            ask_order_book = await api.get_coin_all_orderbook(coin_name=coin_symbol)
-            api_response = dict(ChainMap(api_response, ask_order_book))
+            api_response = await api.get_coin_all_info_price(
+                coin_name=coin_symbol.upper()
+            )
             return CoinMarketData.from_api(
                 market=market,
                 coin_symbol=coin_symbol,
@@ -93,23 +84,22 @@ class CoinPresentPriceReponseAPI:
             topic_name (str): topic name
         """
         while True:
+            api_response_time = await BinanceRest().get_coin_all_info_price(
+                coin_name=coin_symbol.upper()
+            )
+            api_response_time = api_response_time["timestamp"]
+            # 밀리초를 초 단위로 변환
+            timestamp_s = api_response_time / 1000
+
+            # UTC 시간대에서 타임스탬프로 datetime 객체 생성
+            dt_utc = datetime.datetime.fromtimestamp(
+                timestamp_s, tz=datetime.timezone.utc
+            )
+
+            # "년-월-일 시:분:초" 형식으로 출력
+            formatted_time = dt_utc.strftime("%Y-%m-%d %H:%M:%S")
+            await asyncio.sleep(1)
             try:
-                api_response_time = await UpbitRest().get_coin_all_info_price(
-                    coin_name=coin_symbol.upper()
-                )
-                api_response_time = api_response_time["timestamp"]
-                # 밀리초를 초 단위로 변환
-                timestamp_s = api_response_time / 1000
-
-                # UTC 시간대에서 타임스탬프로 datetime 객체 생성
-                dt_utc = datetime.datetime.fromtimestamp(
-                    timestamp_s, tz=datetime.timezone.utc
-                )
-
-                # "년-월-일 시:분:초" 형식으로 출력
-                formatted_time = dt_utc.strftime("%Y-%m-%d %H:%M:%S")
-                await asyncio.sleep(1)
-                # try:
                 tasks: list = [
                     self._get_market_present_price(
                         market=market, coin_symbol=coin_symbol
@@ -117,8 +107,9 @@ class CoinPresentPriceReponseAPI:
                     for market in self.market_env
                 ]
                 market_result = await asyncio.gather(*tasks, return_exceptions=True)
+
                 # 스키마 정의
-                schema: KoreaCoinMarketData = KoreaCoinMarket(
+                schema: ForeignCoinMarketData = ForeignCoinMarket(
                     timestamp=api_response_time,
                     **dict(zip(self.market_env.keys(), market_result)),
                 ).model_dump()

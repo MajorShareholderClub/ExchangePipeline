@@ -1,0 +1,57 @@
+{
+    "binance": {
+        "parameter": [
+            "high",
+            "low",
+            "ask",
+            "bid",
+            "last",
+            "close",
+            "baseVolume"
+        ]
+    },
+    "kraken": {
+        "parameter": [
+            "high",
+            "low",
+            "ask",
+            "bid",
+            "last",
+            "close",
+            "baseVolume"
+        ]
+    },
+    "okx": {
+        "parameter": [
+            "high",
+            "low",
+            "ask",
+            "bid",
+            "last",
+            "close",
+            "baseVolume"
+        ]
+    },
+    "gateio": {
+        "parameter": [
+            "high",
+            "low",
+            "ask",
+            "bid",
+            "last",
+            "close",
+            "baseVolume"
+        ]
+    },
+    "htx": {
+        "parameter": [
+            "high",
+            "low",
+            "ask",
+            "bid",
+            "last",
+            "close",
+            "baseVolume"
+        ]
+    }
+}

@@ -32,14 +32,14 @@ class OKXRest(CommonForeignMarketRestClient):
         return f"{coin_name.upper()}/USDT"
 
 
-class CoinbaseRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.coinbase:
-        """ccxt 코인베이스 REST API 호출"""
-        return ccxt.coinbase()
+# class CoinbaseRest(CommonForeignMarketRestClient):
+#     def get_exchange_instance(self) -> ccxt.coinbase:
+#         """ccxt 코인베이스 REST API 호출"""
+#         return ccxt.coinbase()
 
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 코인베이스 형식으로 변환 (예: BTC/USD)"""
-        return f"{coin_name.upper()}/USDT"
+#     def get_symbol(self, coin_name: str) -> str:
+#         """코인 심볼을 코인베이스 형식으로 변환 (예: BTC/USD)"""
+#         return f"{coin_name.upper()}/USDT"
 
 
 class BybitRest(CommonForeignMarketRestClient):

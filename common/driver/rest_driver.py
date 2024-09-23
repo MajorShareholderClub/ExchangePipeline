@@ -12,7 +12,8 @@ class AsyncRequestAcquisition(AbstractAsyncRequestAcquisition):
         async with session.get(url=self.url, params=self.params, headers=self.headers) as response:
             try:
                 response.raise_for_status()
-                return await response.json()
+                data = await response.json(content_type="application/json")
+                return data
             except Exception as error:
                 self.logging.log_message_sync(logging.ERROR, f"다음과 같은 에러로 가져올 수 없습니다 --> {error}")
 

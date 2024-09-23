@@ -10,12 +10,25 @@ from common.core.types import ExchangeResponseData
 
 async def async_request_data(url: str) -> ExchangeResponseData:
     """비동기 호출 함수"""
-    return await AsyncRequestJSON(url=url).async_fetch_json()
+    return await AsyncRequestJSON(
+        url=url, headers={"Accept": "application/json"}
+    ).async_fetch_json()
 
 
 class UpbitRest(AbstractExchangeRestClient):
     def __init__(self) -> None:
         self._rest = get_symbol_collect_url("upbit", "rest")
+
+    async def get_coin_all_orderbook(self, coin_name: str) -> dict[str, int]:
+        data = await async_request_data(
+            url=f"{self._rest}/orderbook?level=0&markets=KRW-{coin_name.upper()}"
+        )
+        order = data[0]["orderbook_units"]
+
+        max_ask_price = max(item["ask_price"] for item in order)
+        min_bid_price = min(item["bid_price"] for item in order)
+
+        return {"ask": max_ask_price, "bid": min_bid_price}
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """
@@ -41,6 +54,16 @@ class BithumbRest(AbstractExchangeRestClient):
     def __init__(self) -> None:
         self._rest = get_symbol_collect_url("bithumb", "rest")
 
+    async def get_coin_all_orderbook(self, coin_name: str) -> dict[str, int]:
+        data = await async_request_data(
+            url=f"{self._rest}/orderbook?markets=KRW-{coin_name.upper()}"
+        )
+        order = data[0]["orderbook_units"]
+
+        max_ask_price = max(item["ask_price"] for item in order)
+        min_bid_price = min(item["bid_price"] for item in order)
+        return {"ask": max_ask_price, "bid": min_bid_price}
+
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """
         Subject:
@@ -58,14 +81,23 @@ class BithumbRest(AbstractExchangeRestClient):
         """
         # fmt: off
         data = await async_request_data(
-            url=f"{self._rest}/ticker/{coin_name.upper()}_KRW"
+            url=f"{self._rest}/ticker?markets=KRW-{coin_name.upper()}"
         )
-        return data["data"]
+        return data[0]
 
 
 class CoinoneRest(AbstractExchangeRestClient):
     def __init__(self) -> None:
         self._rest = get_symbol_collect_url("coinone", "rest")
+
+    async def get_coin_all_orderbook(self, coin_name: str) -> dict[str, int]:
+        data = await async_request_data(
+            url=f"{self._rest}/orderbook/KRW/{coin_name.upper()}?size=15"
+        )
+        max_ask_price = max(item["price"] for item in data["asks"])
+        min_bid_price = min(item["price"] for item in data["bids"])
+
+        return {"ask": max_ask_price, "bid": min_bid_price}
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """
@@ -92,6 +124,15 @@ class CoinoneRest(AbstractExchangeRestClient):
 class KorbitRest(AbstractExchangeRestClient):
     def __init__(self) -> None:
         self._rest = get_symbol_collect_url("korbit", "rest")
+
+    async def get_coin_all_orderbook(self, coin_name: str) -> dict[str, int]:
+        data = await async_request_data(
+            url=f"{self._rest}/orderbook?currency_pair={coin_name.lower()}_krw"
+        )
+        max_ask_price = max(item[0] for item in data["asks"])
+        min_bid_price = min(item[0] for item in data["bids"])
+
+        return {"ask": max_ask_price, "bid": min_bid_price}
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """

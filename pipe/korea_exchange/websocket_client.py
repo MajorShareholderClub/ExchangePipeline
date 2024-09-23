@@ -11,6 +11,7 @@ from common.core.abstract import (
     MessageDataPreprocessingAbstract,
     WebsocketConnectionAbstract,
 )
+from common.core.data_format import CoinMarketData
 from common.core.types import (
     SubScribeFormat,
     ExchangeData,
@@ -18,7 +19,6 @@ from common.core.types import (
     PriceData,
 )
 from pipe.korea_exchange.config.json_param_load import load_json
-from pipe.korea_exchange.util.data_format import CoinMarketData
 
 
 class WebsocketConnectionManager(WebsocketConnectionAbstract):
@@ -48,6 +48,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         message: str = await asyncio.wait_for(websocket.recv(), timeout=30.0)
         data = json.loads(message)
         market: str = uri.split("//")[1].split(".")[1]
+
         if data:
             self._logger.log_message_sync(logging.INFO, f"{market} 연결 완료")
 
@@ -66,33 +67,48 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 await self.message_preprocessing.message_consumer()
                 await asyncio.sleep(1.0)
 
-            except Exception as error:
-                self._logger.log_message_sync(
-                    logging.ERROR,
-                    message=f"{uri}에서 수신 중 타임아웃 발생 --> {error}",
-                )
+            except websockets.exceptions.ConnectionClosedError as e:
+                self._logger.log_message_sync(logging.ERROR, f"커넥션 에러 입니다: {e}")
+                await asyncio.sleep(5)
+            except websockets.exceptions.ConnectionClosedOK as e:
+                self._logger.log_message_sync(logging.ERROR, f"닫혔습니다: {e} - {uri}")
+                await asyncio.sleep(5)
+            except asyncio.TimeoutError as e:
+                self._logger.log_message_sync(logging.ERROR, f"타임 에러 입니다: {e}")
+                await asyncio.sleep(5)
+
+    async def ping_pong(
+        self, uri: str, websocket: websockets.WebSocketClientProtocol, interval: int
+    ) -> None:
+        """주기적으로 핑을 보내는 메서드"""
+        try:
+            await websocket.ping()  # 서버에 핑 전송
+            self._logger.log_message_sync(logging.INFO, f"Ping sent -- {uri}")
+            await asyncio.sleep(interval)  # 설정한 간격만큼 대기
+        except Exception as e:
+            self._logger.log_message_sync(logging.ERROR, f"Ping 에러: {e} -- {uri}")
 
     async def websocket_to_json(
         self, uri: str, subs_fmt: SubScribeFormat, symbol: str
     ) -> None:
-        """말단 소켓 시작 지점
-        Args:
-            uri: 소켓을 지원하는 uri
-            subs_fmt: 웹소켓 승인 스키마
-            symbol: 코인 심볼
-        """
+        """말단 소켓 시작 지점"""
         async with websockets.connect(
             uri, ping_interval=30, ping_timeout=60
         ) as websocket:
+
             try:
                 await self.socket_param_send(websocket, subs_fmt)
                 await self.handle_connection(websocket, uri)
+
+                # # 핑/퐁 로직을 별도의 태스크로 실행
+                # ping_interval = 10  # 예를 들어 10초 간격으로 핑
+                # asyncio.create_task(self.ping_pong(uri, websocket, ping_interval))
+
                 await self.handle_message(websocket, uri, symbol)
-            except websockets.exceptions.ConnectionClosedError as e:
-                self._logger.log_message_sync(logging.ERROR, f"커넥션 에러 입니다: {e}")
-                await asyncio.sleep(5)  # 재연결 전에 5초 대기
             except asyncio.TimeoutError as e:
-                self._logger.log_message_sync(logging.ERROR, f"타임 에러 입니다: {e}")
+                self._logger.log_message_sync(
+                    logging.ERROR, f"타임아웃 에러입니다: {e}"
+                )
                 await asyncio.sleep(5)  # 타임아웃 후 5초 대기 후 재연결
 
 
