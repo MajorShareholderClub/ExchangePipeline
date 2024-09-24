@@ -33,9 +33,11 @@ class AsyncLogger:
         Args:
             log_file ([str]): 기본 매개변수로 두었으나 파일명 변경 가능
         """
-        self.log_queue = queue.Queue()
+        self.log_queue: queue.Queue = queue.Queue()
         self.target = target
-        self.log_file = f"logs/{target}/{log_file}" if target and log_file else None
+        self.log_file: str | None = (
+            f"logs/{target}/{log_file}" if target and log_file else None
+        )
         ensure_file_exists(self.log_file)
 
         # handle 초기화

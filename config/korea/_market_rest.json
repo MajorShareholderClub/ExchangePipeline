@@ -1,8 +1,6 @@
 {
     "upbit": {
         "parameter": [
-            "ask",
-            "bid",
             "opening_price",
             "trade_price",
             "high_price",
@@ -13,8 +11,6 @@
     },
     "bithumb": {
         "parameter": [
-            "ask",
-            "bid",
             "opening_price",
             "trade_price",
             "high_price",
@@ -25,8 +21,6 @@
     },
     "coinone": {
         "parameter": [
-            "ask",
-            "bid",
             "first",
             "last",
             "high",
@@ -37,13 +31,11 @@
     },
     "korbit": {
         "parameter": [
-            "ask",
-            "bid",
             "open",
-            "open",
+            "close",
             "high",
             "low",
-            "last",
+            "prevClose",
             "volume"
         ]
     }

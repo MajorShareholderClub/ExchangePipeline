@@ -1,11 +1,9 @@
-"""
-Coin present data format architecture
-"""
+"""데이터 전처리 포맷 설계"""
 
 from __future__ import annotations
-from typing import Any, Union
+from typing import Any
 from decimal import Decimal, ROUND_HALF_UP
-from pydantic import BaseModel, field_validator, ValidationError
+from pydantic import BaseModel, field_validator, ValidationError, Field
 
 
 class BaseCoinMarket(BaseModel):
@@ -17,14 +15,14 @@ class BaseCoinMarket(BaseModel):
         timestamp = data.pop("timestamp", None)
 
         # 거래소 데이터 검증 및 할당
-        exchange_data: dict[int, Union[CoinMarketData, bool]] = {
+        exchange_data: dict[str, CoinMarketData | bool] = {
             key: self.validate_exchange_data(value) for key, value in data.items()
         }
         # 합쳐진 데이터를 사용하여 부모 클래스 초기화
         super().__init__(timestamp=timestamp, **exchange_data)
 
     @staticmethod
-    def validate_exchange_data(value: Any) -> Union[CoinMarketData, bool]:
+    def validate_exchange_data(value: Any) -> CoinMarketData | bool:
         try:
             return CoinMarketData.model_validate(value)
         except ValidationError:
@@ -90,7 +88,7 @@ class ForeignCoinMarket(BaseModel):
     okx: CoinMarketData | bool
     gateio: CoinMarketData | bool
     htx: CoinMarketData | bool
-    # coinbase: CoinMarketData | bool
+    coinbase: CoinMarketData | bool
 
 
 class PriceData(BaseModel):
@@ -103,27 +101,23 @@ class PriceData(BaseModel):
         _type_: Decimal type
     """
 
-    ask: Decimal
-    bid: Decimal
-    opening_price: Decimal
-    trade_price: Decimal
-    max_price: Decimal
-    min_price: Decimal
-    prev_closing_price: Decimal
-    acc_trade_volume_24h: Decimal
+    # ask: Decimal | None = None
+    # bid: Decimal | None = None
+    opening_price: Decimal | None = Field(default=None, description="시작가")
+    trade_price: Decimal | None = Field(default=None, description="시장가")
+    max_price: Decimal | None = Field(default=None, description="고가")
+    min_price: Decimal | None = Field(default=None, description="저가")
+    prev_closing_price: Decimal | None = Field(default=None, description="종료가")
+    acc_trade_volume_24h: Decimal | None = Field(
+        default=None, description="24시간 거래개수"
+    )
 
     @field_validator("*")
     @classmethod
-    def round_three_place_adjust(cls, value: Any) -> Decimal:
-        """반올림
-
-        Args:
-            value (_type_): 들어올 값 PriceData parameter
-
-        Returns:
-            Decimal: _description_
-        """
-        return Decimal(value=value).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+    def round_three_place_adjust(cls, value: Any) -> Decimal | None:
+        if value is None:
+            return None
+        return Decimal(value).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
 class CoinMarketData(BaseModel):
@@ -149,21 +143,19 @@ class CoinMarketData(BaseModel):
     coin_symbol: str
     data: PriceData
 
+    # fmt: off
     @classmethod
-    def _create_price_data(cls, api: dict[str, str], data: list[str]) -> PriceData:
-        try:
-            return PriceData(
-                ask=Decimal(api[data[0]]),
-                bid=Decimal(api[data[1]]),
-                opening_price=Decimal(api[data[2]]),
-                max_price=Decimal(api[data[3]]),
-                min_price=Decimal(api[data[4]]),
-                trade_price=Decimal(api[data[5]]),
-                prev_closing_price=Decimal(api[data[6]]),
-                acc_trade_volume_24h=Decimal(api[data[7]]),
-            )
-        except KeyError as e:
-            raise KeyError(f"Key {e} not found in API response") from e
+    def _create_price_data(cls, api: dict[str, int], data: list[str]) -> PriceData:
+        return PriceData(
+            # ask=api[data[0]],
+            # bid=api[data[1]],
+            opening_price=api[data[0]],
+            max_price=api[data[1]],
+            min_price=api[data[2]],
+            trade_price=api[data[3]],
+            prev_closing_price=api[data[4]],
+            acc_trade_volume_24h=api[data[5]],
+        )
 
     @classmethod
     def from_api(

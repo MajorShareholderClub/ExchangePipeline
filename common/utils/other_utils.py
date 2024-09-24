@@ -1,3 +1,4 @@
+from typing import NoReturn
 from common.setting.properties import (
     SOCKET_UPBIT_URL,
     SOCKET_BITHUMB_URL,
@@ -11,7 +12,7 @@ from common.setting.properties import (
 )
 
 
-def get_symbol_collect_url(market: str, type_: str) -> str:
+def get_symbol_collect_url(market: str, type_: str) -> str | NoReturn:
     """URL matting
 
     Args:

@@ -5,6 +5,10 @@ from asyncio.exceptions import CancelledError
 
 import json
 import websockets
+from websockets.exceptions import (
+    ConnectionClosedError,
+    ConnectionClosedOK,
+)
 
 from common.utils.logger import AsyncLogger
 from common.core.abstract import (
@@ -18,7 +22,9 @@ from common.core.types import (
     ExchangeResponseData,
     PriceData,
 )
-from pipe.korea_exchange.config.json_param_load import load_json
+from config.json_param_load import load_json
+
+socket_protocol = websockets.WebSocketClientProtocol
 
 
 class WebsocketConnectionManager(WebsocketConnectionAbstract):
@@ -29,7 +35,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         self._logger = AsyncLogger(target="socket", log_file="socket.log")
 
     async def socket_param_send(
-        self, websocket: websockets, subs_fmt: SubScribeFormat
+        self, websocket: socket_protocol, subs_fmt: SubScribeFormat
     ) -> None:
         """socket 통신 요청 파라미터 보내는 메서드
         Args:
@@ -39,7 +45,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         sub = json.dumps(subs_fmt)
         await websocket.send(sub)
 
-    async def handle_connection(self, websocket: websockets, uri: str) -> None:
+    async def handle_connection(self, websocket: socket_protocol, uri: str) -> None:
         """웹 소켓 커넥션 확인 함수
         Args:
             websocket: 소켓 연결
@@ -48,67 +54,38 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         message: str = await asyncio.wait_for(websocket.recv(), timeout=30.0)
         data = json.loads(message)
         market: str = uri.split("//")[1].split(".")[1]
-
         if data:
             self._logger.log_message_sync(logging.INFO, f"{market} 연결 완료")
 
     async def handle_message(
-        self, websocket: websockets, uri: str, symbol: str
+        self, websocket: socket_protocol, uri: str, symbol: str
     ) -> None:
-        """메시지 처리하는 메서드"""
+        """메시지 전송하는 메서드"""
         while True:
-            try:
-                message: ExchangeResponseData = await asyncio.wait_for(
-                    websocket.recv(), timeout=30.0
-                )
-                await self.message_preprocessing.put_message_to_logging(
-                    message, uri, symbol
-                )
-                await self.message_preprocessing.message_consumer()
-                await asyncio.sleep(1.0)
-
-            except websockets.exceptions.ConnectionClosedError as e:
-                self._logger.log_message_sync(logging.ERROR, f"커넥션 에러 입니다: {e}")
-                await asyncio.sleep(5)
-            except websockets.exceptions.ConnectionClosedOK as e:
-                self._logger.log_message_sync(logging.ERROR, f"닫혔습니다: {e} - {uri}")
-                await asyncio.sleep(5)
-            except asyncio.TimeoutError as e:
-                self._logger.log_message_sync(logging.ERROR, f"타임 에러 입니다: {e}")
-                await asyncio.sleep(5)
-
-    async def ping_pong(
-        self, uri: str, websocket: websockets.WebSocketClientProtocol, interval: int
-    ) -> None:
-        """주기적으로 핑을 보내는 메서드"""
-        try:
-            await websocket.ping()  # 서버에 핑 전송
-            self._logger.log_message_sync(logging.INFO, f"Ping sent -- {uri}")
-            await asyncio.sleep(interval)  # 설정한 간격만큼 대기
-        except Exception as e:
-            self._logger.log_message_sync(logging.ERROR, f"Ping 에러: {e} -- {uri}")
+            message: ExchangeResponseData = await asyncio.wait_for(
+                websocket.recv(), timeout=30.0
+            )
+            await self.message_preprocessing.put_message_to_logging(
+                message, uri, symbol
+            )
+            await self.message_preprocessing.message_consumer()
+            await asyncio.sleep(1.0)
 
     async def websocket_to_json(
         self, uri: str, subs_fmt: SubScribeFormat, symbol: str
     ) -> None:
         """말단 소켓 시작 지점"""
         async with websockets.connect(
-            uri, ping_interval=30, ping_timeout=60
+            uri, ping_interval=30.0, ping_timeout=60.0
         ) as websocket:
 
             try:
                 await self.socket_param_send(websocket, subs_fmt)
                 await self.handle_connection(websocket, uri)
 
-                # # 핑/퐁 로직을 별도의 태스크로 실행
-                # ping_interval = 10  # 예를 들어 10초 간격으로 핑
-                # asyncio.create_task(self.ping_pong(uri, websocket, ping_interval))
-
                 await self.handle_message(websocket, uri, symbol)
-            except asyncio.TimeoutError as e:
-                self._logger.log_message_sync(
-                    logging.ERROR, f"타임아웃 에러입니다: {e}"
-                )
+            except (TimeoutError, ConnectionClosedOK, ConnectionClosedError) as e:
+                self._logger.log_message_sync(logging.ERROR, f"에러입니다: {e}")
                 await asyncio.sleep(5)  # 타임아웃 후 5초 대기 후 재연결
 
 
@@ -116,7 +93,7 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
     def __init__(self) -> None:
         self._logger = AsyncLogger(target="prepro", log_file="message.log")
         self.async_q = asyncio.Queue()
-        self.market = load_json("socket")
+        self.market = load_json("socket", "korea")
 
     def process_exchange(self, market: str, message: dict) -> dict:
         """message 필터링
@@ -148,7 +125,7 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
             symbol: 코인심볼
         """
 
-        parameter: list = list(self.market[market]["parameter"])
+        parameter: list[str] = [self.market[market]["parameter"]]
         schema_key: PriceData = {
             key: message[key] for key in message if key in parameter
         }
@@ -168,9 +145,8 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
     async def message_consumer(self) -> None:
         """메시지 소비"""
         uri, market, message, symbol = await self.async_q.get()
-
         try:            
-            market_schema: dict = await self.process_message(market, message, symbol)
+            market_schema: ExchangeData = await self.process_message(market, message, symbol)
             # self.message_by_data[market].append(market_schema)
             # if len(self.message_by_data[market]) >= MAXLISTSIZE:
             #     await KafkaMessageSender().produce_sending(
@@ -209,7 +185,7 @@ class CoinPresentPriceWebsocket:
         tracemalloc.start()
         self.market = market
         self.symbol = symbol
-        self.market_env = load_json(market_type)
+        self.market_env = load_json(market_type, "korea")
         self.logger = AsyncLogger(target="socket", log_file="connect.log")
 
     async def select_websocket(self) -> list:

@@ -21,7 +21,7 @@ class AbstractAsyncRequestAcquisition(ABC):
         self.logging = AsyncLogger(target="request", log_file="request.log")
 
     @abstractmethod
-    async def async_source(self, response: aiohttp.ClientSession) -> Any: 
+    async def async_response(self, session: aiohttp.ClientSession) -> Any: 
         raise NotImplementedError()
     
     @abstractmethod
