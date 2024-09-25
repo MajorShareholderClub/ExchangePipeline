@@ -8,6 +8,7 @@ from aiohttp.web_exceptions import HTTPException
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 import websockets
 import json
+from socket import gaierror
 
 
 class SocketError(Exception): ...
@@ -15,13 +16,13 @@ class SocketError(Exception): ...
 
 # 기본적인 재시도 로직을 포함하는 추상 클래스
 class BaseRetry:
-    def __init__(self, retries=3, delay=2):
+    def __init__(self, retries=3, base_delay=2):
         self.retries = retries
-        self.delay = delay
+        self.base_delay = base_delay  # 지수 백오프를 위한 기본 대기 시간
         self.logging = AsyncLogger(target="request", log_file="request.log")
 
-    def log_error(self, message: str) -> None:
-        """로그 메시지를 기록하는 메서드."""
+    async def log_error(self, message: str) -> None:
+        """비동기로 로그 메시지를 기록하는 메서드."""
         self.logging.log_message_sync(logging.ERROR, message=message)
 
     def __call__(self, func: Callable) -> Callable:
@@ -32,11 +33,10 @@ class BaseRetry:
             for attempt in range(self.retries):
                 try:
                     return await func(*args, **kwargs)  # 비동기 함수 호출
-                except Exception as e:  # 모든 예외 처리
-                    await self.handle_exception(e, attempt)  # 비동기 예외 처리
-                    await asyncio.sleep(self.delay)  # 재시도 전 대기
-            # 재시도 실패 시 마지막 예외를 raise
-            raise e
+                except Exception as e:
+                    await self.handle_exception(e, attempt)
+                    await asyncio.sleep(self.base_delay * (2**attempt))  # 지수 백오프
+            raise e  # 재시도 실패 시 마지막 예외를 raise
 
         return wrapper
 
@@ -48,16 +48,17 @@ class BaseRetry:
 # HTTP 요청에 대한 재시도 클래스
 class RestRetryOnFailure(BaseRetry):
     async def handle_exception(self, e: Exception, attempt: int) -> None:
+        """HTTP 관련 예외 처리 로직"""
         match e:
             case HTTPException():
-                message = f"HTTP Error: {e} 연결 다시 시작합니다 {attempt + 1}/{self.retries}..."
-                self.log_error(message)
+                message = f"HTTP Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
             case ClientConnectorError():
-                message = f"연결 오류: {e}, 연결 다시 시작합니다 {attempt + 1}/{self.retries}..."
-                self.log_error(message)
+                message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
             case ClientError():
-                message = f"Client Error: {e}, 재시도 {attempt + 1}/{self.retries}..."
-                self.log_error(message)
+                message = f"Client Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
+            case _:
+                message = f"Unknown Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
+        await self.log_error(message)
 
 
 class SocketRetryOnFailure(BaseRetry):
@@ -68,12 +69,12 @@ class SocketRetryOnFailure(BaseRetry):
         rest_client: Callable,
         subs: list,
         retries: int = 3,
-        delay: int = 2,
+        base_delay: int = 2,
     ):
-        super().__init__(retries, delay)
-        self.rest_client = rest_client  # REST API 클라이언트를 인자
+        super().__init__(retries, base_delay)
+        self.rest_client = rest_client
         self.symbol = symbol
-        self.is_rest_active = False  # REST API 활성화 상태 추적
+        self.is_rest_active = False
         self.uri = uri
         self.subs = subs
 
@@ -82,76 +83,64 @@ class SocketRetryOnFailure(BaseRetry):
 
         @wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
-            try:
-                return await func(*args, **kwargs)
-            except Exception as e:
-                for attempt in range(self.retries):
-                    message = f"""
-                        --> Socket Error: {e}, 
-                        --> 재시도 {attempt + 1}/{self.retries}...
-                    """
-                    self.log_error(message)
-                    await self.handle_exception(e)
-                    await asyncio.sleep(self.delay)  # 재시도 전 대기
-                    if await self.ping_pong():  # 소켓이 복구되었는지 확인
-                        self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
-                        break
-                    else:
-                        # 재시도 실패 시 오류 감지 후 Rest API 전환 트리거
-                        data = await func(*args, **kwargs)
-                        return await self.on_failure_detected(e, data)
+            for attempt in range(self.retries):
+                try:
+                    return await func(*args, **kwargs)
+                except Exception as e:
+                    await self.handle_exception(e, attempt, func, *args, **kwargs)
+                    ping_test = await self.ping_pong()
+                    if ping_test:
+                        await self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
+                        return await func(*args, **kwargs)  # 복구 후 원래 작업 재개
+                    await asyncio.sleep(self.base_delay * (2**attempt))  # 지수 백오프
 
         return wrapper
 
-    async def ping_pong(self) -> None:
-        """주기적으로 핑을 보내는 메서드"""
+    async def ping_pong(self) -> bool:
+        """소켓 핑 테스트 메서드"""
         try:
             async with websockets.connect(self.uri, ping_interval=60) as websocket:
                 await websocket.send(json.dumps(self.subs))  # 서버에 핑 전송
                 self.logging.log_message_sync(logging.INFO, f"Ping sent -- {self.uri}")
                 await asyncio.sleep(5)  # 설정한 간격만큼 대기
                 data = await websocket.recv()
-                if isinstance(data, bytes | str):
-                    return True
+                return isinstance(data, (bytes, str))  # 응답 타입 확인
         except Exception as e:
             self.logging.log_message_sync(
                 logging.ERROR, f"Ping 에러: {e} -- {self.uri}"
             )
+            return False
 
-    async def on_failure_detected(
-        self, e: Exception, func: Callable, *args, **kwargs
-    ) -> Any:
-        """연결 실패가 감지되면 호출"""
-        self.log_error(f"소켓 연결 실패 감지: {e}, Rest API로 전환 중...")
-        data = await func(*args, **kwargs)
-        return await self.switch_to_rest(data)  # 실패 후 REST API 호출
-
-    async def handle_exception(self, e: Exception) -> None:
-        """오류를 감지하고 로그를 남김"""
+    async def handle_exception(
+        self, e: Exception, attempt: int, func: Callable, *args, **kwargs
+    ) -> None:
+        """소켓 및 연결 오류 예외 처리"""
         match e:
             case TimeoutError() | ConnectionClosedOK() | ConnectionClosedError():
-                self.log_error(f"연결 오류 --> {e}")
-                asyncio.sleep(1)
+                message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
             case SocketError():
-                message = "연결이 진행되지 않습니다 REST로 대체합니다"
-                self.log_error(message)
-                await self.switch_to_rest()
+                message = "소켓 연결 오류. REST API로 전환합니다."
+                await self.switch_to_rest(func, *args, **kwargs)
+            case _:
+                message = "모든 연결 오류로. REST API로 전환합니다."
+                await self.log_error(message)
+                await self.switch_to_rest(func, *args, **kwargs)
 
     async def switch_to_rest(self, func: Callable, *args, **kwargs) -> Any:
-        """모든 재시도가 실패한 후 REST API로 전환"""
-        try:
-            while True:
+        """소켓 실패 시 REST API로 전환 및 복구 후 소켓으로 전환"""
+        await self.log_error("REST API로 전환 중...")
+        while True:
+            try:
                 # REST API 요청
                 await self.rest_client.total_pull_request(coin_symbol=self.symbol)
-                self.log_error(f"Rest API로 전환 성공")
+                await self.log_error(f"REST API 호출 성공")
 
                 # 소켓 복구 여부 확인
-                s_data = await self.ping_pong()
-                if s_data:  # 소켓이 복구되었는지 확인
-                    self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
-                    await func(*args, **kwargs)  # 원래 함수 호출
+                if await self.ping_pong():
+                    await self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
+                    return await func(*args, **kwargs)  # 복구 후 원래 작업 재개
 
-                await asyncio.sleep(2)  # REST API 요청 간격 조정
-        except Exception as e:
-            self.log_error(f"Rest API 요청 중 오류 발생: {e}")
-            raise e  # Rest API 호출도 실패하면 예외 처리
+                await asyncio.sleep(self.base_delay)
+            except Exception as e:
+                await self.log_error(f"REST API 요청 중 오류 발생: {e}")
+                continue

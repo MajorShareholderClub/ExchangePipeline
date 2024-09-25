@@ -75,7 +75,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
 
         @SocketRetryOnFailure(
             retries=3,
-            delay=4,
+            base_delay=4,
             rest_client=KoreaExchangeRestAPI(),
             symbol=symbol,
             uri=uri,
