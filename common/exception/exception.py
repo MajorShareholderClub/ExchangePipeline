@@ -7,6 +7,7 @@ from aiohttp import ClientConnectorError, ClientError
 from aiohttp.web_exceptions import HTTPException
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
 import websockets
+import json
 
 
 class SocketError(Exception): ...
@@ -65,6 +66,7 @@ class SocketRetryOnFailure(BaseRetry):
         symbol: str,
         uri: str,
         rest_client: Callable,
+        subs: list,
         retries: int = 3,
         delay: int = 2,
     ):
@@ -73,30 +75,31 @@ class SocketRetryOnFailure(BaseRetry):
         self.symbol = symbol
         self.is_rest_active = False  # REST API 활성화 상태 추적
         self.uri = uri
+        self.subs = subs
 
     def __call__(self, func: Callable) -> Callable:
         """데코레이터로 재시도 및 오류 감지"""
 
         @wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
-            last_exception = None
             try:
                 return await func(*args, **kwargs)
             except Exception as e:
                 for attempt in range(self.retries):
                     message = f"""
-                        --> Socket Error: {last_exception}, 
+                        --> Socket Error: {e}, 
                         --> 재시도 {attempt + 1}/{self.retries}...
                     """
                     self.log_error(message)
-                    await self.handle_exception(e, attempt)
+                    await self.handle_exception(e)
                     await asyncio.sleep(self.delay)  # 재시도 전 대기
                     if await self.ping_pong():  # 소켓이 복구되었는지 확인
                         self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
                         break
-
-            # 재시도 실패 시 오류 감지 후 Rest API 전환 트리거
-            return await self.on_failure_detected(last_exception)
+                    else:
+                        # 재시도 실패 시 오류 감지 후 Rest API 전환 트리거
+                        data = await func(*args, **kwargs)
+                        return await self.on_failure_detected(e, data)
 
         return wrapper
 
@@ -104,20 +107,26 @@ class SocketRetryOnFailure(BaseRetry):
         """주기적으로 핑을 보내는 메서드"""
         try:
             async with websockets.connect(self.uri, ping_interval=60) as websocket:
-                a = await websocket.ping("PING")  # 서버에 핑 전송
+                await websocket.send(json.dumps(self.subs))  # 서버에 핑 전송
                 self.logging.log_message_sync(logging.INFO, f"Ping sent -- {self.uri}")
                 await asyncio.sleep(5)  # 설정한 간격만큼 대기
+                data = await websocket.recv()
+                if isinstance(data, bytes | str):
+                    return True
         except Exception as e:
             self.logging.log_message_sync(
                 logging.ERROR, f"Ping 에러: {e} -- {self.uri}"
             )
 
-    async def on_failure_detected(self, e: Exception) -> Any:
+    async def on_failure_detected(
+        self, e: Exception, func: Callable, *args, **kwargs
+    ) -> Any:
         """연결 실패가 감지되면 호출"""
         self.log_error(f"소켓 연결 실패 감지: {e}, Rest API로 전환 중...")
-        return await self.switch_to_rest()  # 실패 후 REST API 호출
+        data = await func(*args, **kwargs)
+        return await self.switch_to_rest(data)  # 실패 후 REST API 호출
 
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """오류를 감지하고 로그를 남김"""
         match e:
             case TimeoutError() | ConnectionClosedOK() | ConnectionClosedError():
@@ -128,7 +137,7 @@ class SocketRetryOnFailure(BaseRetry):
                 self.log_error(message)
                 await self.switch_to_rest()
 
-    async def switch_to_rest(self) -> Any:
+    async def switch_to_rest(self, func: Callable, *args, **kwargs) -> Any:
         """모든 재시도가 실패한 후 REST API로 전환"""
         try:
             while True:
@@ -137,9 +146,10 @@ class SocketRetryOnFailure(BaseRetry):
                 self.log_error(f"Rest API로 전환 성공")
 
                 # 소켓 복구 여부 확인
-                if await self.ping_pong():  # 소켓이 복구되었는지 확인
+                s_data = await self.ping_pong()
+                if s_data:  # 소켓이 복구되었는지 확인
                     self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
-                    break  # REST 루프 종료
+                    await func(*args, **kwargs)  # 원래 함수 호출
 
                 await asyncio.sleep(2)  # REST API 요청 간격 조정
         except Exception as e:

@@ -79,6 +79,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             rest_client=KoreaExchangeRestAPI(),
             symbol=symbol,
             uri=uri,
+            subs=subs_fmt,
         )
         async def connection():
             async with websockets.connect(
