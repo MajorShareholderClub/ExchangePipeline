@@ -4,6 +4,7 @@ from abc import abstractmethod
 from common.utils.other_utils import get_symbol_collect_url
 from common.client.async_api_client import AsyncRequestJSON
 from common.core.abstract import AbstractExchangeRestClient
+from common.exception import RestRetryOnFailure
 from common.core.types import ExchangeResponseData
 
 
@@ -19,6 +20,7 @@ class CoinExchangeRestClient(AbstractExchangeRestClient):
         self.market = market
         self._rest = get_symbol_collect_url(market=market, type_="rest")
 
+    @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """
         Subject:
@@ -57,6 +59,7 @@ class UpbitRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/ticker?markets=KRW-{coin_name.upper()}"
 
+    @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data[0]
@@ -72,6 +75,7 @@ class BithumbRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/ticker?markets=KRW-{coin_name.upper()}"
 
+    @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data[0]
@@ -87,6 +91,7 @@ class CoinoneRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/ticker_new/KRW/{coin_name.upper()}?additional_data=true"
 
+    @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data["tickers"][0]
@@ -102,6 +107,7 @@ class KorbitRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/tickers?symbol={coin_name.lower()}_krw"
 
+    @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data["data"][0]

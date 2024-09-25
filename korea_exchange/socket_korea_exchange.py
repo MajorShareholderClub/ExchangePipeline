@@ -37,9 +37,7 @@ class UpbitSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
         super().__init__(target="upbit", socket_parameter=upbithumb_socket_parameter)
 
-    async def get_present_websocket(
-        self, symbol: str
-    ) -> Coroutine[Any, Any, Coroutine[Any, Any, None]]:
+    async def get_present_websocket(self, symbol: str) -> Coroutine[Any, Any, None]:
         return await super().get_present_websocket(symbol, req_type="ticker")
 
 

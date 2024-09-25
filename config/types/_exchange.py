@@ -61,7 +61,7 @@ class ForeignMarketRequestType(TypedDict):
 
 class WorldMarketsRequestType(TypedDict):
     korea: KoreaMarketRequestType
-    foreign: ForeignExchageRest
+    foreign: ForeignMarketRequestType
 
 
 ForeginMarkets = ForeignExchageRest

@@ -14,16 +14,7 @@ class ForeignExchangeRestAPI(BaseExchangeRestAPI):
     def __init__(self) -> None:
         super().__init__(location="foreign")
 
-    async def fetch_api_response_time(self, coin_symbol: str) -> int:
-        api_response_time = await BinanceRest().get_coin_all_info_price(
-            coin_name=coin_symbol.upper()
-        )
-        return api_response_time["timestamp"]
-
-    def create_schema(
-        self, api_response_time: int, market_result: list[ExchangeData]
-    ) -> ForeignCoinMarketData:
+    def create_schema(self, market_result: list[ExchangeData]) -> ForeignCoinMarketData:
         return ForeignCoinMarket(
-            timestamp=api_response_time,
             **dict(zip(self.market_env.keys(), market_result)),
         ).model_dump()

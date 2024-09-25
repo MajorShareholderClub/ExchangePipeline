@@ -17,16 +17,7 @@ class KoreaExchangeRestAPI(BaseExchangeRestAPI):
     def __init__(self) -> None:
         super().__init__(location="korea")
 
-    async def fetch_api_response_time(self, coin_symbol: str) -> int:
-        api_response = await UpbitRest().get_coin_all_info_price(
-            coin_name=coin_symbol.upper()
-        )
-        return api_response["timestamp"]
-
-    def create_schema(
-        self, api_response_time: int, market_result: list[ExchangeData]
-    ) -> KoreaCoinMarketData:
+    def create_schema(self, market_result: list[ExchangeData]) -> KoreaCoinMarketData:
         return KoreaCoinMarket(
-            timestamp=api_response_time,
             **dict(zip(self.market_env.keys(), market_result)),
         ).model_dump()

@@ -6,29 +6,6 @@ from decimal import Decimal, ROUND_HALF_UP
 from pydantic import BaseModel, field_validator, ValidationError, Field
 
 
-class BaseCoinMarket(BaseModel):
-
-    timestamp: int
-
-    def __init__(self, **data: KoreaCoinMarket) -> None:
-        # 우선 timestamp 추출
-        timestamp = data.pop("timestamp", None)
-
-        # 거래소 데이터 검증 및 할당
-        exchange_data: dict[str, CoinMarketData | bool] = {
-            key: self.validate_exchange_data(value) for key, value in data.items()
-        }
-        # 합쳐진 데이터를 사용하여 부모 클래스 초기화
-        super().__init__(timestamp=timestamp, **exchange_data)
-
-    @staticmethod
-    def validate_exchange_data(value: Any) -> CoinMarketData | bool:
-        try:
-            return CoinMarketData.model_validate(value)
-        except ValidationError:
-            return False
-
-
 class KoreaCoinMarket(BaseModel):
     """
     Subject:
@@ -117,6 +94,8 @@ class PriceData(BaseModel):
     def round_three_place_adjust(cls, value: Any) -> Decimal | None:
         if value is None:
             return None
+        if isinstance(value, float):
+            return value
         return Decimal(value).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
 
 
@@ -140,6 +119,7 @@ class CoinMarketData(BaseModel):
     """
 
     market: str
+    timestamp: float
     coin_symbol: str
     data: PriceData
 
@@ -162,6 +142,7 @@ class CoinMarketData(BaseModel):
         cls,
         market: str,
         coin_symbol: str,
+        time: float,
         api: dict[str, Any],
         data: list[str],
     ) -> CoinMarketData:
@@ -190,5 +171,6 @@ class CoinMarketData(BaseModel):
         return cls(
             market=market,
             coin_symbol=coin_symbol,
+            timestamp=time,
             data=price_data,
         )

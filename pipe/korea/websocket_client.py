@@ -5,16 +5,13 @@ from asyncio.exceptions import CancelledError
 
 import json
 import websockets
-from websockets.exceptions import (
-    ConnectionClosedError,
-    ConnectionClosedOK,
-)
-
+from pipe.korea.korea_rest_client import KoreaExchangeRestAPI
 from common.utils.logger import AsyncLogger
 from common.core.abstract import (
     MessageDataPreprocessingAbstract,
     WebsocketConnectionAbstract,
 )
+from common.exception import SocketRetryOnFailure
 from common.core.data_format import CoinMarketData
 from common.core.types import (
     SubScribeFormat,
@@ -75,18 +72,23 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         self, uri: str, subs_fmt: SubScribeFormat, symbol: str
     ) -> None:
         """말단 소켓 시작 지점"""
-        async with websockets.connect(
-            uri, ping_interval=30.0, ping_timeout=60.0
-        ) as websocket:
 
-            try:
+        @SocketRetryOnFailure(
+            retries=3,
+            delay=4,
+            rest_client=KoreaExchangeRestAPI(),
+            symbol=symbol,
+            uri=uri,
+        )
+        async def connection():
+            async with websockets.connect(
+                uri, ping_interval=30.0, ping_timeout=60.0
+            ) as websocket:
                 await self.socket_param_send(websocket, subs_fmt)
                 await self.handle_connection(websocket, uri)
-
                 await self.handle_message(websocket, uri, symbol)
-            except (TimeoutError, ConnectionClosedOK, ConnectionClosedError) as e:
-                self._logger.log_message_sync(logging.ERROR, f"에러입니다: {e}")
-                await asyncio.sleep(5)  # 타임아웃 후 5초 대기 후 재연결
+
+        await connection()
 
 
 class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
@@ -124,18 +126,20 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
             message: 송신된 소켓 데이터
             symbol: 코인심볼
         """
-
-        parameter: list[str] = [self.market[market]["parameter"]]
+        parameter: list[str] = self.market[market]["parameter"]
+        time = message[self.market[market]["timestamp"]]
         schema_key: PriceData = {
             key: message[key] for key in message if key in parameter
-        }
+        }  
         return CoinMarketData.from_api(
             market=f"{market}-{symbol.upper()}",
             coin_symbol=symbol.upper(),
             api=schema_key,
+            time=time,
             data=parameter,
         ).model_dump(mode="json")
-    
+
+        
     async def put_message_to_logging(self, message: ExchangeResponseData, uri: str, symbol: str) -> None:
         """메시지 로깅"""
         market: str = uri.split("//")[1].split(".")[1]
@@ -162,8 +166,11 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
                 logging.INFO, message=f"{parse_uri} -- {market_schema}"
             )
         except (TypeError, KeyError) as error:
-            pass
-        except CancelledError:
+            self._logger.log_message_sync(
+                logging.ERROR,
+                message=f"타입오류 --> {error} url --> {market}",
+            )
+        except CancelledError as error:
             self._logger.log_message_sync(
                 logging.ERROR,
                 message=f"가격 소켓 연결 오류 --> {error} url --> {market}",
@@ -187,6 +194,7 @@ class CoinPresentPriceWebsocket:
         self.symbol = symbol
         self.market_env = load_json(market_type, "korea")
         self.logger = AsyncLogger(target="socket", log_file="connect.log")
+        self.is_rest_active = False
 
     async def select_websocket(self) -> list:
         """마켓 선택"""
@@ -204,10 +212,5 @@ class CoinPresentPriceWebsocket:
 
     async def coin_present_architecture(self) -> None:
         """실행 지점"""
-        try:
-            coroutines: list = await self.select_websocket()
-            await asyncio.gather(*coroutines, return_exceptions=False)
-        except (TimeoutError, CancelledError) as error:
-            self.logger.log_message_sync(
-                logging.ERROR, message=f"진행하지 못했습니다 --> {error}"
-            )
+        coroutines: list = await self.select_websocket()
+        await asyncio.gather(*coroutines, return_exceptions=False)

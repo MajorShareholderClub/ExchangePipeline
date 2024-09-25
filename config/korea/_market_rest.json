@@ -1,5 +1,6 @@
 {
     "upbit": {
+        "timestamp": "trade_timestamp",
         "parameter": [
             "opening_price",
             "trade_price",
@@ -10,6 +11,7 @@
         ]
     },
     "bithumb": {
+        "timestamp": "trade_timestamp",
         "parameter": [
             "opening_price",
             "trade_price",
@@ -20,6 +22,7 @@
         ]
     },
     "coinone": {
+        "timestamp": "timestamp",
         "parameter": [
             "first",
             "last",
@@ -30,6 +33,7 @@
         ]
     },
     "korbit": {
+        "timestamp": "lastTradedAt",
         "parameter": [
             "open",
             "close",

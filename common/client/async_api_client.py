@@ -1,4 +1,3 @@
-import logging
 import aiohttp
 from typing import Any
 
@@ -10,13 +9,10 @@ class AsyncRequestAcquisition(AbstractAsyncRequestAcquisition):
 
     async def async_response(self, session: aiohttp.ClientSession) -> Any:
         async with session.get(url=self.url, params=self.params, headers=self.headers) as response:
-            try:
-                response.raise_for_status()
-                data = await response.json(content_type="application/json")
-                return data
-            except Exception as error:
-                self.logging.log_message_sync(logging.ERROR, f"다음과 같은 에러로 가져올 수 없습니다 --> {error}")
-
+            response.raise_for_status()
+            data = await response.json(content_type="application/json")
+            return data
+        
     async def async_source(self) -> Any:
         """호출 시작점"""
         async with aiohttp.ClientSession() as session:
