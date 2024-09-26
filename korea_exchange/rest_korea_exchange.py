@@ -20,23 +20,15 @@ class CoinExchangeRestClient(AbstractExchangeRestClient):
         self.market = market
         self._rest = get_symbol_collect_url(market=market, type_="rest")
 
-    # @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
-        """
-        Subject:
-            - upbithumb 코인 현재가\n
-        Parameter:
-            - coin_name (str) : 코인이름\n
-        Returns:
-            >>>  {
-                'market': 'KRW-BTC',
-                'trade_date': '20230717',
-                'trade_time': '090305',
-                ...
-            }
-        """
-        data = async_request_data(url=self._get_ticker_url(coin_name))
-        return await data
+        """코인데이터 호출"""
+
+        @RestRetryOnFailure(retries=3, base_delay=2)
+        async def process():
+            data = async_request_data(url=self._get_ticker_url(coin_name))
+            return await data
+
+        return await process()
 
     @abstractmethod
     def _get_orderbook_url(self, coin_name: str) -> str:
@@ -59,7 +51,6 @@ class UpbitRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/ticker?markets=KRW-{coin_name.upper()}"
 
-    # @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data[0]
@@ -75,7 +66,6 @@ class BithumbRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/ticker?markets=KRW-{coin_name.upper()}"
 
-    # @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data[0]
@@ -91,7 +81,6 @@ class CoinoneRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/ticker_new/KRW/{coin_name.upper()}?additional_data=true"
 
-    # @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data["tickers"][0]
@@ -107,7 +96,6 @@ class KorbitRest(CoinExchangeRestClient):
     def _get_ticker_url(self, coin_name: str) -> str:
         return f"{self._rest}/tickers?symbol={coin_name.lower()}_krw"
 
-    # @RestRetryOnFailure(retries=3, delay=2)
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data["data"][0]

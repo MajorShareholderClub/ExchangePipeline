@@ -3,109 +3,38 @@
 from __future__ import annotations
 from typing import Any
 from decimal import Decimal, ROUND_HALF_UP
-from pydantic import BaseModel, field_validator, ValidationError, Field
-
-
-class KoreaCoinMarket(BaseModel):
-    """
-    Subject:
-        한국 거래소 모음 : (rest: 4개(업비트, 빗썸, 코인원, 코빗), socket: 3개(코빗 추가되면 4개)
-    Returns:
-        - pydantic in JSON transformation \n
-        >>> {
-                "timestamp": 1689633864,
-                "upbit": {
-                    "name": "upbit-ETH",
-                    "coin_symbol": "BTC",
-                    "data": {
-                        "opening_price": 2455000.0,
-                        "trade_price": 38100000.0
-                        "max_price": 2462000.0,
-                        "min_price": 2431000.0,
-                        "prev_closing_price": 2455000.0,
-                        "acc_trade_volume_24h": 11447.92825886,
-                    }
-                },
-                ....
-            }
-    """
-
-    upbit: CoinMarketData | bool
-    bithumb: CoinMarketData | bool
-    coinone: CoinMarketData | bool
-    korbit: CoinMarketData | bool
-
-
-class ForeignCoinMarket(BaseModel):
-    """
-    Subject:
-        해외거래소 : (바이낸스, 크라켄, okx, gateio, htx(후오비), 코인베이스)
-    Returns:
-        pydantic in JSON transformation \n
-        >>> {
-                "timestamp": 1689633864,
-                "binance": {
-                    "name": "binance-ETH",
-                    "coin_symbol": "BTC",
-                    "data": {
-                        "opening_price": 2455000.0,
-                        "trade_price": 38100000.0,
-                        "max_price": 2462000.0,
-                        "min_price": 2431000.0,
-                        "prev_closing_price": 2455000.0,
-                        "acc_trade_volume_24h": 11447.92825886
-                    }
-                },
-                ...
-            }
-    """
-
-    binance: CoinMarketData | bool
-    kraken: CoinMarketData | bool
-    okx: CoinMarketData | bool
-    gateio: CoinMarketData | bool
-    htx: CoinMarketData | bool
-    coinbase: CoinMarketData | bool
+from pydantic import BaseModel, field_validator, Field
+from common.core.types import ExchangeResponseData
 
 
 class PriceData(BaseModel):
-    """코인 현재 가격가
+    """코인 현재 가격 데이터"""
 
-    Args:
-        BaseModel (_type_): pydantic
-
-    Returns:
-        _type_: Decimal type
-    """
-
-    # ask: Decimal | None = None
-    # bid: Decimal | None = None
-    opening_price: Decimal | None = Field(default=None, description="시작가")
-    trade_price: Decimal | None = Field(default=None, description="시장가")
-    max_price: Decimal | None = Field(default=None, description="고가")
-    min_price: Decimal | None = Field(default=None, description="저가")
-    prev_closing_price: Decimal | None = Field(default=None, description="종료가")
+    opening_price: Decimal | None = Field(default=None, description="코인 시작가")
+    trade_price: Decimal | None = Field(default=None, description="코인 시장가")
+    max_price: Decimal | None = Field(default=None, description="코인 고가")
+    min_price: Decimal | None = Field(default=None, description="코인저가")
+    prev_closing_price: Decimal | None = Field(default=None, description="코인 종가")
     acc_trade_volume_24h: Decimal | None = Field(
-        default=None, description="24시간 거래개수"
+        default=None, description="24시간 거래량"
     )
 
-    @field_validator("*")
+    @field_validator("*", mode="before")
     @classmethod
-    def round_three_place_adjust(cls, value: Any) -> Decimal | None:
+    def round_three_place_adjust(cls, value: float) -> Decimal | None:
+        """모든 필드에 대한 값을 소수점 셋째 자리로 반올림"""
         if value is None:
             return None
-        if isinstance(value, float):
-            return value
-        return Decimal(value).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+        if isinstance(value, (float, int, str, Decimal)):
+            return Decimal(value).quantize(Decimal("0.1"), rounding=ROUND_HALF_UP)
 
 
 class CoinMarketData(BaseModel):
     """Coin price data schema
-    Args:
-        - BaseModel (_type_): pydantic BaseModel 으로 구현 했습니다  \n
     Returns:
         >>>  {
                 "market": "upbit-BTC",
+                "timestamp": 1232355.0,
                 "coin_symbol": "BTC",
                 "data": {
                     "opening_price": 38761000.0,
@@ -123,12 +52,10 @@ class CoinMarketData(BaseModel):
     coin_symbol: str
     data: PriceData
 
-    # fmt: off
     @classmethod
-    def _create_price_data(cls, api: dict[str, int], data: list[str]) -> PriceData:
+    def _create_price_data(cls, api: dict[str, Any], data: list[str]) -> PriceData:
+        """API 데이터에서 PriceData 객체 생성"""
         return PriceData(
-            # ask=api[data[0]],
-            # bid=api[data[1]],
             opening_price=api[data[0]],
             max_price=api[data[1]],
             min_price=api[data[2]],
@@ -142,35 +69,40 @@ class CoinMarketData(BaseModel):
         cls,
         market: str,
         coin_symbol: str,
-        time: float,
-        api: dict[str, Any],
+        time: float | int,
+        api: ExchangeResponseData,
         data: list[str],
     ) -> CoinMarketData:
-        """다음과 같은 dictionary를 만들기 위한 pydantic json model architecture
-        >>>  {
-            "market": "upbit-BTC",
-            "coin_symbol": "BTC",
-            "data": {
-                "opening_price": 38761000.0,
-                "trade_price": 38100000.0
-                "high_price": 38828000.0,
-                "low_price": 38470000.0,
-                "prev_closing_price": 38742000.0,
-                "acc_trade_volume_24h": 2754.0481778
-            }
-        }
-        Args:
-            market (str): 거래소 이름
-            coin_symbol (str): 심볼
-            api (Mapping[str, Any]): 거래소 API
-            data (list[str, str, str, str, str, str]): 사용할 파라미터 \n
-        Returns:
-            CoinMarketData: _description_
-        """
+        """API 데이터로부터 CoinMarketData 생성"""
+        if isinstance(time, (float, int)):
+            timestamp = float(time)
+        else:
+            raise ValueError("유효하지 않은 타임스탬프입니다.")
+
         price_data: PriceData = cls._create_price_data(api=api, data=data)
         return cls(
             market=market,
             coin_symbol=coin_symbol,
-            timestamp=time,
+            timestamp=timestamp,
             data=price_data,
         )
+
+
+class KoreaCoinMarket(BaseModel):
+    """한국 거래소 데이터 모델"""
+
+    upbit: CoinMarketData | bool
+    bithumb: CoinMarketData | bool
+    coinone: CoinMarketData | bool
+    korbit: CoinMarketData | bool
+
+
+class ForeignCoinMarket(BaseModel):
+    """해외 거래소 데이터 모델"""
+
+    binance: CoinMarketData | bool
+    kraken: CoinMarketData | bool
+    okx: CoinMarketData | bool
+    gateio: CoinMarketData | bool
+    htx: CoinMarketData | bool
+    coinbase: CoinMarketData | bool

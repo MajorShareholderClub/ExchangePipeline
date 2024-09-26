@@ -4,7 +4,7 @@ from decimal import Decimal
 
 
 # request Type
-ExchangeResponseData = dict[str, str | int | float]
+ExchangeResponseData = dict[str, str | int | float | dict[str, int | str]]
 ExchangeOrderingData = dict[str, int]
 UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
 
@@ -19,6 +19,7 @@ UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
 PriceData = dict[str, Decimal | None]
 class ExchangeData(TypedDict):
     name: str
+    timestamp: float
     coin_symbol: str
     data: PriceData
 

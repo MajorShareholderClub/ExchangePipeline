@@ -6,8 +6,6 @@ from common.core.data_format import KoreaCoinMarket
 from common.core.types import KoreaCoinMarketData, ExchangeData
 from common.client.common_exchange_interface import BaseExchangeRestAPI
 
-from korea_exchange.rest_korea_exchange import UpbitRest
-
 # from coin.core.data_mq.data_interaction import KafkaMessageSender
 
 

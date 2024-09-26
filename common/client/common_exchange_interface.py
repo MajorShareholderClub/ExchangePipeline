@@ -5,12 +5,9 @@ import asyncio
 
 from typing import Any
 from config.json_param_load import load_json
-from common.core.types import ExchangeData
+from common.core.types import ExchangeData, KoreaCoinMarketData
 from common.core.data_format import CoinMarketData
 from common.utils.logger import AsyncLogger
-
-from pydantic.errors import PydanticUserError
-from pydantic import ValidationError
 
 
 class CoinPresentPriceClient:
@@ -57,10 +54,10 @@ class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
     def __init__(self, location: str) -> None:
         super().__init__(location=location)
 
-    async def fetch_market_data(self, coin_symbol: str) -> list[ExchangeData]:
+    async def fetch_market_data(self, symbol: str) -> list[ExchangeData | Exception]:
         """시장 데이터 가져오기"""
         tasks = [
-            self._trans_schema(market=market, symbol=coin_symbol)
+            self._trans_schema(market=market, symbol=symbol)
             for market in self.market_env
         ]
         return await asyncio.gather(*tasks, return_exceptions=True)
@@ -70,18 +67,15 @@ class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
         """스키마 생성 메서드"""
         raise NotImplementedError("메서드 구현 필수 입니다")
 
-    async def total_pull_request(self, coin_symbol: str) -> None:
-        """시작점"""
-        # while True:
-        # try:
-        await asyncio.sleep(1)
-
+    async def _log_market_schema(self, coin_symbol: str) -> None:
+        """공통 로깅 함수"""
         market_result = await self.fetch_market_data(coin_symbol)
-
-        schema = self.create_schema(market_result)
+        schema: KoreaCoinMarketData = self.create_schema(market_result)
+        # 비동기 로깅 함수로 개선
         self.logging.log_message_sync(logging.INFO, message=schema)
-        # except Exception as error:
-        #     self.logging.log_message_sync(
-        #         logging.ERROR, f"데이터 변환에 실패했습니다: {error}"
-        #     )
-        #     continue
+
+    async def total_pull_request(self, coin_symbol: str, interval: int = 1) -> None:
+        """Rest 시작점"""
+        while True:
+            await self._log_market_schema(coin_symbol)
+            await asyncio.sleep(interval)
