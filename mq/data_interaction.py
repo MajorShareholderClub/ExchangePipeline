@@ -1,21 +1,16 @@
-"""
-KAFAK PRODUCE 
-"""
-
-import random
-import sys
+import logging
 import json
-from typing import Any
 from pathlib import Path
+from typing import Any, TypedDict, Callable
+
 from decimal import Decimal
 from collections import defaultdict
-
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import NoBrokersAvailable, KafkaProtocolError, KafkaConnectionError
-
-from coin.core.data_mq.data_partitional import CoinHashingCustomPartitional
-from coin.core.util.create_log import SocketLogCustomer
-from coin.core.setting.properties import (
+from kafka.partitioner.default import DefaultPartitioner
+from mq.data_partitional import CoinHashingCustomPartitional
+from common.utils.logger import AsyncLogger
+from common.setting.properties import (
     BOOTSTRAP_SERVER,
     SECURITY_PROTOCOL,
     MAX_BATCH_SIZE,
@@ -23,33 +18,7 @@ from coin.core.setting.properties import (
     ARCKS,
 )
 
-
 present_path = Path(__file__).parent
-except_list: defaultdict[Any, list] = defaultdict(list)
-
-
-# 메모리 계산
-def deep_getsizeof(obj, seen=None) -> int:
-    """재귀적으로 객체의 메모리 사용량을 계산하는 함수"""
-    if seen is None:
-        seen = set()
-
-    obj_id = id(obj)
-    if obj_id in seen:
-        return 0
-
-    # 이미 본 객체는 저장
-    seen.add(obj_id)
-
-    size = sys.getsizeof(obj)
-
-    if isinstance(obj, dict):
-        size += sum(deep_getsizeof(v, seen) for v in obj.values())
-        size += sum(deep_getsizeof(k, seen) for k in obj.keys())
-    elif hasattr(obj, "__iter__") and not isinstance(obj, (str, bytes, bytearray)):
-        size += sum(deep_getsizeof(i, seen) for i in obj)
-
-    return size
 
 
 def default(obj: Any):
@@ -57,72 +26,101 @@ def default(obj: Any):
         return str(obj)
 
 
+class KafkaConfig(TypedDict):
+    bootstrap_servers: str
+    security_protocol: str
+    max_batch_size: int
+    max_request_size: int
+    partitioner: Callable  # 파티셔너 함수 타입
+    acks: str | int
+    value_serializer: Callable[[Any], bytes]
+    key_serializer: Callable[[Any], bytes]
+    enable_idempotence: bool
+    retry_backoff_ms: int
+
+
 class KafkaMessageSender:
     """
-    3. KafkaMessageSender
-        - 카프카 전송 로직
-        - 전송 실패 했을 시 우회 로직 완료
+    KafkaMessageSender
+    - 카프카 전송 로직
+    - 전송 실패 시 메시지를 임시 저장하고, 나중에 재전송
     """
 
     def __init__(self) -> None:
-        self.logger = SocketLogCustomer(
-            base_path=present_path, file_name="k_log", object_name="kafka"
-        )  # 로그 출력을 위한 객체
+        self.logger = AsyncLogger(target="kafka", log_file="kafka.log")
         self.except_list: defaultdict[Any, list] = defaultdict(list)
+        self.producer = None  # Producer를 클래스 속성으로 저장
+        self.producer_started = False
+
+    # fmt: off
+    async def start_producer(self):
+        """Producer 시작 및 재사용"""
+        if not self.producer_started:
+            config = KafkaConfig(
+                bootstrap_servers=BOOTSTRAP_SERVER,
+                security_protocol=SECURITY_PROTOCOL,
+                max_batch_size=int(MAX_BATCH_SIZE),
+                max_request_size=int(MAX_REQUEST_SIZE),
+                partitioner=DefaultPartitioner(),
+                acks=ARCKS,
+                value_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
+                key_serializer=lambda value: json.dumps(value).encode("utf-8"),
+                enable_idempotence=True,
+                retry_backoff_ms=100,
+            )
+            self.producer = AIOKafkaProducer(**config)
+            await self.producer.start()
+            self.producer_started = True
+
+    async def stop_producer(self) -> None:
+        """Producer 종료"""
+        if self.producer_started and self.producer is not None:
+            await self.producer.stop()
+            self.producer_started = False
 
     async def produce_sending(
         self,
-        message: Any,
+        message: dict,
         market_name: str,
-        key,
+        key: Any,
         symbol: str,
         type_: str = "DataIn",
     ):
-        user_ids = random.randint(1, 100)  # 좀 더 넓은 범위로 랜덤 번호를 생성
+        await self.start_producer()
 
-        config = {
-            "bootstrap_servers": f"{BOOTSTRAP_SERVER}",
-            "security_protocol": f"{SECURITY_PROTOCOL}",
-            "max_batch_size": int(f"{MAX_BATCH_SIZE}"),
-            "max_request_size": int(f"{MAX_REQUEST_SIZE}"),
-            "partitioner": CoinHashingCustomPartitional(),
-            "acks": f"{ARCKS}",
-            "value_serializer": lambda value: json.dumps(value, default=default).encode(
-                "utf-8"
-            ),
-            "key_serializer": lambda value: json.dumps(value, default=default).encode(
-                "utf-8"
-            ),
-            "enable_idempotence": True,
-            "retry_backoff_ms": 100,
-        }
-        producer = AIOKafkaProducer(**config)
-
-        await producer.start()
+        topic = f"{symbol.lower()}{type_}{market_name}"
+        key: str = f"{key}-{symbol}"
+        original_message = message  # 실제 메시지를 로그 메시지와 분리
 
         try:
+            # 로그는 실제 전송할 메시지와는 별도로 기록
+            size: int = len(json.dumps(message).encode("utf-8"))
+            log_message = f"Message to: {topic} --> size: {size} bytes"
+            self.logger.log_message_sync(logging.INFO, message=log_message)
 
-            topic: str = f"{symbol.lower()}{type_}{market_name}"
-            async with producer.transaction():
-                size: int = deep_getsizeof(message)
-                message = f"Message delivered to: {topic} --> counting --> {len(message)} size --> {size}"
-                await self.logger.data_log(exchange_name="success", message=message)
-                await producer.send_and_wait(topic=topic, value=message, key=key)
+            # 실제 메시지 전송
+            await self.producer.send_and_wait(
+                topic=topic, value=original_message, key=key
+            )
 
-            # 불능 상태에서 저장된 메시지가 있는 경우 함께 전송
+            # 예외 상황에서 저장된 메시지 재전송
             while self.except_list[topic]:
                 stored_message = self.except_list[topic].pop(0)
-                await producer.send_and_wait(topic, stored_message)
+                await self.producer.send_and_wait(topic, stored_message)
 
         except Exception as error:
-            error_message = f"Kafka broker error로 인해 임시 저장합니다 : {error}, message: {message}"
-            await self.logger.error_log(error_type="error", message=error_message)
-            except_list[topic].append(message)
-            try:
-                await producer.abort_transaction()
-            except Exception as e:
-                await self.logger.error_log(
-                    error_type="error", message=f"트랜잭션 롤백 중 오류 발생: {e}"
-                )
+            match error:
+                case NoBrokersAvailable() | KafkaProtocolError() | KafkaConnectionError():
+                    error_message = (
+                        f"Kafka broker error: {error}, 메시지 임시 저장합니다."
+                    )
+                    self.logger.log_message_sync(logging.ERROR, message=error_message)
+                    self.except_list[topic].append(original_message)  # 메시지 저장
+
+                case _:
+                    error_message = f"Unexpected error: {error}, 메시지를 보낼 수 없습니다 임시 저장합니다."
+                    self.logger.log_message_sync(logging.ERROR, message=error_message)
+                    self.except_list[topic].append(original_message)  # 메시지 저장
+
         finally:
-            await producer.stop()
+            await self.stop_producer()

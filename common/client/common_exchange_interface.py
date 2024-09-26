@@ -44,8 +44,6 @@ class CoinPresentPriceClient:
             data=market_info["parameter"],
         )
         return market_data_architecture
-        # except (PydanticUserError, ValidationError) as error:
-        #     self.logging.log_message_sync(logging.ERROR, error)
 
 
 class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):

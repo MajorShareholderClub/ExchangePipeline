@@ -2,6 +2,7 @@ import logging
 import tracemalloc
 import asyncio
 from asyncio.exceptions import CancelledError
+from collections import defaultdict
 
 import json
 import websockets
@@ -20,8 +21,10 @@ from common.core.types import (
     PriceData,
 )
 from config.json_param_load import load_json
+from mq.data_interaction import KafkaMessageSender
 
 socket_protocol = websockets.WebSocketClientProtocol
+MAXLISTSIZE = 10
 
 
 class WebsocketConnectionManager(WebsocketConnectionAbstract):
@@ -96,6 +99,7 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
     def __init__(self) -> None:
         self._logger = AsyncLogger(target="prepro", log_file="message.log")
         self.async_q = asyncio.Queue()
+        self.message_by_data = defaultdict(list)
         self.market = load_json("socket", "korea")
 
     def process_exchange(self, market: str, message: dict) -> dict:
@@ -152,15 +156,16 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
         uri, market, message, symbol = await self.async_q.get()
         try:            
             market_schema: ExchangeData = await self.process_message(market, message, symbol)
-            # self.message_by_data[market].append(market_schema)
-            # if len(self.message_by_data[market]) >= MAXLISTSIZE:
-            #     await KafkaMessageSender().produce_sending(
-            #         message=self.message_by_data[market],
-            #         market_name=market_name_extract(market),
-            #         symbol=symbol,
-            #         type_="SocketDataIn",
-            #     )
-            #     self.message_by_data[market] = []
+            self.message_by_data[market].append(market_schema)
+            if len(self.message_by_data[market]) >= MAXLISTSIZE:
+                await KafkaMessageSender().produce_sending(
+                    key=market,
+                    message=self.message_by_data[market],
+                    market_name=market,
+                    symbol=symbol,
+                    type_="SocketDataIn",
+                )
+                self.message_by_data[market].clear()
 
             parse_uri: str = uri.split("//")[1].split(".")[1]
             self._logger.log_message_sync(

@@ -33,7 +33,7 @@ class CoinHashingCustomPartitional(DefaultPartitioner):
                 print(f"{key} --> {partition_idx}")
                 return all_partitions[partition_idx]  # 해싱된 값이 따라서 파티션 적재
 
-            return super(CoinHashingCustomPartitional, cls).__call__(
+            return super().__call__(
                 key=key, all_partitions=all_partitions, available=available
             )
         except Exception as e:

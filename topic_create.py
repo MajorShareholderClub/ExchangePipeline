@@ -1,5 +1,5 @@
-from coin.core.data_mq.data_admin import new_topic_initialization, delete_all_topics
-from coin.core.setting.properties import (
+from mq.data_admin import new_topic_initialization, delete_all_topics
+from common.setting.properties import (
     BTC_TOPIC_NAME,
     ETH_TOPIC_NAME,
     REST_BTC_AVERAGE_TOPIC_NAME,

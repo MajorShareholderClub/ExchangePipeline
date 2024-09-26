@@ -54,7 +54,6 @@ class BaseRetry(ABC):
 class RestRetryOnFailure(BaseRetry):
     async def handle_exception(self, e: Exception, attempt: int) -> None:
         """HTTP 예외 처리 로직"""
-        message = ""
         match e:
             case HTTPException():
                 message = f"HTTP Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
