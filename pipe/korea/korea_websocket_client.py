@@ -69,7 +69,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 message, uri, symbol
             )
             await self.message_preprocessing.message_consumer()
-            await asyncio.sleep(1.0)
+            # await asyncio.sleep(1.0)
 
     async def websocket_to_json(
         self, uri: str, subs_fmt: SubScribeFormat, symbol: str
@@ -158,14 +158,14 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
             market_schema: ExchangeData = await self.process_message(market, message, symbol)
             # self.message_by_data[market].append(market_schema)
             # if len(self.message_by_data[market]) >= MAXLISTSIZE:
-            #     await KafkaMessageSender().produce_sending(
-            #         key=market,
-            #         message=self.message_by_data[market],
-            #         market_name=market,
-            #         symbol=symbol,
-            #         type_="SocketDataIn",
-            #     )
-            #     self.message_by_data[market].clear()
+            await KafkaMessageSender().produce_sending(
+                key=market,
+                message=market_schema,
+                market_name=market,
+                symbol=symbol,
+                type_="SocketDataIn",
+            )
+                # self.message_by_data[market].clear()
 
             parse_uri: str = uri.split("//")[1].split(".")[1]
             await self._logger.log_message(
