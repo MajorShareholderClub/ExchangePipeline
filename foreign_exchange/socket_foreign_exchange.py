@@ -6,8 +6,11 @@ from typing import Callable, Coroutine, Any
 from common.utils.other_utils import get_symbol_collect_url
 from common.core.abstract import AbstractExchangeSocketClient
 from common.setting.socket_parameter import (
-    upbithumb_socket_parameter,
-    coinone_socket_parameter,
+    binance_socket_paramater,
+    kraken_socket_parameter,
+    okx_socket_parameter,
+    gateio_socket_parameter,
+    bybit_socket_parameter,
 )
 
 from common.core.types import SubScribeFormat
@@ -22,7 +25,7 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
 
     # fmt: off
     async def get_present_websocket(self, symbol: str, req_type: str) -> Coroutine[Any, Any, None]:
-        from pipe.korea.korea_websocket_client import (
+        from pipe.foreign.foreign_websocket_client import (
             WebsocketConnectionManager as WCM
         )
 
@@ -33,25 +36,41 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
         )
 
 
-class UpbitSocket(CoinExchangeSocketClient):
+class BinanceSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
-        super().__init__(target="upbit", socket_parameter=upbithumb_socket_parameter)
+        super().__init__(target="binance", socket_parameter=binance_socket_paramater)
 
     async def get_present_websocket(self, symbol: str) -> Coroutine[Any, Any, None]:
         return await super().get_present_websocket(symbol, req_type="ticker")
 
 
-class BithumbSocket(CoinExchangeSocketClient):
+class KrakenSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
-        super().__init__(target="bithumb", socket_parameter=upbithumb_socket_parameter)
+        super().__init__(target="kraken", socket_parameter=kraken_socket_parameter)
 
     async def get_present_websocket(self, symbol: str) -> Coroutine[Any, Any, None]:
         return await super().get_present_websocket(symbol, req_type="ticker")
 
 
-class CoinoneSocket(CoinExchangeSocketClient):
+class OKXSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
-        super().__init__(target="coinone", socket_parameter=coinone_socket_parameter)
+        super().__init__(target="okx", socket_parameter=okx_socket_parameter)
 
     async def get_present_websocket(self, symbol: str) -> Coroutine[Any, Any, None]:
-        return await super().get_present_websocket(symbol, req_type="ticker")
+        return await super().get_present_websocket(symbol, req_type="tickers")
+
+
+class GateIOSocket(CoinExchangeSocketClient):
+    def __init__(self) -> None:
+        super().__init__(target="gateio", socket_parameter=gateio_socket_parameter)
+
+    async def get_present_websocket(self, symbol: str) -> Coroutine[Any, Any, None]:
+        return await super().get_present_websocket(symbol, req_type="tickers")
+
+
+class ByBitSocket(CoinExchangeSocketClient):
+    def __init__(self) -> None:
+        super().__init__(target="bybit", socket_parameter=bybit_socket_parameter)
+
+    async def get_present_websocket(self, symbol: str) -> Coroutine[Any, Any, None]:
+        return await super().get_present_websocket(symbol, req_type="tickers")

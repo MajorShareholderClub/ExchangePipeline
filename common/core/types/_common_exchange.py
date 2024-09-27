@@ -69,12 +69,41 @@ class CoinoneTopicParameter(TypedDict):
 
 
 # 코인원
-class CoinoneRequestParameter(TypedDict):
+class CoinoneSocketParameter(TypedDict):
     request_type: str
     channel: str
     topic: CoinoneTopicParameter
 
 
-CoinoneSocketParameter = CoinoneRequestParameter
 UpBithumbSocketParmater = list[TicketUUID | CombinedRequest]
 SubScribeFormat = UpBithumbSocketParmater | CoinoneSocketParameter
+
+
+
+    
+class BinanceSocketParameter(TypedDict):
+    id: UUID
+    method: str
+    params: list[str]
+
+class KrakenSubScription(TypedDict):
+    name: str
+    
+class KrakenSocketParameter(TypedDict):
+    event: str
+    pair: list[str]
+    subscription: KrakenSubScription
+
+class GateioSocketParameter(TypedDict):
+    time: int
+    channel: str
+    event: str
+    payload: list[str]
+
+class OKXArgsSocketParameter(TypedDict):
+    channel: str
+    instId: str
+    
+class OKXSocketParameter(TypedDict):
+    op: str
+    args: list[OKXArgsSocketParameter]

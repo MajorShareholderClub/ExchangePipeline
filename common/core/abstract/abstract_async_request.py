@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 import aiohttp
 from typing import Any
 
-from common.utils.logger import AsyncLogger
 
 # fmt: off
 class AbstractAsyncRequestAcquisition(ABC):
@@ -18,7 +17,6 @@ class AbstractAsyncRequestAcquisition(ABC):
         self.url = url
         self.params = params
         self.headers = headers
-        self.logging = AsyncLogger(target="request", log_file="request.log")
 
     @abstractmethod
     async def async_response(self, session: aiohttp.ClientSession) -> Any: 

@@ -6,19 +6,17 @@ from collections import defaultdict
 
 import json
 import websockets
-from pipe.korea.korea_rest_client import KoreaExchangeRestAPI
-from common.utils.logger import AsyncLogger
+from pipe.foreign.foreign_rest_client import ForeignExchangeRestAPI
 from common.core.abstract import (
     MessageDataPreprocessingAbstract,
     WebsocketConnectionAbstract,
 )
 from common.exception import SocketRetryOnFailure
 from common.core.data_format import CoinMarketData
+from common.exception import AsyncLogger
 from common.core.types import (
     SubScribeFormat,
-    ExchangeData,
     ExchangeResponseData,
-    PriceData,
 )
 from config.json_param_load import load_json
 from mq.data_interaction import KafkaMessageSender
@@ -32,7 +30,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
 
     def __init__(self) -> None:
         self.message_preprocessing = MessageDataPreprocessing()
-        self._logger = AsyncLogger(target="socket", log_file="socket.log")
+        self._logger = AsyncLogger(target="websocket", folder="websocket")
 
     async def socket_param_send(
         self, websocket: socket_protocol, subs_fmt: SubScribeFormat
@@ -55,7 +53,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         data = json.loads(message)
         market: str = uri.split("//")[1].split(".")[1]
         if data:
-            self._logger.log_message_sync(logging.INFO, f"{market} 연결 완료")
+            await self._logger.log_message(logging.INFO, f"{market} 연결 완료")
 
     async def handle_message(
         self, websocket: socket_protocol, uri: str, symbol: str
@@ -65,11 +63,13 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             message: ExchangeResponseData = await asyncio.wait_for(
                 websocket.recv(), timeout=30.0
             )
-            await self.message_preprocessing.put_message_to_logging(
-                message, uri, symbol
+            market: str = uri.split("//")[1].split(".")[1]
+
+            await self.message_preprocessing.add_to_queue(
+                message=message, uri=uri, symbol=symbol, market=market
             )
-            await self.message_preprocessing.message_consumer()
-            await asyncio.sleep(1.0)
+            await self.message_preprocessing.message_producer()
+            # await asyncio.sleep(1.0)
 
     async def websocket_to_json(
         self, uri: str, subs_fmt: SubScribeFormat, symbol: str
@@ -78,8 +78,8 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
 
         @SocketRetryOnFailure(
             retries=3,
-            base_delay=4,
-            rest_client=KoreaExchangeRestAPI(),
+            base_delay=2,
+            rest_client=ForeignExchangeRestAPI(),
             symbol=symbol,
             uri=uri,
             subs=subs_fmt,
@@ -97,93 +97,51 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
 
 class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
     def __init__(self) -> None:
-        self._logger = AsyncLogger(target="prepro", log_file="message.log")
+        self.market = load_json("socket", "foreign")
+        self._logger = AsyncLogger(target="websocket", folder="websocket_foregin")
         self.async_q = asyncio.Queue()
-        self.message_by_data = defaultdict(list)
-        self.market = load_json("socket", "korea")
-
-    def process_exchange(self, market: str, message: dict) -> dict:
-        """message 필터링
-        Args:
-            market: 거래소
-            message: 데이터
-        Returns:
-            dict: connection 거친 후 본 데이터
-        """
-        # 거래소별 필터링 규칙 정의
-        # fmt: off
-        filters = {
-            "coinone": lambda msg: msg.get("response_type") != "SUBSCRIBED" and msg.get("data"),
-        }
-        # 해당 거래소에 대한 필터가 정의되어 있는지 확인
-        filter_function = filters.get(market)
-        if filter_function:
-            result = filters[market](message)
-            if result:
-                return result
-        return message
 
     # fmt: off
-    async def process_message(self, market: str, message: ExchangeResponseData, symbol: str) -> ExchangeData:
-        """전처리 클래스
-        Args:
-            market: 거래소 이름
-            message: 송신된 소켓 데이터
-            symbol: 코인심볼
-        """
-        parameter: list[str] = self.market[market]["parameter"]
-        time = message[self.market[market]["timestamp"]]
-        schema_key: PriceData = {
-            key: message[key] for key in message if key in parameter
-        }  
-        return CoinMarketData.from_api(
-            market=f"{market}-{symbol.upper()}",
-            coin_symbol=symbol.upper(),
-            api=schema_key,
-            time=time,
-            data=parameter,
-        ).model_dump(mode="json")
+    async def add_to_queue(self, message: ExchangeResponseData, uri: str, symbol: str, market: str) -> None:
+        """메시지를 큐에 추가"""
+        await self.async_q.put((json.loads(message), uri, symbol, market))
 
-        
-    async def put_message_to_logging(self, message: ExchangeResponseData, uri: str, symbol: str) -> None:
-        """메시지 로깅"""
-        market: str = uri.split("//")[1].split(".")[1]
-        p_message: dict = self.process_exchange(market, json.loads(message))
-        await self.async_q.put((uri, market, p_message, symbol))
-        
-    async def message_consumer(self) -> None:
+    async def message_producer(self) -> None:
         """메시지 소비"""
-        uri, market, message, symbol = await self.async_q.get()
-        try:            
-            market_schema: ExchangeData = await self.process_message(market, message, symbol)
-            self.message_by_data[market].append(market_schema)
-            if len(self.message_by_data[market]) >= MAXLISTSIZE:
-                await KafkaMessageSender().produce_sending(
-                    key=market,
-                    message=self.message_by_data[market],
-                    market_name=market,
-                    symbol=symbol,
-                    type_="SocketDataIn",
-                )
-                self.message_by_data[market].clear()
+        
+        message, uri, symbol, market = await self.async_q.get()
+        data = {
+            "market": market,
+            "uri": uri,
+            "symbol": symbol,
+            "data": message
+        }
+        try:
+            await KafkaMessageSender().produce_sending(
+                key=market,
+                message=data,
+                market_name=market,
+                symbol=symbol,
+                type_="SocketDataIn",
+            )
+            self.async_q.task_done()            
 
-            parse_uri: str = uri.split("//")[1].split(".")[1]
-            self._logger.log_message_sync(
-                logging.INFO, message=f"{parse_uri} -- {market_schema}"
+            await self._logger.log_message(
+                logging.INFO, message=f"{market} -- {message}"
             )
         except (TypeError, KeyError) as error:
-            self._logger.log_message_sync(
+            await self._logger.log_message(
                 logging.ERROR,
                 message=f"타입오류 --> {error} url --> {market}",
             )
         except CancelledError as error:
-            self._logger.log_message_sync(
+            await self._logger.log_message(
                 logging.ERROR,
                 message=f"가격 소켓 연결 오류 --> {error} url --> {market}",
             )
 
 
-class CoinPresentPriceWebsocket:
+class ForeignCoinPresentPriceWebsocket:
     """Coin Stream"""
 
     def __init__(
@@ -198,9 +156,7 @@ class CoinPresentPriceWebsocket:
         tracemalloc.start()
         self.market = market
         self.symbol = symbol
-        self.market_env = load_json(market_type, "korea")
-        self.logger = AsyncLogger(target="socket", log_file="connect.log")
-        self.is_rest_active = False
+        self.market_env = load_json(market_type, "foreign")
 
     async def select_websocket(self) -> list:
         """마켓 선택"""

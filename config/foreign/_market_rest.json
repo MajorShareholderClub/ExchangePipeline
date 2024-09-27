@@ -1,62 +1,52 @@
 {
     "binance": {
         "parameter": [
-            "last",
-            "close",
-            "high",
-            "low",
-            "open",
-            "baseVolume"
+            "openPrice",
+            "lastPrice",
+            "highPrice",
+            "lowPrice",
+            "None",
+            "volume"
         ]
     },
     "kraken": {
         "parameter": [
-            "last",
-            "close",
-            "high",
-            "low",
-            "open",
-            "baseVolume"
+            "o",
+            "c",
+            "h",
+            "l",
+            "None",
+            "v"
         ]
     },
     "okx": {
         "parameter": [
+            "open24h",
             "last",
-            "close",
-            "high",
-            "low",
-            "open",
-            "baseVolume"
+            "high24h",
+            "low24h",
+            "None",
+            "vol24h"
         ]
     },
     "gateio": {
         "parameter": [
             "last",
-            "close",
-            "high",
-            "low",
-            "open",
-            "baseVolume"
+            "last",
+            "high_24h",
+            "low_24h",
+            "None",
+            "base_volume"
         ]
     },
-    "htx": {
+    "bybit": {
         "parameter": [
-            "last",
-            "close",
-            "high",
-            "low",
-            "open",
-            "baseVolume"
-        ]
-    },
-    "coinbase": {
-        "parameter": [
-            "last",
-            "close",
-            "high",
-            "low",
-            "open",
-            "baseVolume"
+            "prevPrice24h",
+            "lastPrice",
+            "highPrice24h",
+            "lowPrice24h",
+            "None",
+            "volume24h"
         ]
     }
 }

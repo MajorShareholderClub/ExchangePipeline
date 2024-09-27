@@ -1,26 +1,8 @@
 from typing import TypedDict, NewType, TypeVar, Union
-from korea_exchange.rest_korea_exchange import (
-    UpbitRest,
-    BithumbRest,
-    CoinoneRest,
-    KorbitRest,
-)
-from korea_exchange.socket_korea_exchange import (
-    UpbitSocket,
-    BithumbSocket,
-    CoinoneSocket,
-)
-from foreign_exchange.rest_foreign_exchange import (
-    BinanceRest,
-    KrakenRest,
-    OKXRest,
-    CoinbaseRest,
-    BybitRest,
-    GateIORest,
-    HTXRest,
-)
+from common.core.types import ExchangeResponseData
 
 
+korea_rest = dict
 """
 ----------------------
 |   거래소 dictionary  |
@@ -28,16 +10,16 @@ from foreign_exchange.rest_foreign_exchange import (
 """
 # fmt: off
 class KoreaExchageRest(TypedDict):
-    upbit: UpbitRest
-    bithumb: BithumbRest
-    korbit: KorbitRest
-    coinone: CoinoneRest
+    upbit: ExchangeResponseData
+    bithumb: ExchangeResponseData
+    korbit: ExchangeResponseData
+    coinone: ExchangeResponseData
 
 
 class KoreaExchageSocket(TypedDict):
-    upbit: UpbitSocket
-    bithumb: BithumbSocket
-    coinone: CoinoneSocket
+    upbit: ExchangeResponseData
+    bithumb: ExchangeResponseData
+    coinone: ExchangeResponseData
 
 
 class KoreaMarketRequestType(TypedDict):
@@ -46,17 +28,24 @@ class KoreaMarketRequestType(TypedDict):
 
 
 class ForeignExchageRest(TypedDict):
-    binance: BinanceRest
-    kraken: KrakenRest
-    okx: OKXRest
-    bybit: BybitRest
-    gateio: GateIORest
-    htx: HTXRest
-    coinbase: CoinbaseRest
+    binance: ExchangeResponseData
+    kraken: ExchangeResponseData
+    okx: ExchangeResponseData
+    bybit: ExchangeResponseData
+    gateio: ExchangeResponseData
+
+class ForeignExchageSocket(TypedDict):
+    binance: ExchangeResponseData
+    kraken: ExchangeResponseData
+    okx: ExchangeResponseData
+    bybit: ExchangeResponseData
+    gateio: ExchangeResponseData
+
 
 
 class ForeignMarketRequestType(TypedDict):
     rest: ForeignExchageRest
+    socket: ForeignExchageSocket
 
 
 class WorldMarketsRequestType(TypedDict):

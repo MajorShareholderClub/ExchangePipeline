@@ -7,6 +7,7 @@ from .types import (
     KoreaExchageSocket,
     KoreaMarketRequestType,
     ForeignExchageRest,
+    ForeignExchageSocket,
     ForeignMarketRequestType,
     WorldMarket,
     WorldMarketsRequestType,
@@ -26,10 +27,15 @@ from foreign_exchange.rest_foreign_exchange import (
     BinanceRest,
     KrakenRest,
     OKXRest,
-    CoinbaseRest,
     BybitRest,
     GateIORest,
-    HTXRest,
+)
+from foreign_exchange.socket_foreign_exchange import (
+    KrakenSocket,
+    OKXSocket,
+    GateIOSocket,
+    BinanceSocket,
+    ByBitSocket,
 )
 
 
@@ -57,8 +63,13 @@ class __MarketAPIFactory:
                 okx=OKXRest,
                 bybit=BybitRest,
                 gateio=GateIORest,
-                htx=HTXRest,
-                coinbase=CoinbaseRest,
+            ),
+            socket=ForeignExchageSocket(
+                binance=BinanceSocket,
+                kraken=KrakenSocket,
+                okx=OKXSocket,
+                gateio=GateIOSocket,
+                bybit=ByBitSocket,
             ),
         ),
     )

@@ -5,12 +5,12 @@ from functools import wraps
 from typing import Callable, Any
 
 import asyncio
-from common.utils.logger import AsyncLogger
 from aiohttp import ClientConnectorError, ClientError
 from aiohttp.web_exceptions import HTTPException
 
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from common.utils.logger import AsyncLogger
 
 
 class SocketError(Exception): ...
@@ -21,11 +21,11 @@ class BaseRetry(ABC):
     def __init__(self, retries=3, base_delay=2):
         self.retries = retries
         self.base_delay = base_delay
-        self.logging = AsyncLogger(target="request", log_file="request.log")
+        self.logging = AsyncLogger(target="connection", folder="error")
 
     async def log_error(self, message: str) -> None:
         """비동기로 로그 메시지를 기록하는 메서드."""
-        self.logging.log_message_sync(logging.ERROR, message=message)
+        await self.logging.log_message(logging.ERROR, message=message)
 
     async def execute_with_retry(self, func: Callable, *args, **kwargs) -> Any:
         """공통 재시도 로직을 처리하는 메서드"""
@@ -77,10 +77,10 @@ class SocketRetryOnFailure(BaseRetry):
         base_delay: int = 2,
     ):
         super().__init__(retries, base_delay)
-        self.rest_client = rest_client
         self.symbol = symbol
         self.uri = uri
         self.subs = subs
+        self.rest_client = rest_client
 
     async def handle_exception(self, e: Exception, attempt: int) -> None:
         """소켓 및 연결 오류 예외 처리"""
@@ -116,17 +116,17 @@ class SocketRetryOnFailure(BaseRetry):
         try:
             async with websockets.connect(self.uri, ping_interval=60) as websocket:
                 await websocket.send(json.dumps(self.subs))
-                self.logging.log_message_sync(logging.INFO, f"Ping sent -- {self.uri}")
+                await self.logging.log_message(logging.INFO, f"Ping sent -- {self.uri}")
                 while True:
                     data = await websocket.recv()
                     if isinstance(data, (bytes, str)):
-                        self.logging.log_message_sync(
+                        await self.logging.log_message(
                             logging.INFO, f"연결 성공: {data}"
                         )
                         return True
                     await asyncio.sleep(1)
         except Exception as e:
-            self.logging.log_message_sync(
+            await self.logging.log_message(
                 logging.ERROR, f"Ping 에러: {e} -- {self.uri}"
             )
             return False

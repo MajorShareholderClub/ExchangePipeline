@@ -1,24 +1,29 @@
 import asyncio
-from pipe.korea.websocket_client import CoinPresentPriceWebsocket
+from pipe.foreign.foreign_websocket_client import ForeignCoinPresentPriceWebsocket
+from pipe.korea.korea_websocket_client import KoreaCoinPresentPriceWebsocket
 
 
 async def coin_present_websocket_btc() -> None:
-    await CoinPresentPriceWebsocket("BTC").coin_present_architecture()
+    await ForeignCoinPresentPriceWebsocket("BTC").coin_present_architecture()
+
+
+async def coin_present_websocket_TT() -> None:
+    await KoreaCoinPresentPriceWebsocket("BTC").coin_present_architecture()
 
 
 async def coin_present_websocket() -> None:
     task = [
         asyncio.create_task(coin_present_websocket_btc()),
-        # asyncio.create_task(coin_present_websocket_eth()),
+        # asyncio.create_task(coin_present_websocket_TT()),
     ]
     await asyncio.gather(*task, return_exceptions=False)
 
 
 if __name__ == "__main__":
     asyncio.run(coin_present_websocket())
-"""
-실시간 테스트
-"""
+# """
+# 실시간 테스트
+# """
 
 # import asyncio
 
@@ -30,14 +35,14 @@ if __name__ == "__main__":
 #     """
 #     bitcoin kafak stream
 #     """
-#     await ForeignExchangeRestAPI().total_pull_request("BTC")
+#     await ForeignExchangeRestAPI().total_pull_request("ETH")
 
 
 # async def k_btc_present_start() -> None:
 #     """
 #     ethereum kafak stream
 #     """
-#     await KoreaExchangeRestAPI().total_pull_request("ETH")
+#     await KoreaExchangeRestAPI().total_pull_request("BTC")
 
 
 # async def be_present_gether() -> None:
@@ -45,7 +50,7 @@ if __name__ == "__main__":
 #     kafka async stream
 #     """
 #     tasks = [
-#         # asyncio.create_task(f_btc_present_start()),
+#         asyncio.create_task(f_btc_present_start()),
 #         asyncio.create_task(k_btc_present_start()),
 #     ]
 #     await asyncio.gather(*tasks, return_exceptions=False)
@@ -56,4 +61,4 @@ if __name__ == "__main__":
 
 
 # if __name__ == "__main__":
-#     asyncio.run(data_sending_start())
+#     asyncio.run(be_present_gether())
