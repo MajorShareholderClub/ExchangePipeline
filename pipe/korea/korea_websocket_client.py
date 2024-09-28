@@ -1,7 +1,6 @@
 import logging
 import tracemalloc
 import asyncio
-from asyncio.exceptions import CancelledError
 from collections import defaultdict
 
 import json
@@ -175,11 +174,6 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
             await self._logger.log_message(
                 logging.ERROR,
                 message=f"타입오류 --> {error} url --> {market}",
-            )
-        except CancelledError as error:
-            await self._logger.log_message(
-                logging.ERROR,
-                message=f"가격 소켓 연결 오류 --> {error} url --> {market}",
             )
 
 

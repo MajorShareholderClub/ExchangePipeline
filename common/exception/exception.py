@@ -7,6 +7,7 @@ from typing import Callable, Any
 import asyncio
 from aiohttp import ClientConnectorError, ClientError
 from aiohttp.web_exceptions import HTTPException
+from asyncio.exceptions import CancelledError
 
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
@@ -90,10 +91,11 @@ class SocketRetryOnFailure(BaseRetry):
                 | ConnectionClosedOK()
                 | ConnectionClosedError()
                 | SocketError()
+                | CancelledError()
             ):
                 message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
-            case _:
-                message = f"모든 연결에 실패했으므로. REST API로 전환 시도 합니다."
+            case ClientConnectorError():
+                message = "클라이언트 연결이 끊어졋음으로 RestAPI 로 전환합니다"
                 await self.switch_to_rest()
         await self.log_error(message)
 

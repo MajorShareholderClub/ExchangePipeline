@@ -2,14 +2,10 @@ from mq.data_admin import new_topic_initialization, delete_all_topics
 from common.setting.properties import (
     BTC_TOPIC_NAME,
     ETH_TOPIC_NAME,
-    REST_BTC_AVERAGE_TOPIC_NAME,
-    REST_ETH_AVERAGE_TOPIC_NAME,
     UPBIT_BTC_REAL_TOPIC_NAME,
     BITHUMB_BTC_REAL_TOPIC_NAME,
     KORBIT_BTC_REAL_TOPIC_NAME,
     COINONE_BTC_REAL_TOPIC_NAME,
-    SOCKET_BTC_AVERAGE_TOPIC_NAME,
-    SOCKET_ETH_AVERAGE_TOPIC_NAME,
 )
 
 
@@ -24,10 +20,6 @@ def data_sending_start() -> None:
         COINONE_BTC_REAL_TOPIC_NAME,
         BTC_TOPIC_NAME,
         ETH_TOPIC_NAME,
-        REST_ETH_AVERAGE_TOPIC_NAME,
-        REST_BTC_AVERAGE_TOPIC_NAME,
-        SOCKET_BTC_AVERAGE_TOPIC_NAME,
-        SOCKET_ETH_AVERAGE_TOPIC_NAME,
     ]
     partition = [4] * len(topic)
     replication = [3] * len(topic)
@@ -38,4 +30,4 @@ def data_sending_start() -> None:
 
 
 if __name__ == "__main__":
-    data_sending_start()
+    delete_all_topics()

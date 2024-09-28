@@ -1,7 +1,6 @@
 import logging
 import tracemalloc
 import asyncio
-from asyncio.exceptions import CancelledError
 from collections import defaultdict
 
 import json
@@ -12,12 +11,8 @@ from common.core.abstract import (
     WebsocketConnectionAbstract,
 )
 from common.exception import SocketRetryOnFailure
-from common.core.data_format import CoinMarketData
 from common.exception import AsyncLogger
-from common.core.types import (
-    SubScribeFormat,
-    ExchangeResponseData,
-)
+from common.core.types import SubScribeFormat, ExchangeResponseData, SocketLowData
 from config.json_param_load import load_json
 from mq.data_interaction import KafkaMessageSender
 
@@ -84,7 +79,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             uri=uri,
             subs=subs_fmt,
         )
-        async def connection():
+        async def connection() -> None:
             async with websockets.connect(
                 uri, ping_interval=30.0, ping_timeout=60.0
             ) as websocket:
@@ -99,6 +94,7 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
     def __init__(self) -> None:
         self.market = load_json("socket", "foreign")
         self._logger = AsyncLogger(target="websocket", folder="websocket_foregin")
+        self.message_by_data = defaultdict(list)
         self.async_q = asyncio.Queue()
 
     # fmt: off
@@ -110,34 +106,39 @@ class MessageDataPreprocessing(MessageDataPreprocessingAbstract):
         """메시지 소비"""
         
         message, uri, symbol, market = await self.async_q.get()
-        data = {
-            "market": market,
-            "uri": uri,
-            "symbol": symbol,
-            "data": message
-        }
-        try:
-            await KafkaMessageSender().produce_sending(
-                key=market,
-                message=data,
-                market_name=market,
-                symbol=symbol,
-                type_="SocketDataIn",
-            )
-            self.async_q.task_done()            
-
+        if isinstance(message, dict):
+            if "arg" in list(message.keys()):
+                del message["arg"]
+                message = message["data"]
+            else:
+                message = message
+                
+        try:                  
             await self._logger.log_message(
                 logging.INFO, message=f"{market} -- {message}"
             )
+            self.message_by_data[market].append(message)
+            if len(self.message_by_data[market]) >= 100:
+                data = SocketLowData(
+                    market=market,
+                    uri=uri,
+                    symbol=symbol,
+                    data=self.message_by_data[market]
+                )
+                await KafkaMessageSender().produce_sending(
+                    key=market,
+                    message=data,
+                    market_name=market,
+                    symbol=symbol,
+                    type_="SocketDataIn",
+                )
+                self.async_q.task_done()            
+                self.message_by_data[market].clear()
+
         except (TypeError, KeyError) as error:
             await self._logger.log_message(
                 logging.ERROR,
                 message=f"타입오류 --> {error} url --> {market}",
-            )
-        except CancelledError as error:
-            await self._logger.log_message(
-                logging.ERROR,
-                message=f"가격 소켓 연결 오류 --> {error} url --> {market}",
             )
 
 

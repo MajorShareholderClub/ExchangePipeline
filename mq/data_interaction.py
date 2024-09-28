@@ -64,7 +64,7 @@ class KafkaMessageSender:
                 partitioner=DefaultPartitioner(),
                 acks=ARCKS,
                 value_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
-                key_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
+                # key_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
                 enable_idempotence=True,
                 retry_backoff_ms=100,
             )
@@ -98,7 +98,7 @@ class KafkaMessageSender:
             await self.logger.log_message(logging.INFO, message=log_message)
             # 실제 메시지 전송
             await self.producer.send_and_wait(
-                topic=topic, value=json.dumps(message, default=default), key=key
+                topic=topic, value=message
             )
 
             # 예외 상황에서 저장된 메시지 재전송
