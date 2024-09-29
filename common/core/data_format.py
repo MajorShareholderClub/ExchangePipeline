@@ -3,7 +3,7 @@
 from __future__ import annotations
 from typing import Any
 from decimal import Decimal, ROUND_HALF_UP
-from pydantic import BaseModel, field_validator, Field
+from pydantic import BaseModel, field_validator, Field, ValidationError
 from common.core.types import ExchangeResponseData
 
 
@@ -113,6 +113,21 @@ class KoreaCoinMarket(BaseModel):
     coinone: CoinMarketData | bool
     korbit: CoinMarketData | bool
 
+    def __init__(self, **data: KoreaCoinMarket):
+        # 거래소 데이터 검증 및 할당
+        exchange_data: CoinMarketData | bool = {
+            key: self.validate_exchange_data(value) for key, value in data.items()
+        }
+        # 합쳐진 데이터를 사용하여 부모 클래스 초기화
+        super().__init__(**exchange_data)
+
+    @staticmethod
+    def validate_exchange_data(value: Any) -> CoinMarketData | bool:
+        try:
+            return CoinMarketData.model_validate(value)
+        except ValidationError:
+            return False
+
 
 class ForeignCoinMarket(BaseModel):
     """해외 거래소 데이터 모델"""
@@ -120,4 +135,5 @@ class ForeignCoinMarket(BaseModel):
     binance: CoinMarketData | bool
     kraken: CoinMarketData | bool
     okx: CoinMarketData | bool
+    bybit: CoinMarketData | bool
     gateio: CoinMarketData | bool

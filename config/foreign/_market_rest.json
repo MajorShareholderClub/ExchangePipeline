@@ -5,7 +5,7 @@
             "lastPrice",
             "highPrice",
             "lowPrice",
-            "None",
+            "prevClosePrice",
             "volume"
         ]
     },
@@ -15,7 +15,7 @@
             "c",
             "h",
             "l",
-            "None",
+            "p",
             "v"
         ]
     },
@@ -25,7 +25,7 @@
             "last",
             "high24h",
             "low24h",
-            "None",
+            "last",
             "vol24h"
         ]
     },
@@ -35,17 +35,17 @@
             "last",
             "high_24h",
             "low_24h",
-            "None",
+            "highest_bid",
             "base_volume"
         ]
     },
     "bybit": {
         "parameter": [
-            "prevPrice24h",
+            "lastPrice",
             "lastPrice",
             "highPrice24h",
             "lowPrice24h",
-            "None",
+            "prevPrice24h",
             "volume24h"
         ]
     }

@@ -12,7 +12,7 @@ class BinanceRest(CoinExchangeRestClient):
         pass
 
     def _get_ticker_url(self, coin_name: str) -> str:
-        return f"{self._rest}/ticker/24hr?symbol={coin_name.upper()}USDT&type=MINI"
+        return f"{self._rest}/ticker/24hr?symbol={coin_name.upper()}USDT&type=FULL"
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)

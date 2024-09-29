@@ -30,15 +30,14 @@ class BaseRetry(ABC):
 
     async def execute_with_retry(self, func: Callable, *args, **kwargs) -> Any:
         """공통 재시도 로직을 처리하는 메서드"""
-        for attempt in range(self.retries):
-            try:
-                return await func(*args, **kwargs)
-            except Exception as e:
-                await self.handle_exception(e, attempt)
-                await asyncio.sleep(self.base_delay * (2**attempt))  # 지수 백오프
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            await self.handle_exception(e)
+            await asyncio.sleep(self.base_delay)
 
     @abstractmethod
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """예외 처리 메서드. 하위 클래스에서 구현."""
         pass
 
@@ -53,17 +52,13 @@ class BaseRetry(ABC):
 
 
 class RestRetryOnFailure(BaseRetry):
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """HTTP 예외 처리 로직"""
         match e:
-            case HTTPException():
-                message = f"HTTP Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
-            case ClientConnectorError():
-                message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
-            case ClientError():
-                message = f"Client Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
+            case HTTPException() | ClientConnectorError() | ClientError():
+                message = f"Error: {e}. 재시도 진행합니다"
             case _:
-                message = f"Unknown Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
+                message = f"Unknown Error: {e}. 재시도 진행합니다"
         await self.log_error(message)
 
 
@@ -83,7 +78,7 @@ class SocketRetryOnFailure(BaseRetry):
         self.subs = subs
         self.rest_client = rest_client
 
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """소켓 및 연결 오류 예외 처리"""
         match e:
             case (
@@ -93,7 +88,7 @@ class SocketRetryOnFailure(BaseRetry):
                 | SocketError()
                 | CancelledError()
             ):
-                message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
+                message = f"연결 오류: {e}. 재시도 합니다"
             case ClientConnectorError():
                 message = "클라이언트 연결이 끊어졋음으로 RestAPI 로 전환합니다"
                 await self.switch_to_rest()

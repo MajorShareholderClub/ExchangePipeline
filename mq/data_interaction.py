@@ -46,10 +46,11 @@ class KafkaMessageSender:
     - 전송 실패 시 메시지를 임시 저장하고, 나중에 재전송
     """
 
-    def __init__(self) -> None:
+    def __init__(self, partition_pol: Callable = DefaultPartitioner()) -> None:
         self.except_list: defaultdict[Any, list] = defaultdict(list)
         self.producer = None  # Producer를 클래스 속성으로 저장
         self.producer_started = False
+        self.partition_pol = partition_pol
         self.logger = AsyncLogger(target="kafka", folder="kafka")
 
     # fmt: off
@@ -61,10 +62,10 @@ class KafkaMessageSender:
                 security_protocol=SECURITY_PROTOCOL,
                 max_batch_size=int(MAX_BATCH_SIZE),
                 max_request_size=int(MAX_REQUEST_SIZE),
-                partitioner=DefaultPartitioner(),
+                partitioner=self.partition_pol,
                 acks=ARCKS,
                 value_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
-                # key_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
+                key_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
                 enable_idempotence=True,
                 retry_backoff_ms=100,
             )
@@ -98,7 +99,7 @@ class KafkaMessageSender:
             await self.logger.log_message(logging.INFO, message=log_message)
             # 실제 메시지 전송
             await self.producer.send_and_wait(
-                topic=topic, value=message
+                topic=topic, value=message, key=key
             )
 
             # 예외 상황에서 저장된 메시지 재전송

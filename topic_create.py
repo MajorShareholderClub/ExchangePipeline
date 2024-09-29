@@ -30,4 +30,4 @@ def data_sending_start() -> None:
 
 
 if __name__ == "__main__":
-    delete_all_topics()
+    data_sending_start()

@@ -12,6 +12,22 @@ from common.core.data_format import CoinMarketData
 from common.utils.logger import AsyncLogger
 
 
+async def schema_create(
+    market: str,
+    time: int | float,
+    symbol: str,
+    api: Any,
+    data: tuple[str],
+):
+    return CoinMarketData.from_api(
+        market=market,
+        coin_symbol=symbol,
+        time=time,
+        api=api,
+        data=data,
+    ).model_dump()
+
+
 class CoinPresentPriceClient:
 
     def __init__(self, location: str) -> None:
@@ -23,13 +39,13 @@ class CoinPresentPriceClient:
     ) -> ExchangeData:
         """스키마 변환 함수"""
         api_response = await api.get_coin_all_info_price(coin_name=symbol.upper())
-        return CoinMarketData.from_api(
-            market=market,
-            coin_symbol=symbol,
-            time=time,
-            api=api_response,
-            data=data,
-        ).model_dump()
+        if api_response is None:
+            return await schema_create(
+                market=market, time=time, symbol=symbol, api=None, data=data
+            )
+        return await schema_create(
+            market=market, time=time, symbol=symbol, api=api_response, data=data
+        )
 
     async def _trans_schema(self, market: str, symbol: str) -> ExchangeData:
         """스키마 변환 본체"""
@@ -57,7 +73,7 @@ class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
             self._trans_schema(market=market, symbol=symbol)
             for market in self.market_env
         ]
-        return await asyncio.gather(*tasks, return_exceptions=False)
+        return await asyncio.gather(*tasks, return_exceptions=True)
 
     @abstractmethod
     def create_schema(self, market_result: list[ExchangeData]) -> Any:

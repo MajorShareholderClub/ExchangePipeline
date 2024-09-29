@@ -7,6 +7,7 @@ from common.core.data_format import ForeignCoinMarket
 from common.core.types import ForeignCoinMarketData, ExchangeData
 from common.client.common_exchange_interface import BaseExchangeRestAPI
 from mq.data_interaction import KafkaMessageSender
+from mq.data_partitional import CoinHashingCustomPartitional
 
 
 class ForeignExchangeRestAPI(BaseExchangeRestAPI):
@@ -24,12 +25,14 @@ class ForeignExchangeRestAPI(BaseExchangeRestAPI):
         i = 0
         while True:
             message = await self._log_market_schema(coin_symbol)
-            await KafkaMessageSender().produce_sending(
+            await KafkaMessageSender(
+                partition_pol=CoinHashingCustomPartitional()
+            ).produce_sending(
                 message=message,
                 market_name="Total",
                 symbol=coin_symbol,
                 type_="RestDataIn",
-                key="Foreign-Total",
+                key="Foreign-",
             )
             i += 1
 

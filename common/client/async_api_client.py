@@ -37,16 +37,15 @@ class AsyncRequestJSON(AsyncRequestAcquisition):
 class CoinExchangeRestClient(AbstractExchangeRestClient):
     def __init__(self, market: str) -> None:
         self._rest = get_symbol_collect_url(market=market, type_="rest")
-        
+
+    @RestRetryOnFailure(retries=3, base_delay=2)        
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """코인데이터 호출"""
-
-        @RestRetryOnFailure(retries=3, base_delay=2)
-        async def process() -> ExchangeResponseData:
-            data = async_request_data(url=self._get_ticker_url(coin_name))
+        data = async_request_data(url=self._get_ticker_url(coin_name))
+        if data is not None:
             return await data
-
-        return await process()
+        else:
+            return None
 
     # @abstractmethod
     # def _get_orderbook_url(self, coin_name: str) -> str:

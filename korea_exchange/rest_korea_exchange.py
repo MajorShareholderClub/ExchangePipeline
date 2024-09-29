@@ -20,6 +20,8 @@ class UpbitRest(CoinExchangeRestClient):
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
+        if data is None:
+            return None
         return data[0]
 
 
@@ -35,6 +37,8 @@ class BithumbRest(CoinExchangeRestClient):
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
+        if data is None:
+            return None
         return data[0]
 
 
@@ -50,6 +54,8 @@ class CoinoneRest(CoinExchangeRestClient):
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
+        if data is None:
+            return None
         return data["tickers"][0]
 
 
@@ -65,4 +71,6 @@ class KorbitRest(CoinExchangeRestClient):
 
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
+        if data is None:
+            return None
         return data["data"][0]
