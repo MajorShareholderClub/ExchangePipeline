@@ -6,18 +6,22 @@ from common.core.types import (
     CombinedRequest,
     CoinoneSocketParameter,
     CoinoneTopicParameter,
+)
+from common.core.types import (
     BinanceSocketParameter,
     KrakenSocketParameter,
     KrakenSubScription,
     GateioSocketParameter,
     OKXArgsSocketParameter,
     OKXSocketParameter,
+    BybitSocketParameter,
 )
 
+uu_id = str(uuid.uuid4())
 
-def upbithumb_socket_parameter(
-    symbol: str, req_type: str | None = None
-) -> UpBithumbSocketParmater:
+
+# fmt: off
+def upbithumb_socket_parameter(symbol: str, req_type: str) -> UpBithumbSocketParmater:
     combined_request = {
         "type": req_type,
         "codes": [f"KRW-{symbol.upper()}"],
@@ -30,14 +34,12 @@ def upbithumb_socket_parameter(
         combined_request["level"] = 1000
 
     return [
-        TicketUUID(ticket=str(uuid.uuid4())),
+        TicketUUID(ticket=uu_id),
         CombinedRequest(combined_request),
     ]
 
 
-def coinone_socket_parameter(
-    symbol: str, req_type: str | None = None
-) -> CoinoneSocketParameter:
+def coinone_socket_parameter(symbol: str, req_type: str) -> CoinoneSocketParameter:
     combined_request = {
         "request_type": "SUBSCRIBE",
         "topic": CoinoneTopicParameter(
@@ -53,20 +55,15 @@ def coinone_socket_parameter(
     return CoinoneSocketParameter(combined_request)
 
 
-def binance_socket_paramater(
-    symbol: str, req_type: str | None = None
-) -> BinanceSocketParameter:
-
+def binance_socket_paramater(symbol: str, req_type: str) -> BinanceSocketParameter:
     return BinanceSocketParameter(
-        id=str(uuid.uuid4()),
+        id=uu_id,
         method=f"SUBSCRIBE",
         params=[f"{symbol.lower()}usdt@{req_type}"],
     )
 
 
-def kraken_socket_parameter(
-    symbol: str, req_type: str | None = None
-) -> KrakenSocketParameter:
+def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter:
     return KrakenSocketParameter(
         event="subscribe",
         pair=[f"{symbol}/USD"],
@@ -74,9 +71,7 @@ def kraken_socket_parameter(
     )
 
 
-def gateio_socket_parameter(
-    symbol: str, req_type: str | None = None
-) -> GateioSocketParameter:
+def gateio_socket_parameter(symbol: str, req_type: str) -> GateioSocketParameter:
     return GateioSocketParameter(
         time=int(time.time()),
         channel=f"spot.{req_type}",
@@ -85,18 +80,16 @@ def gateio_socket_parameter(
     )
 
 
-def okx_socket_parameter(
-    symbol: str, req_type: str | None = None
-) -> OKXSocketParameter:
+def bybit_socket_parameter(symbol: str, req_type: str) -> BybitSocketParameter:
+    return BybitSocketParameter(
+        req_id=uu_id,
+        op="subscribe",
+        args=[f"{req_type}.{symbol.upper()}USDT"],
+    )
+
+
+def okx_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
     return OKXSocketParameter(
         op="subscribe",
         args=[OKXArgsSocketParameter(channel=req_type, instId=f"{symbol}-USDT")],
     )
-
-
-def bybit_socket_parameter(symbol: str, req_type: str | None = None):
-    return {
-        "req_id": str(uuid.uuid4()),
-        "op": "subscribe",
-        "args": [f"{req_type}.{symbol.upper()}USDT"],
-    }

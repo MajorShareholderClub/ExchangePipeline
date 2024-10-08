@@ -115,6 +115,12 @@ class OKXSocketParameter(TypedDict):
     args: list[OKXArgsSocketParameter]
 
 
+class BybitSocketParameter(TypedDict):
+    req_id: UUID
+    op: str
+    args: list[str]
+
+
 UpBithumbSocketParmater = list[TicketUUID | CombinedRequest]
 SubScribeFormat = (
     UpBithumbSocketParmater
@@ -123,4 +129,5 @@ SubScribeFormat = (
     | KrakenSocketParameter
     | GateioSocketParameter
     | OKXSocketParameter
+    | BybitSocketParameter
 )

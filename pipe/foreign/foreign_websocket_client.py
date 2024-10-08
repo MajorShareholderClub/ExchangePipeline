@@ -51,7 +51,6 @@ class ForeignWebsocketConnection(WebsocketConnectionManager):
             folder="foreign",
             process=ForeignMessageDataPreprocessing(),
         )
-        self.process = ForeignMessageDataPreprocessing()
 
     async def websocket_to_json(
         self, uri: str, subs_fmt: SubScribeFormat, symbol: str

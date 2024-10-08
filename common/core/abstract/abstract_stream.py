@@ -3,7 +3,7 @@ from typing import Any
 
 
 from abc import ABC, abstractmethod
-from common.core.types import SubScribeFormat, ExchangeResponseData
+from common.core.types import SubScribeFormat
 
 
 class WebsocketConnectionAbstract(ABC):
