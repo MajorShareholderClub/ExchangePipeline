@@ -3,7 +3,7 @@ from typing import Any
 
 
 from abc import ABC, abstractmethod
-from common.core.types import SubScribeFormat
+from common.core.types import SubScribeFormat, ExchangeResponseData
 
 
 class WebsocketConnectionAbstract(ABC):
@@ -63,12 +63,3 @@ class WebsocketConnectionAbstract(ABC):
                 -> 코인 심볼
         """
         raise NotImplementedError()
-
-
-class MessageDataPreprocessingAbstract(ABC):
-    """
-    2. MessageDataPreprocessing
-        -> 메시지 스키마 통일화 전처리 로직
-    """
-
-    ...

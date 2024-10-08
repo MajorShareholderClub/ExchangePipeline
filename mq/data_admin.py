@@ -2,7 +2,6 @@
 KAKFA NEW TOPIC CREATE
 """
 
-from pathlib import Path
 from confluent_kafka.admin import AdminClient, NewTopic
 from confluent_kafka.error import KafkaError, KafkaException, ProduceError
 from common.setting.properties import BOOTSTRAP_SERVER

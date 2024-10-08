@@ -91,8 +91,8 @@ class SocketRetryOnFailure(BaseRetry):
                 message = f"연결 오류: {e}. 재시도 합니다"
             case ClientConnectorError():
                 message = "클라이언트 연결이 끊어졋음으로 RestAPI 로 전환합니다"
+                await self.log_error(message)
                 await self.switch_to_rest()
-        await self.log_error(message)
 
     async def switch_to_rest(self) -> None:
         """소켓 실패 시 REST API로 전환 및 복구"""
