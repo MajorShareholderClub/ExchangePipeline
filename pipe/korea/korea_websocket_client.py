@@ -50,7 +50,6 @@ class KoreaMessageDataPreprocessing(MessageDataPreprocessing):
         process: ExchangeResponseData = self.process_exchange(
             market=market, message=json.loads(message)
         )
-        print(process)
         await super().put_message_to_logging(uri, symbol, process)
 
 
