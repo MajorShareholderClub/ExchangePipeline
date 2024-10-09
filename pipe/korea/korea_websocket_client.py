@@ -4,7 +4,7 @@ import websockets
 from pipe.korea.korea_rest_client import KoreaExchangeRestAPI
 from common.exception import SocketRetryOnFailure
 from common.core.types import SubScribeFormat, ExchangeResponseData
-from pipe.common.socket_common import (
+from common.client.common_exchange_interface import (
     WebsocketConnectionManager,
     MessageDataPreprocessing,
     CommonCoinPresentPriceWebsocket,
