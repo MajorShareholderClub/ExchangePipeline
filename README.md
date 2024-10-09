@@ -19,6 +19,8 @@
  
 
 ### 시스템 아키텍처 
+<img src="https://github.com/user-attachments/assets/414e4ce0-daca-416c-97a2-7b273987bb19" alt="Description" width="800" height="500"/>
+
 
 
 
