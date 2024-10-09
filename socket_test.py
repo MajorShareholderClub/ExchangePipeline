@@ -16,7 +16,11 @@ def run_coin_websocket(client_class: socket, symbol: str):
     """지정된 웹소켓 클라이언트 클래스와 심볼을 사용하여 비동기 함수 실행."""
     loop = asyncio.new_event_loop()  # 스레드별로 event loop 생성
     asyncio.set_event_loop(loop)
-    loop.run_until_complete(client_class(symbol=symbol).coin_present_architecture())
+    loop.run_until_complete(
+        client_class(
+            symbol=symbol, location="korea", market="korbit"
+        ).coin_present_architecture()
+    )
     loop.close()
 
 
@@ -26,15 +30,15 @@ async def coin_present_websocket() -> None:
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         # 클라이언트 클래스를 매개변수로 전달하여 작업 실행
-        foreign_task = loop.run_in_executor(
-            executor, run_coin_websocket, ForeignCoinPresentPriceWebsocket, "BTC"
-        )
+        # foreign_task = loop.run_in_executor(
+        #     executor, run_coin_websocket, ForeignCoinPresentPriceWebsocket, "BTC"
+        # )
         korea_task = loop.run_in_executor(
             executor, run_coin_websocket, KoreaCoinPresentPriceWebsocket, "BTC"
         )
 
         # 두 작업이 완료될 때까지 기다림
-        await asyncio.gather(foreign_task, korea_task)
+        await asyncio.gather(korea_task)
 
 
 if __name__ == "__main__":

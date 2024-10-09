@@ -31,6 +31,7 @@ class KoreaMessageDataPreprocessing(MessageDataPreprocessing):
         # fmt: off
         filters = {
             "coinone": lambda msg: msg.get("response_type") != "SUBSCRIBED" and msg.get("data"),
+            "korbit": lambda msg: msg.get("event") != 'korbit:subscribe' and msg.get("data")
         }
         # 해당 거래소에 대한 필터가 정의되어 있는지 확인
         filter_function = filters.get(market)

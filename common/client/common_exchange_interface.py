@@ -5,7 +5,7 @@ import asyncio
 import time
 
 from typing import Any
-from config.json_param_load import load_json
+from config.json_param_load import RestMarketLoader
 from common.core.types import ExchangeData, KoreaCoinMarketData
 from common.core.data_format import CoinMarketData
 
@@ -31,7 +31,7 @@ async def schema_create(
 class CoinPresentPriceClient:
 
     def __init__(self, location: str) -> None:
-        self.market_env = load_json("rest", location)
+        self.market_env = RestMarketLoader(location).process_market_info()
         self.logging = AsyncLogger(target=location, folder="rest")
 
     async def _transform_and_request(

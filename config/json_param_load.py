@@ -1,6 +1,6 @@
-import json
+import yaml
 from pathlib import Path
-from typing import NoReturn, ClassVar
+from typing import NoReturn, ClassVar, Callable
 from .types import (
     MarketRequestJsonType,
     KoreaExchageRest,
@@ -22,6 +22,7 @@ from korea_exchange.socket_korea_exchange import (
     UpbitSocket,
     BithumbSocket,
     CoinoneSocket,
+    KorbitSocket,
 )
 from foreign_exchange.rest_foreign_exchange import (
     BinanceRest,
@@ -38,8 +39,11 @@ from foreign_exchange.socket_foreign_exchange import (
     ByBitSocket,
 )
 
+path = Path(__file__).parent.parent
+RequestDict = dict[str, str | WorldMarket]
 
-class __MarketAPIFactory:
+
+class MarketAPIFactory:
     """Factory for market APIs."""
 
     _create: ClassVar = WorldMarketsRequestType(
@@ -53,6 +57,7 @@ class __MarketAPIFactory:
             socket=KoreaExchageSocket(
                 upbit=UpbitSocket,
                 bithumb=BithumbSocket,
+                korbit=KorbitSocket,
                 coinone=CoinoneSocket,
             ),
         ),
@@ -88,28 +93,47 @@ class __MarketAPIFactory:
         return creator(*args, **kwargs)
 
 
-path = Path(__file__).parent.parent
+class MarketLoadType:
+    def __init__(self, conn_type: str, location: str) -> None:
+        self.conn_type = conn_type
+        self.location = location
 
-# fmt: off
-RequestDict = dict[str, str | WorldMarket]
-def load_json(conn_type: str, c: str) -> RequestDict:
-    """
-    JSON 파일 로드 (socket 또는 rest)
-        - 어떤 가격대를 가지고 올지 파라미터 정의되어 있음
-    """
-    with open(
-        file=f"{path}/config/{c}/_market_{conn_type}.json", mode="r", encoding="utf-8"
-    ) as file:
-        market_info: MarketRequestJsonType = json.load(file)
+    def load_json(self) -> RequestDict:
+        """
+        JSON 파일 로드 (socket 또는 rest)
+            - 어떤 가격대를 가지고 올지 파라미터 정의되어 있음
+        """
+        yml_path = f"{path}/config/{self.location}/_market_{self.conn_type}.yml"
+        with open(file=yml_path, mode="r", encoding="utf-8") as file:
+            market_info: MarketRequestJsonType = yaml.safe_load(file)
 
-    # JSON에 저장되어 있는 값 + API 클래스 주소
-    korea_markets: RequestDict = {
-        market: {
-            **info,
-            "api": __MarketAPIFactory.market_load(
-                conn_type=conn_type, market=market, c=c
-            ),
+        return market_info
+
+    def _market_api_load(self, market: str):
+        return MarketAPIFactory.market_load(
+            conn_type=self.conn_type, market=market, c=self.location
+        )
+
+
+class SocketMarketLoader(MarketLoadType):
+    def __init__(self, location: str) -> None:
+        super().__init__(conn_type="socket", location=location)
+
+    def process_market_info(self) -> dict[str, Callable]:
+        return {
+            market: {
+                "api": self._market_api_load(market),
+            }
+            for market in self.load_json()
         }
-        for market, info in market_info.items()
-    }
-    return korea_markets
+
+
+class RestMarketLoader(MarketLoadType):
+    def __init__(self, location: str) -> None:
+        super().__init__(conn_type="rest", location=location)
+
+    def process_market_info(self) -> dict:
+        return {
+            market: {**info, "api": self._market_api_load(market)}
+            for market, info in self.load_json().items()
+        }

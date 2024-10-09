@@ -3,6 +3,7 @@ from common.setting.properties import (
     SOCKET_UPBIT_URL,
     SOCKET_BITHUMB_URL,
     SOCKET_COINONE_URL,
+    SOCKET_KORBIT_URL,
 )
 from common.setting.properties import (
     SOCKET_KRAKEN_URL,
@@ -42,7 +43,7 @@ def get_symbol_collect_url(market: str, type_: str) -> str | NoReturn:
         ("upbit", "rest"): REST_UPBIT_URL,
         ("bithumb", "socket"): SOCKET_BITHUMB_URL,
         ("bithumb", "rest"): REST_BITHUMB_URL,
-        # ("korbit", "socket"): SOCKET_KORBIT_URL,
+        ("korbit", "socket"): SOCKET_KORBIT_URL,
         ("korbit", "rest"): REST_KORBIT_URL,
         ("coinone", "socket"): SOCKET_COINONE_URL,
         ("coinone", "rest"): REST_COINONE_URL,

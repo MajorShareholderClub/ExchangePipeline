@@ -11,7 +11,7 @@ from common.core.abstract import (
     WebsocketConnectionAbstract,
 )
 from common.core.types import SubScribeFormat, SocketLowData, ExchangeResponseData
-from config.json_param_load import load_json
+from config.json_param_load import SocketMarketLoader
 from mq.data_interaction import KafkaMessageSender
 
 
@@ -20,7 +20,7 @@ socket_protocol = websockets.WebSocketClientProtocol
 
 class MessageDataPreprocessing:
     def __init__(self, type_: str, location: str) -> None:
-        self.market = load_json(type_, location)
+        self.market = SocketMarketLoader(location).process_market_info()
         self._logger = AsyncLogger(
             target=f"{type_}_websocket", folder=f"websocket_{location}"
         )
@@ -115,7 +115,6 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 message: ExchangeResponseData = await asyncio.wait_for(
                     websocket.recv(), timeout=30.0
                 )
-
                 await self.process.put_message_to_logging(
                     message=message, uri=uri, symbol=symbol, market=market
                 )
@@ -144,7 +143,7 @@ class CommonCoinPresentPriceWebsocket:
         tracemalloc.start()
         self.market = market
         self.symbol = symbol
-        self.market_env = load_json(market_type, location)
+        self.market_env = SocketMarketLoader(location).process_market_info()
 
     async def select_websocket(self) -> list:
         """마켓 선택"""

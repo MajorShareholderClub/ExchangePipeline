@@ -1,4 +1,6 @@
 import time
+from datetime import datetime, timezone
+
 import uuid
 from common.core.types import (
     UpBithumbSocketParmater,
@@ -6,6 +8,8 @@ from common.core.types import (
     CombinedRequest,
     CoinoneSocketParameter,
     CoinoneTopicParameter,
+    KorbitChannelParameter,
+    KorbitSocketParameter,
 )
 from common.core.types import (
     BinanceSocketParameter,
@@ -53,6 +57,17 @@ def coinone_socket_parameter(symbol: str, req_type: str) -> CoinoneSocketParamet
         combined_request["channel"] = "ORDERBOOK"
 
     return CoinoneSocketParameter(combined_request)
+
+
+def korbit_socket_parameter(symbol: str, req_type: str) -> KorbitSocketParameter:
+    return KorbitSocketParameter(
+        accessToken=None,
+        timestamp=int(datetime.now(timezone.utc).timestamp()),
+        event="korbit:subscribe",
+        data=KorbitChannelParameter(
+            channels=[f"{req_type}:{symbol.lower()}_krw"]
+        )
+    )
 
 
 def binance_socket_paramater(symbol: str, req_type: str) -> BinanceSocketParameter:

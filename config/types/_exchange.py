@@ -19,6 +19,7 @@ class KoreaExchageRest(TypedDict):
 class KoreaExchageSocket(TypedDict):
     upbit: ExchangeResponseData
     bithumb: ExchangeResponseData
+    korbit: ExchangeResponseData
     coinone: ExchangeResponseData
 
 
