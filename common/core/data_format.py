@@ -105,20 +105,14 @@ class CoinMarketData(BaseModel):
         )
 
 
-class KoreaCoinMarket(BaseModel):
-    """한국 거래소 데이터 모델"""
+class CoinMarketValidationBase(BaseModel):
+    """공통된 거래소 데이터 검증 및 초기화를 제공하는 베이스 클래스"""
 
-    upbit: CoinMarketData | bool
-    bithumb: CoinMarketData | bool
-    coinone: CoinMarketData | bool
-    korbit: CoinMarketData | bool
-
-    def __init__(self, **data: KoreaCoinMarket):
+    def __init__(self, **data: dict | bool) -> None:
         # 거래소 데이터 검증 및 할당
-        exchange_data: CoinMarketData | bool = {
+        exchange_data: dict | bool = {
             key: self.validate_exchange_data(value) for key, value in data.items()
         }
-        # 합쳐진 데이터를 사용하여 부모 클래스 초기화
         super().__init__(**exchange_data)
 
     @staticmethod
@@ -129,7 +123,16 @@ class KoreaCoinMarket(BaseModel):
             return False
 
 
-class ForeignCoinMarket(BaseModel):
+class KoreaCoinMarket(CoinMarketValidationBase):
+    """한국 거래소 데이터 모델"""
+
+    upbit: CoinMarketData | bool
+    bithumb: CoinMarketData | bool
+    coinone: CoinMarketData | bool
+    korbit: CoinMarketData | bool
+
+
+class ForeignCoinMarket(CoinMarketValidationBase):
     """해외 거래소 데이터 모델"""
 
     binance: CoinMarketData | bool

@@ -120,7 +120,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                     message=message, uri=uri, symbol=symbol, market=market
                 )
                 await self.process.producing_start()
-            except Exception as error:
+            except (TypeError, ValueError) as error:
                 message = f"다음과 같은 이유로 실행하지 못했습니다 --> {error}"
                 self._logger.log_message(logging.ERROR, message)
 
