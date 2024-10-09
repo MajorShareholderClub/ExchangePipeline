@@ -51,13 +51,13 @@
 │       ├── 🐍 logger.py        # 로그 관리 모듈
 │       └── 🐍 other_utils.py   # 기타 유틸리티 함수들
 ├── 📂 config                   # 🗂️ 설정 관련 파일을 모아둔 디렉토리
-│   ├── 🐍 json_param_load.py   # JSON 파라미터 로드 모듈
+│   ├── 🐍 yml_param_load.py   # yml 파라미터 로드 모듈
 │   ├── 📂 foreign              # 해외 거래소 설정
-│   │   ├── 🔧 _market_rest.json   # 해외 거래소 REST API 설정
-│   │   └── 🔧 _market_socket.json # 해외 거래소 소켓 설정
+│   │   ├── 🔧 _market_rest.yml   # 해외 거래소 REST API 설정
+│   │   └── 🔧 _market_socket.yml # 해외 거래소 소켓 설정
 │   ├── 📂 korea                # 한국 거래소 설정
-│   │   ├── 🔧 _market_rest.json   # 한국 거래소 REST API 설정
-│   │   └── 🔧 _market_socket.json # 한국 거래소 소켓 설정
+│   │   ├── 🔧 _market_rest.yml   # 한국 거래소 REST API 설정
+│   │   └── 🔧 _market_socket.yml # 한국 거래소 소켓 설정
 │   └── 📂 types                # 설정 관련 데이터 타입 정의
 │       ├── 🐍 __init__.py       # 타입 모듈 초기화 파일
 │       └── 🐍 _exchange.py      # 거래소 타입 정의
