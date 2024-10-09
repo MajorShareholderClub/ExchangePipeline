@@ -5,7 +5,7 @@ Coin async present price kafka data streaming
 import asyncio
 from common.core.data_format import ForeignCoinMarket
 from common.core.types import ForeignCoinMarketData, ExchangeData
-from common.client.common_exchange_interface import BaseExchangeRestAPI
+from common.client.rest_interface import BaseExchangeRestAPI
 from mq.data_interaction import KafkaMessageSender
 from mq.data_partitional import CoinHashingCustomPartitional
 

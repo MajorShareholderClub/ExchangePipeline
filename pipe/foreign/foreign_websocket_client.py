@@ -4,7 +4,7 @@ import websockets
 from pipe.foreign.foreign_rest_client import ForeignExchangeRestAPI
 from common.exception import SocketRetryOnFailure
 from common.core.types import SubScribeFormat, ExchangeResponseData
-from common.client.common_exchange_interface import (
+from common.client.websocket_interface import (
     WebsocketConnectionManager,
     MessageDataPreprocessing,
     CommonCoinPresentPriceWebsocket,
