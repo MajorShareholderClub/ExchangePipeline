@@ -18,6 +18,20 @@
 	•	이 시스템은 다양한 거래소의 실시간 현재가 데이터를 통합하여, 더 나은 분석 및 거래 결정을 지원하는 것을 목표로 합니다.
  
 
+### 실행 방법 
+```python3
+poetry shell
+# topic_create
+python topic_create.py
+
+# rest
+python rest_test.py
+
+# socket
+python socket_test.py
+```
+
+
 ### 시스템 아키텍처 
 <img src="https://github.com/user-attachments/assets/414e4ce0-daca-416c-97a2-7b273987bb19" alt="Description" width="800" height="500"/>
 
