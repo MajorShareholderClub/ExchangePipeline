@@ -11,13 +11,13 @@
 ### commmon file 구조 
 ```
 📂 config                      # 🗂️ 설정 관련 파일을 모아둔 디렉토리
-├── 🐍 json_param_load.py      # json 로드 하여 class 주소값과 함께 보내주는 파일
+├── 🐍 yml_param_load.py       # yml 로드 하여 class 주소값과 함께 보내주는 파일
 ├── 📂 foreign                 # 해외 거래소 설정
-│   ├── 🔧 _market_rest.json   # 해외 거래소 REST API 설정
-│   └── 🔧 _market_socket.json # 해외 거래소 소켓 설정
+│   ├── 🔧 _market_rest.yml    # 해외 거래소 REST API 설정
+│   └── 🔧 _market_socket.yml  # 해외 거래소 소켓 설정
 ├── 📂 korea                   # 한국 거래소 설정
-│   ├── 🔧 _market_rest.json   # 한국 거래소 REST API 설정
-│   └── 🔧 _market_socket.json # 한국 거래소 소켓 설정
+│   ├── 🔧 _market_rest.yml    # 한국 거래소 REST API 설정
+│   └── 🔧 _market_socket.yml  # 한국 거래소 소켓 설정
 └── 📂 types                   # 설정 관련 데이터 타입 정의
     ├── 🐍 __init__.py         # 타입 모듈 초기화 파일
     └── 🐍 _exchange.py        # 거래소 타입 정의
