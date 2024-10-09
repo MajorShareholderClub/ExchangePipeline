@@ -31,7 +31,7 @@ class KafkaConfig(TypedDict):
     security_protocol: str
     max_batch_size: int
     max_request_size: int
-    partitioner: Callable  # 파티셔너 함수 타입
+    partitioner: DefaultPartitioner | CoinHashingCustomPartitional
     acks: str | int
     value_serializer: Callable[[Any], bytes]
     key_serializer: Callable[[Any], bytes]
@@ -46,11 +46,12 @@ class KafkaMessageSender:
     - 전송 실패 시 메시지를 임시 저장하고, 나중에 재전송
     """
 
-    def __init__(self) -> None:
-        self.logger = AsyncLogger(target="kafka", log_file="kafka.log")
+    def __init__(self, partition_pol: Callable = DefaultPartitioner()) -> None:
         self.except_list: defaultdict[Any, list] = defaultdict(list)
         self.producer = None  # Producer를 클래스 속성으로 저장
         self.producer_started = False
+        self.partition_pol = partition_pol
+        self.logger = AsyncLogger(target="kafka", folder="kafka")
 
     # fmt: off
     async def start_producer(self):
@@ -61,10 +62,10 @@ class KafkaMessageSender:
                 security_protocol=SECURITY_PROTOCOL,
                 max_batch_size=int(MAX_BATCH_SIZE),
                 max_request_size=int(MAX_REQUEST_SIZE),
-                partitioner=DefaultPartitioner(),
+                partitioner=self.partition_pol,
                 acks=ARCKS,
                 value_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
-                key_serializer=lambda value: json.dumps(value).encode("utf-8"),
+                key_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
                 enable_idempotence=True,
                 retry_backoff_ms=100,
             )
@@ -84,23 +85,21 @@ class KafkaMessageSender:
         market_name: str,
         key: Any,
         symbol: str,
-        type_: str = "DataIn",
+        type_: str,
     ):
         await self.start_producer()
 
         topic = f"{symbol.lower()}{type_}{market_name}"
         key: str = f"{key}-{symbol}"
-        original_message = message  # 실제 메시지를 로그 메시지와 분리
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록
-            size: int = len(json.dumps(message).encode("utf-8"))
+            size: int = len(json.dumps(message, default=default).encode("utf-8"))
             log_message = f"Message to: {topic} --> size: {size} bytes"
-            self.logger.log_message_sync(logging.INFO, message=log_message)
-
+            await self.logger.log_message(logging.INFO, message=log_message)
             # 실제 메시지 전송
             await self.producer.send_and_wait(
-                topic=topic, value=original_message, key=key
+                topic=topic, value=message, key=key
             )
 
             # 예외 상황에서 저장된 메시지 재전송
@@ -114,13 +113,13 @@ class KafkaMessageSender:
                     error_message = (
                         f"Kafka broker error: {error}, 메시지 임시 저장합니다."
                     )
-                    self.logger.log_message_sync(logging.ERROR, message=error_message)
-                    self.except_list[topic].append(original_message)  # 메시지 저장
+                    await self.logger.log_message(logging.ERROR, message=error_message)
+                    self.except_list[topic].append(message)  # 메시지 저장
 
                 case _:
                     error_message = f"Unexpected error: {error}, 메시지를 보낼 수 없습니다 임시 저장합니다."
-                    self.logger.log_message_sync(logging.ERROR, message=error_message)
-                    self.except_list[topic].append(original_message)  # 메시지 저장
+                    await self.logger.log_message(logging.ERROR, message=error_message)
+                    self.except_list[topic].append(message)  # 메시지 저장
 
         finally:
             await self.stop_producer()

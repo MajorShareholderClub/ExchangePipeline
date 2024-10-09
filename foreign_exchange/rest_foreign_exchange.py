@@ -1,95 +1,85 @@
 """코인 Rest Resquest 설계 (국내)"""
 
-import ccxt
-from typing import Coroutine, Any, Any
 from common.core.types import ExchangeResponseData
-from abc import abstractmethod
-from common.core.abstract import AbstractExchangeRestClient
+from common.client.async_api_client import CoinExchangeRestClient
 
 
-# fmt: off
-class CommonForeignMarketRestClient(AbstractExchangeRestClient):
-    @abstractmethod
-    def get_exchange_instance(self) -> Any:
-        """각 거래소 인스턴스를 반환하는 메서드. 각 하위 클래스가 구현해야 함."""
-        raise NotImplementedError()
+class BinanceRest(CoinExchangeRestClient):
+    def __init__(self) -> None:
+        super().__init__(market="binance")
 
-    @abstractmethod
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 각 거래소에 맞게 변환하는 메서드."""
-        raise NotImplementedError()
+    def _get_orderbook_url(self, coin_name: str) -> str:
+        pass
 
-    async def get_coin_all_info_price(self, coin_name: str) -> Coroutine[Any, Any, ExchangeResponseData]:
-        markets: ccxt.coinone = self.get_exchange_instance()
-        coin: str = self.get_symbol(coin_name=coin_name)
-        return markets.fetch_ticker(coin)
+    def _get_ticker_url(self, coin_name: str) -> str:
+        return f"{self._rest}/ticker/24hr?symbol={coin_name.upper()}USDT&type=FULL"
+
+    async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
+        data = await super().get_coin_all_info_price(coin_name)
+        return data
 
 
-class BinanceRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.binance:
-        """ccxt 바이낸스 REST API 호출"""
-        return ccxt.binance()
+class KrakenRest(CoinExchangeRestClient):
+    def __init__(self) -> None:
+        super().__init__(market="kraken")
 
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 바이낸스 형식으로 변환 (예: BTC/USDT)"""
-        return f"{coin_name.upper()}/USDT"
+    def _get_orderbook_url(self, coin_name: str) -> str:
+        pass
 
+    def _get_ticker_url(self, coin_name: str) -> str:
+        if coin_name == "BTC":
+            coin_name = "XBT"
+        return f"{self._rest}/Ticker?pair={coin_name.upper()}USD"
 
-class KrakenRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.kraken:
-        """ccxt 크라켄 REST API 호출"""
-        return ccxt.kraken()
-
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 크라켄 형식으로 변환 (예: BTC/USD)"""
-        return f"{coin_name.upper()}/USDT"
-
-
-class OKXRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.okx:
-        """ccxt OKX REST API 호출"""
-        return ccxt.okx()
-
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 OKX 형식으로 변환 (예: BTC/USDT)"""
-        return f"{coin_name.upper()}/USDT"
+    async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
+        if coin_name == "BTC":
+            coin_name = "XBT"
+        data = await super().get_coin_all_info_price(coin_name)
+        return data["result"][f"X{coin_name.upper()}ZUSD"]
 
 
-class CoinbaseRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.coinbase:
-        """ccxt 코인베이스 REST API 호출"""
-        return ccxt.coinbase()
+class OKXRest(CoinExchangeRestClient):
+    def __init__(self) -> None:
+        super().__init__(market="okx")
 
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 코인베이스 형식으로 변환 (예: BTC/USD)"""
-        return f"{coin_name.upper()}/USDT"
+    def _get_orderbook_url(self, coin_name: str) -> str:
+        pass
 
+    def _get_ticker_url(self, coin_name: str) -> str:
+        return f"{self._rest}/market/ticker?instId={coin_name.upper()}-USDT"
 
-class BybitRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.bybit:
-        """ccxt 바이비트 REST API 호출"""
-        return ccxt.bybit()
-
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 바이비트 형식으로 변환 (예: BTC/USDT)"""
-        return f"{coin_name.upper()}/USDT"
+    async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
+        data = await super().get_coin_all_info_price(coin_name)
+        return data["data"][0]
 
 
-class GateIORest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.gateio:
-        """ccxt GateIO REST API 호출"""
-        return ccxt.gateio()
+class GateIORest(CoinExchangeRestClient):
+    def __init__(self) -> None:
+        super().__init__(market="gateio")
 
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 GateIO 형식으로 변환 (예: BTC/USDT)"""
-        return f"{coin_name.upper()}/USDT"
+    def _get_orderbook_url(self, coin_name: str) -> str:
+        pass
+
+    def _get_ticker_url(self, coin_name: str) -> str:
+        return f"{self._rest}/tickers?currency_pair={coin_name.lower()}_usdt"
+
+    async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
+        data = await super().get_coin_all_info_price(coin_name)
+        return data[0]
 
 
-class HTXRest(CommonForeignMarketRestClient):
-    def get_exchange_instance(self) -> ccxt.huobi:
-        """ccxt HTX (Huobi) REST API 호출"""
-        return ccxt.huobi()
+class BybitRest(CoinExchangeRestClient):
+    def __init__(self) -> None:
+        super().__init__(market="bybit")
 
-    def get_symbol(self, coin_name: str) -> str:
-        """코인 심볼을 HTX 형식으로 변환 (예: BTC/USDT)"""
-        return f"{coin_name.upper()}/USDT"
+    def _get_orderbook_url(self, coin_name: str) -> str:
+        pass
+
+    def _get_ticker_url(self, coin_name: str) -> str:
+        return (
+            f"{self._rest}/market/tickers?category=spot&symbol={coin_name.upper()}USDT"
+        )
+
+    async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
+        data = await super().get_coin_all_info_price(coin_name)
+        return data["result"]["list"][0]

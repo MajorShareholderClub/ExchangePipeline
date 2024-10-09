@@ -2,35 +2,50 @@ from abc import ABC, abstractmethod
 
 import logging
 import asyncio
+import time
 
 from typing import Any
 from config.json_param_load import load_json
 from common.core.types import ExchangeData, KoreaCoinMarketData
 from common.core.data_format import CoinMarketData
+
 from common.utils.logger import AsyncLogger
+
+
+async def schema_create(
+    market: str,
+    time: int | float,
+    symbol: str,
+    api: Any,
+    data: tuple[str],
+):
+    return CoinMarketData.from_api(
+        market=market,
+        coin_symbol=symbol,
+        time=time,
+        api=api,
+        data=data,
+    ).model_dump()
 
 
 class CoinPresentPriceClient:
 
     def __init__(self, location: str) -> None:
         self.market_env = load_json("rest", location)
-        self.logging = AsyncLogger(
-            target=f"{location}_rest", log_file=f"{location}_rest.log"
-        )
+        self.logging = AsyncLogger(target=location, folder="rest")
 
     async def _transform_and_request(
-        self, market: str, time: str, symbol: str, api: Any, data: tuple[str]
+        self, market: str, time: int | float, symbol: str, api: Any, data: tuple[str]
     ) -> ExchangeData:
         """스키마 변환 함수"""
         api_response = await api.get_coin_all_info_price(coin_name=symbol.upper())
-        timestamp = api_response[time]
-        return CoinMarketData.from_api(
-            market=market,
-            coin_symbol=symbol,
-            time=timestamp,
-            api=api_response,
-            data=data,
-        ).model_dump()
+        if api_response is None:
+            return await schema_create(
+                market=market, time=time, symbol=symbol, api=None, data=data
+            )
+        return await schema_create(
+            market=market, time=time, symbol=symbol, api=api_response, data=data
+        )
 
     async def _trans_schema(self, market: str, symbol: str) -> ExchangeData:
         """스키마 변환 본체"""
@@ -39,7 +54,7 @@ class CoinPresentPriceClient:
         market_data_architecture = await self._transform_and_request(
             market=f"{market}-{symbol.upper()}",
             symbol=symbol,
-            time=market_info["timestamp"],
+            time=int(time.time()),
             api=market_info["api"],
             data=market_info["parameter"],
         )
@@ -69,11 +84,11 @@ class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
         """공통 로깅 함수"""
         market_result = await self.fetch_market_data(coin_symbol)
         schema: KoreaCoinMarketData = self.create_schema(market_result)
-        # 비동기 로깅 함수로 개선
-        self.logging.log_message_sync(logging.INFO, message=schema)
+        await self.logging.log_message(logging.INFO, message=schema)
 
+        return schema
+
+    @abstractmethod
     async def total_pull_request(self, coin_symbol: str, interval: int = 1) -> None:
         """Rest 시작점"""
-        while True:
-            await self._log_market_schema(coin_symbol)
-            await asyncio.sleep(interval)
+        raise NotImplementedError("메서드 구현 필수 입니다")

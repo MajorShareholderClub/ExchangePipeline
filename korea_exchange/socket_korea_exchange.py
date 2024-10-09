@@ -22,8 +22,8 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
 
     # fmt: off
     async def get_present_websocket(self, symbol: str, req_type: str) -> Coroutine[Any, Any, None]:
-        from pipe.korea.websocket_client import (
-            WebsocketConnectionManager as WCM
+        from pipe.korea.korea_websocket_client import (
+            KoreaWebsocketConnection as WCM
         )
 
         return await WCM().websocket_to_json(

@@ -1,35 +1,57 @@
 {
-    "upbit": {
-        "timestamp": "trade_timestamp",
+    "binance": {
+        "timestamp": "E",
         "parameter": [
-            "opening_price",
-            "trade_price",
-            "high_price",
-            "low_price",
-            "prev_closing_price",
-            "acc_trade_volume_24h"
+            "o",
+            "c",
+            "h",
+            "l",
+            "x",
+            "v"
         ]
     },
-    "bithumb": {
-        "timestamp": "trade_timestamp",
+    "bybit": {
+        "timestamp": "ts",
         "parameter": [
-            "opening_price",
-            "trade_price",
-            "high_price",
-            "low_price",
-            "prev_closing_price",
-            "acc_trade_volume_24h"
+            "lastPrice",
+            "lastPrice",
+            "highPrice24h",
+            "lowPrice24h",
+            "prevPrice24h",
+            "volume24h"
         ]
     },
-    "coinone": {
-        "timestamp": "timestamp",
+    "kraken": {
+        "timestamp": " ",
         "parameter": [
-            "first",
+            "o",
+            "c",
+            "h",
+            "l",
+            "p",
+            "a"
+        ]
+    },
+    "gateio": {
+        "timestamp": "",
+        "parameter": [
             "last",
-            "high",
-            "low",
-            "yesterday_last",
-            "target_volume"
+            "last",
+            "high_24h",
+            "low_24h",
+            "highest_bid",
+            "base_volume"
+        ]
+    },
+    "okx": {
+        "timestamp": "ts",
+        "parameter": [
+            "open24h",
+            "last",
+            "high24h",
+            "low24h",
+            "None",
+            "vol24h"
         ]
     }
 }

@@ -5,12 +5,13 @@ from functools import wraps
 from typing import Callable, Any
 
 import asyncio
-from common.utils.logger import AsyncLogger
 from aiohttp import ClientConnectorError, ClientError
 from aiohttp.web_exceptions import HTTPException
+from asyncio.exceptions import CancelledError
 
 import websockets
 from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from common.utils.logger import AsyncLogger
 
 
 class SocketError(Exception): ...
@@ -21,23 +22,22 @@ class BaseRetry(ABC):
     def __init__(self, retries=3, base_delay=2):
         self.retries = retries
         self.base_delay = base_delay
-        self.logging = AsyncLogger(target="request", log_file="request.log")
+        self.logging = AsyncLogger(target="connection", folder="error")
 
     async def log_error(self, message: str) -> None:
         """비동기로 로그 메시지를 기록하는 메서드."""
-        self.logging.log_message_sync(logging.ERROR, message=message)
+        await self.logging.log_message(logging.ERROR, message=message)
 
     async def execute_with_retry(self, func: Callable, *args, **kwargs) -> Any:
         """공통 재시도 로직을 처리하는 메서드"""
-        for attempt in range(self.retries):
-            try:
-                return await func(*args, **kwargs)
-            except Exception as e:
-                await self.handle_exception(e, attempt)
-                await asyncio.sleep(self.base_delay * (2**attempt))  # 지수 백오프
+        try:
+            return await func(*args, **kwargs)
+        except Exception as e:
+            await self.handle_exception(e)
+            await asyncio.sleep(self.base_delay)
 
     @abstractmethod
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """예외 처리 메서드. 하위 클래스에서 구현."""
         pass
 
@@ -52,17 +52,13 @@ class BaseRetry(ABC):
 
 
 class RestRetryOnFailure(BaseRetry):
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """HTTP 예외 처리 로직"""
         match e:
-            case HTTPException():
-                message = f"HTTP Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
-            case ClientConnectorError():
-                message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
-            case ClientError():
-                message = f"Client Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
+            case HTTPException() | ClientConnectorError() | ClientError():
+                message = f"Error: {e}. 재시도 진행합니다"
             case _:
-                message = f"Unknown Error: {e}. 재시도 {attempt + 1}/{self.retries}..."
+                message = f"Unknown Error: {e}. 재시도 진행합니다"
         await self.log_error(message)
 
 
@@ -77,12 +73,12 @@ class SocketRetryOnFailure(BaseRetry):
         base_delay: int = 2,
     ):
         super().__init__(retries, base_delay)
-        self.rest_client = rest_client
         self.symbol = symbol
         self.uri = uri
         self.subs = subs
+        self.rest_client = rest_client
 
-    async def handle_exception(self, e: Exception, attempt: int) -> None:
+    async def handle_exception(self, e: Exception) -> None:
         """소켓 및 연결 오류 예외 처리"""
         match e:
             case (
@@ -90,12 +86,13 @@ class SocketRetryOnFailure(BaseRetry):
                 | ConnectionClosedOK()
                 | ConnectionClosedError()
                 | SocketError()
+                | CancelledError()
             ):
-                message = f"연결 오류: {e}. 재시도 {attempt + 1}/{self.retries}..."
-            case _:
-                message = f"모든 연결에 실패했으므로. REST API로 전환 시도 합니다."
+                message = f"연결 오류: {e}. 재시도 합니다"
+            case ClientConnectorError():
+                message = "클라이언트 연결이 끊어졋음으로 RestAPI 로 전환합니다"
+                await self.log_error(message)
                 await self.switch_to_rest()
-        await self.log_error(message)
 
     async def switch_to_rest(self) -> None:
         """소켓 실패 시 REST API로 전환 및 복구"""
@@ -116,17 +113,17 @@ class SocketRetryOnFailure(BaseRetry):
         try:
             async with websockets.connect(self.uri, ping_interval=60) as websocket:
                 await websocket.send(json.dumps(self.subs))
-                self.logging.log_message_sync(logging.INFO, f"Ping sent -- {self.uri}")
+                await self.logging.log_message(logging.INFO, f"Ping sent -- {self.uri}")
                 while True:
                     data = await websocket.recv()
                     if isinstance(data, (bytes, str)):
-                        self.logging.log_message_sync(
+                        await self.logging.log_message(
                             logging.INFO, f"연결 성공: {data}"
                         )
                         return True
                     await asyncio.sleep(1)
         except Exception as e:
-            self.logging.log_message_sync(
+            await self.logging.log_message(
                 logging.ERROR, f"Ping 에러: {e} -- {self.uri}"
             )
             return False

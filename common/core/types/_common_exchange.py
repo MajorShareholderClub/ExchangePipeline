@@ -14,9 +14,10 @@ UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
 |  Preprocessing Exchanged Present Pirce dataformat |
 -----------------------------------------------------
 """
-# fmt: off
 # 전처리 한거래 포맷 데이터
 PriceData = dict[str, Decimal | None]
+
+
 class ExchangeData(TypedDict):
     name: str
     timestamp: float
@@ -39,18 +40,24 @@ class ForeignCoinMarketData(TypedDict):
     okx: ExchangeData | bool
     gateio: ExchangeData | bool
     htx: ExchangeData | bool
-    # coinbase: ExchangeData | bool
+
+
+class SocketLowData(TypedDict):
+    market: str
+    uri: str
+    symbol: str
+    data: dict | list
 
 
 """
------------------------------------
-|  korea websocket parameter Type |
------------------------------------
+-----------------------------
+|  websocket parameter Type |
+-----------------------------
 
 """
-# 업빗썸
-# fmt: off
 UUID = NewType("UUID", str(uuid.uuid4()))
+
+
 class TicketUUID(TypedDict):
     ticket: UUID
 
@@ -69,12 +76,58 @@ class CoinoneTopicParameter(TypedDict):
 
 
 # 코인원
-class CoinoneRequestParameter(TypedDict):
+class CoinoneSocketParameter(TypedDict):
     request_type: str
     channel: str
     topic: CoinoneTopicParameter
 
 
-CoinoneSocketParameter = CoinoneRequestParameter
+class BinanceSocketParameter(TypedDict):
+    id: UUID
+    method: str
+    params: list[str]
+
+
+class KrakenSubScription(TypedDict):
+    name: str
+
+
+class KrakenSocketParameter(TypedDict):
+    event: str
+    pair: list[str]
+    subscription: KrakenSubScription
+
+
+class GateioSocketParameter(TypedDict):
+    time: int
+    channel: str
+    event: str
+    payload: list[str]
+
+
+class OKXArgsSocketParameter(TypedDict):
+    channel: str
+    instId: str
+
+
+class OKXSocketParameter(TypedDict):
+    op: str
+    args: list[OKXArgsSocketParameter]
+
+
+class BybitSocketParameter(TypedDict):
+    req_id: UUID
+    op: str
+    args: list[str]
+
+
 UpBithumbSocketParmater = list[TicketUUID | CombinedRequest]
-SubScribeFormat = UpBithumbSocketParmater | CoinoneSocketParameter
+SubScribeFormat = (
+    UpBithumbSocketParmater
+    | CoinoneSocketParameter
+    | BinanceSocketParameter
+    | KrakenSocketParameter
+    | GateioSocketParameter
+    | OKXSocketParameter
+    | BybitSocketParameter
+)

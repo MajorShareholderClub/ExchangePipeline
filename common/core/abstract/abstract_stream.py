@@ -63,20 +63,3 @@ class WebsocketConnectionAbstract(ABC):
                 -> 코인 심볼
         """
         raise NotImplementedError()
-
-
-class MessageDataPreprocessingAbstract(ABC):
-    """
-    2. MessageDataPreprocessing
-        -> 메시지 스키마 통일화 전처리 로직
-    """
-
-    @abstractmethod
-    async def put_message_to_logging(self, message: Any, uri: str, symbol: str) -> None:
-        raise NotImplementedError()
-
-    @abstractmethod
-    async def process_message(
-        self, market: str, message: dict, symbol: str
-    ) -> dict[str, Any]:
-        raise NotImplementedError()
