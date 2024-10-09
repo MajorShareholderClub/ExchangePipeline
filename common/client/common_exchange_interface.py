@@ -5,7 +5,7 @@ import asyncio
 import time
 
 from typing import Any
-from config.json_param_load import RestMarketLoader
+from config.yml_param_load import RestMarketLoader
 from common.core.types import ExchangeData, KoreaCoinMarketData
 from common.core.data_format import CoinMarketData
 

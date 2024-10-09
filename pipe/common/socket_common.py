@@ -11,7 +11,7 @@ from common.core.abstract import (
     WebsocketConnectionAbstract,
 )
 from common.core.types import SubScribeFormat, SocketLowData, ExchangeResponseData
-from config.json_param_load import SocketMarketLoader
+from config.yml_param_load import SocketMarketLoader
 from mq.data_interaction import KafkaMessageSender
 
 
