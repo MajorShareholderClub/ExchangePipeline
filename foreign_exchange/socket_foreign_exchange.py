@@ -5,6 +5,7 @@
 from typing import Callable
 from common.utils.other_utils import get_symbol_collect_url
 from common.core.abstract import AbstractExchangeSocketClient
+from common.core.types import SubScribeFormat
 from common.setting.socket_parameter import (
     binance_socket_paramater,
     kraken_socket_parameter,
@@ -12,8 +13,6 @@ from common.setting.socket_parameter import (
     gateio_socket_parameter,
     bybit_socket_parameter,
 )
-
-from common.core.types import SubScribeFormat
 
 
 class CoinExchangeSocketClient(AbstractExchangeSocketClient):

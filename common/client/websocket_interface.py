@@ -1,6 +1,7 @@
+from abc import ABC, abstractmethod
+
 import json
 import logging
-import tracemalloc
 from collections import defaultdict
 
 import websockets
@@ -62,14 +63,14 @@ class MessageDataPreprocessing:
                     symbol=symbol,
                     data=self.message_by_data[market],
                 )
-                # await KafkaMessageSender().produce_sending(
-                #     key=market,
-                #     message=data,
-                #     market_name=market,
-                #     symbol=symbol,
-                #     type_="SocketDataIn",
-                # )
-                # self.message_by_data[market].clear()
+                await KafkaMessageSender().produce_sending(
+                    key=market,
+                    message=data,
+                    market_name=market,
+                    symbol=symbol,
+                    type_="SocketDataIn",
+                )
+                self.message_by_data[market].clear()
         except (TypeError, KeyError) as error:
             await self._logger.log_message(
                 logging.ERROR,
@@ -134,7 +135,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 self._logger.log_message(logging.ERROR, message)
 
 
-class MarketsCoinTickerPriceWebsocket:
+class BaseSettingWebsocket(ABC):
     """Coin Stream"""
 
     def __init__(
@@ -147,28 +148,46 @@ class MarketsCoinTickerPriceWebsocket:
         Args:
             symbol: 긁어올 코인
             market: 활성화할 마켓. Defaults to "all"이면 모든 거래소 선택.
-            market_type: Defaults to "socket".
         """
         self.market = market
         self.symbol = symbol
         self.market_env = SocketMarketLoader(location).process_market_info()
 
+    @abstractmethod
+    def get_websocket_method(self, api: Callable) -> Callable:
+        """각 자식 클래스에서 구현할 웹소켓 메서드 \n
+        price_present_websocket -- orderbook_present_websocket 경로 \n
+            -> korea or foreign_exchange/socket_foreign or korea_exchange.py
+        """
+        pass
+
     async def select_websocket(self) -> list:
         """마켓 선택"""
         parameter = self.market_env
-        match self.market:
-            case "all":
-                return [
-                    parameter[i]["api"].orderbook_present_websocket(self.symbol)
-                    for i in parameter
-                ]
-            case _:
-                return [
-                    parameter[self.market]["api"].orderbook_present_websocket(
-                        self.symbol
-                    )
-                ]
+        if self.market == "all":
+            return [
+                self.get_websocket_method(parameter[i]["api"])(self.symbol)
+                for i in parameter
+            ]
+        else:
+            return [
+                self.get_websocket_method(parameter[self.market]["api"])(self.symbol)
+            ]
 
     async def coin_present_architecture(self) -> None:
         coroutines: list = await self.select_websocket()
         await asyncio.gather(*coroutines, return_exceptions=False)
+
+
+class MarketsCoinTickerPriceWebsocket(BaseSettingWebsocket):
+    """티커 웹소켓"""
+
+    def get_websocket_method(self, api: Callable) -> Callable:
+        return api.price_present_websocket
+
+
+class MarketsCoinOrderBookWebsocket(BaseSettingWebsocket):
+    """오더북 웹소켓"""
+
+    def get_websocket_method(self, api: Callable) -> Callable:
+        return api.orderbook_present_websocket
