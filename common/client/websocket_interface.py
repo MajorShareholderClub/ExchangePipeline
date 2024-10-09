@@ -62,14 +62,14 @@ class MessageDataPreprocessing:
                     symbol=symbol,
                     data=self.message_by_data[market],
                 )
-                await KafkaMessageSender().produce_sending(
-                    key=market,
-                    message=data,
-                    market_name=market,
-                    symbol=symbol,
-                    type_="SocketDataIn",
-                )
-                self.message_by_data[market].clear()
+                # await KafkaMessageSender().produce_sending(
+                #     key=market,
+                #     message=data,
+                #     market_name=market,
+                #     symbol=symbol,
+                #     type_="SocketDataIn",
+                # )
+                # self.message_by_data[market].clear()
         except (TypeError, KeyError) as error:
             await self._logger.log_message(
                 logging.ERROR,
@@ -134,7 +134,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 self._logger.log_message(logging.ERROR, message)
 
 
-class CommonCoinPresentPriceWebsocket:
+class MarketsCoinTickerPriceWebsocket:
     """Coin Stream"""
 
     def __init__(
@@ -142,7 +142,6 @@ class CommonCoinPresentPriceWebsocket:
         location: str,
         symbol: str,
         market: str = "all",
-        market_type: str = "socket",
     ) -> None:
         """socket 시작
         Args:
@@ -150,7 +149,6 @@ class CommonCoinPresentPriceWebsocket:
             market: 활성화할 마켓. Defaults to "all"이면 모든 거래소 선택.
             market_type: Defaults to "socket".
         """
-        tracemalloc.start()
         self.market = market
         self.symbol = symbol
         self.market_env = SocketMarketLoader(location).process_market_info()
@@ -161,15 +159,16 @@ class CommonCoinPresentPriceWebsocket:
         match self.market:
             case "all":
                 return [
-                    parameter[i]["api"].get_present_websocket(self.symbol)
+                    parameter[i]["api"].orderbook_present_websocket(self.symbol)
                     for i in parameter
                 ]
             case _:
                 return [
-                    parameter[self.market]["api"].get_present_websocket(self.symbol)
+                    parameter[self.market]["api"].orderbook_present_websocket(
+                        self.symbol
+                    )
                 ]
 
     async def coin_present_architecture(self) -> None:
         coroutines: list = await self.select_websocket()
-        tasks = [asyncio.create_task(coro) for coro in coroutines]
-        await asyncio.gather(*tasks, return_exceptions=False)
+        await asyncio.gather(*coroutines, return_exceptions=False)

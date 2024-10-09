@@ -34,7 +34,7 @@ async def coin_present_websocket() -> None:
         )
 
         # 두 작업이 완료될 때까지 기다림
-        await asyncio.gather(foreign_task, korea_task)
+        await asyncio.gather(foreign_task, korea_task, return_exceptions=False)
 
 
 if __name__ == "__main__":

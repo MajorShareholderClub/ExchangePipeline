@@ -66,6 +66,7 @@ class TicketUUID(TypedDict):
 class CombinedRequest(TypedDict):
     type: str
     codes: list[str]
+    isOnlySnapshot: bool
     level: int | None
 
 
@@ -79,7 +80,7 @@ class CoinoneTopicParameter(TypedDict):
 class CoinoneSocketParameter(TypedDict):
     request_type: str
     channel: str
-    topic: CoinoneTopicParameter
+    data: CoinoneTopicParameter
 
 
 # 코빗
@@ -104,14 +105,14 @@ class BinanceSocketParameter(TypedDict):
     params: list[str]
 
 
-class KrakenSubScription(TypedDict):
-    name: str
+class KrakenParameter(TypedDict):
+    channel: str
+    symbol: list[str]
 
 
 class KrakenSocketParameter(TypedDict):
-    event: str
-    pair: list[str]
-    subscription: KrakenSubScription
+    method: str
+    params: KrakenParameter
 
 
 class GateioSocketParameter(TypedDict):

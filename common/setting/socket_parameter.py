@@ -14,7 +14,7 @@ from common.core.types import (
 from common.core.types import (
     BinanceSocketParameter,
     KrakenSocketParameter,
-    KrakenSubScription,
+    KrakenParameter,
     GateioSocketParameter,
     OKXArgsSocketParameter,
     OKXSocketParameter,
@@ -26,37 +26,24 @@ uu_id = str(uuid.uuid4())
 
 # fmt: off
 def upbithumb_socket_parameter(symbol: str, req_type: str) -> UpBithumbSocketParmater:
-    combined_request = {
-        "type": req_type,
-        "codes": [f"KRW-{symbol.upper()}"],
-    }
-
-    # req_type에 따라 isOnlyRealtime 추가
-    if req_type == "ticker":  # 필요한 타입에 맞게 수정
-        combined_request["isOnlyRealtime"] = True
-    elif req_type == "orderbook":
-        combined_request["level"] = 1000
-
     return [
         TicketUUID(ticket=uu_id),
-        CombinedRequest(combined_request),
+        CombinedRequest(
+            type=req_type,
+            codes=[f"KRW-{symbol.upper()}"],
+            isOnlyRealtime=True,
+        )
     ]
 
 
 def coinone_socket_parameter(symbol: str, req_type: str) -> CoinoneSocketParameter:
-    combined_request = {
-        "request_type": "SUBSCRIBE",
-        "topic": CoinoneTopicParameter(
+    return CoinoneSocketParameter(
+        request_type="SUBSCRIBE",
+        channel=req_type.upper(),
+        topic=CoinoneTopicParameter(
             quote_currency="KRW", target_currency=f"{symbol.upper()}"
         ),
-    }
-
-    if req_type.upper() == "TICKER":
-        combined_request["channel"] = "TICKER"
-    elif req_type.upper() == "ORDERBOOK":
-        combined_request["channel"] = "ORDERBOOK"
-
-    return CoinoneSocketParameter(combined_request)
+    )
 
 
 def korbit_socket_parameter(symbol: str, req_type: str) -> KorbitSocketParameter:
@@ -65,7 +52,7 @@ def korbit_socket_parameter(symbol: str, req_type: str) -> KorbitSocketParameter
         timestamp=int(datetime.now(timezone.utc).timestamp()),
         event="korbit:subscribe",
         data=KorbitChannelParameter(
-            channels=[f"{req_type}:{symbol.lower()}_krw"]
+            channels=[f"{req_type.lower()}:{symbol.lower()}_krw"]
         )
     )
 
@@ -79,29 +66,48 @@ def binance_socket_paramater(symbol: str, req_type: str) -> BinanceSocketParamet
 
 
 def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter:
-    return KrakenSocketParameter(
-        event="subscribe",
-        pair=[f"{symbol}/USD"],
-        subscription=KrakenSubScription(name=f"{req_type}"),
+    kraken = KrakenSocketParameter(
+        method="subscribe",
+        params=KrakenParameter(
+            channel=f"{req_type}", 
+            symbol=[f"{symbol.upper}/USD"]
+        ),
     )
+    
+    if req_type == "book":
+        kraken["depth"] = 1000
+        kraken["update"] = True
+        kraken["req_id"] = int(datetime.now().timestamp())
+        
+    return kraken
 
 
 def gateio_socket_parameter(symbol: str, req_type: str) -> GateioSocketParameter:
-    return GateioSocketParameter(
+    gate_io = GateioSocketParameter(
         time=int(time.time()),
         channel=f"spot.{req_type}",
         event="subscribe",
-        payload=[f"{symbol.upper()}_USDT"],
     )
-
+    
+    if req_type == "order_book":
+        gate_io["payload"] = [f"{symbol.upper()}_USDT", "100", "100ms"]
+    elif req_type == "tickers":
+        gate_io["payload"] =[f"{symbol.upper()}_USDT"]
+        
+    return gate_io
 
 def bybit_socket_parameter(symbol: str, req_type: str) -> BybitSocketParameter:
-    return BybitSocketParameter(
+    bybit = BybitSocketParameter(
         req_id=uu_id,
         op="subscribe",
-        args=[f"{req_type}.{symbol.upper()}USDT"],
     )
+    if req_type == "orderbook":
+        bybit["args"] = [f"{req_type}.50.{symbol.upper()}USDT"]
 
+    elif req_type == "tickers":
+        bybit["args"] = [f"{req_type}.{symbol.upper()}USDT"]
+    
+    return bybit
 
 def okx_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
     return OKXSocketParameter(

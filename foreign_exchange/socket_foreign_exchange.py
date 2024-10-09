@@ -2,7 +2,7 @@
 코인 정보 추상화
 """
 
-from typing import Callable, Coroutine, Any
+from typing import Callable
 from common.utils.other_utils import get_symbol_collect_url
 from common.core.abstract import AbstractExchangeSocketClient
 from common.setting.socket_parameter import (
@@ -40,37 +40,52 @@ class BinanceSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
         super().__init__(target="binance", socket_parameter=binance_socket_paramater)
 
-    async def get_present_websocket(self, symbol: str) -> None:
+    async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, req_type="ticker")
+
+    async def orderbook_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(symbol, req_type="depth20")
 
 
 class KrakenSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
         super().__init__(target="kraken", socket_parameter=kraken_socket_parameter)
 
-    async def get_present_websocket(self, symbol: str) -> None:
+    async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, req_type="ticker")
 
-
-class OKXSocket(CoinExchangeSocketClient):
-    def __init__(self) -> None:
-        super().__init__(target="okx", socket_parameter=okx_socket_parameter)
-
-    async def get_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="tickers")
+    async def orderbook_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(symbol, req_type="book")
 
 
 class GateIOSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
         super().__init__(target="gateio", socket_parameter=gateio_socket_parameter)
 
-    async def get_present_websocket(self, symbol: str) -> None:
+    async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, req_type="tickers")
+
+    async def orderbook_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(symbol, req_type="order_book")
+
+
+class OKXSocket(CoinExchangeSocketClient):
+    def __init__(self) -> None:
+        super().__init__(target="okx", socket_parameter=okx_socket_parameter)
+
+    async def price_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(symbol, req_type="tickers")
+
+    async def orderbook_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(symbol, req_type="books")
 
 
 class ByBitSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
         super().__init__(target="bybit", socket_parameter=bybit_socket_parameter)
 
-    async def get_present_websocket(self, symbol: str) -> None:
+    async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, req_type="tickers")
+
+    async def orderbook_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(symbol, req_type="orderbook")

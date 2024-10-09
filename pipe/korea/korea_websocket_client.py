@@ -7,7 +7,7 @@ from common.core.types import SubScribeFormat, ExchangeResponseData
 from common.client.websocket_interface import (
     WebsocketConnectionManager,
     MessageDataPreprocessing,
-    CommonCoinPresentPriceWebsocket,
+    MarketsCoinTickerPriceWebsocket,
 )
 
 socket_protocol = websockets.WebSocketClientProtocol
@@ -88,7 +88,7 @@ class KoreaWebsocketConnection(WebsocketConnectionManager):
         await connection()
 
 
-class KoreaCoinPresentPriceWebsocket(CommonCoinPresentPriceWebsocket):
+class KoreaCoinPresentPriceWebsocket(MarketsCoinTickerPriceWebsocket):
     """Coin Stream"""
 
     def __init__(
@@ -96,6 +96,5 @@ class KoreaCoinPresentPriceWebsocket(CommonCoinPresentPriceWebsocket):
         symbol: str,
         location: str = "korea",
         market: str = "all",
-        market_type: str = "socket",
     ) -> None:
-        super().__init__(location, symbol, market, market_type)
+        super().__init__(location, symbol, market)
