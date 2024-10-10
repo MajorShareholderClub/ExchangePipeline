@@ -30,6 +30,7 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
             uri=self._websocket,
             subs_fmt=self.socket_parameter(symbol=symbol, req_type=req_type),
             symbol=symbol,
+            socket_type=req_type
         )
 
 

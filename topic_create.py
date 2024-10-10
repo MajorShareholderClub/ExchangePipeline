@@ -21,7 +21,7 @@ def data_sending_start() -> None:
         BTC_TOPIC_NAME,
         ETH_TOPIC_NAME,
     ]
-    partition = [4] * len(topic)
+    partition = [8] * len(topic)
     replication = [3] * len(topic)
 
     return new_topic_initialization(

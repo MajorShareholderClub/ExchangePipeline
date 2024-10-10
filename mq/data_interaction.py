@@ -8,7 +8,10 @@ from collections import defaultdict
 from aiokafka import AIOKafkaProducer
 from aiokafka.errors import NoBrokersAvailable, KafkaProtocolError, KafkaConnectionError
 from kafka.partitioner.default import DefaultPartitioner
-from mq.data_partitional import CoinHashingCustomPartitional
+from mq.data_partitional import (
+    CoinHashingCustomPartitional,
+    ImprovedExchangeDataPartitioner,
+)
 from common.utils.logger import AsyncLogger
 from common.setting.properties import (
     BOOTSTRAP_SERVER,
@@ -46,7 +49,9 @@ class KafkaMessageSender:
     - 전송 실패 시 메시지를 임시 저장하고, 나중에 재전송
     """
 
-    def __init__(self, partition_pol: Callable = DefaultPartitioner()) -> None:
+    def __init__(
+        self, partition_pol: Callable = ImprovedExchangeDataPartitioner()
+    ) -> None:
         self.except_list: defaultdict[Any, list] = defaultdict(list)
         self.producer = None  # Producer를 클래스 속성으로 저장
         self.producer_started = False
@@ -85,12 +90,13 @@ class KafkaMessageSender:
         market_name: str,
         key: Any,
         symbol: str,
+        socket_type: str,
         type_: str,
     ):
         await self.start_producer()
 
         topic = f"{symbol.lower()}{type_}{market_name}"
-        key: str = f"{key}-{symbol}"
+        key: str = f"{key}_{symbol}_{socket_type}"
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록

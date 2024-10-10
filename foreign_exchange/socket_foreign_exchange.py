@@ -21,9 +21,11 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
     ) -> None:
         self._websocket = get_symbol_collect_url(target, "socket")
         self.socket_parameter = socket_parameter
+        self.ticker = "ticker"
+        self.orderbook = "orderbook"
 
     # fmt: off
-    async def get_present_websocket(self, symbol: str, req_type: str) -> None:
+    async def get_present_websocket(self, symbol: str, req_type: str, socket_type: str) -> None:
         from pipe.foreign.foreign_websocket_client import (
             ForeignWebsocketConnection as WCM
         )
@@ -32,6 +34,7 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
             uri=self._websocket,
             subs_fmt=self.socket_parameter(symbol=symbol, req_type=req_type),
             symbol=symbol,
+            socket_type=socket_type
         )
 
 
@@ -40,10 +43,14 @@ class BinanceSocket(CoinExchangeSocketClient):
         super().__init__(target="binance", socket_parameter=binance_socket_paramater)
 
     async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="ticker")
+        return await super().get_present_websocket(
+            symbol, req_type="ticker", socket_type=self.ticker
+        )
 
     async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="depth20")
+        return await super().get_present_websocket(
+            symbol, req_type="depth20", socket_type=self.orderbook
+        )
 
 
 class KrakenSocket(CoinExchangeSocketClient):
@@ -51,10 +58,14 @@ class KrakenSocket(CoinExchangeSocketClient):
         super().__init__(target="kraken", socket_parameter=kraken_socket_parameter)
 
     async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="ticker")
+        return await super().get_present_websocket(
+            symbol, req_type="ticker", socket_type=self.ticker
+        )
 
     async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="book")
+        return await super().get_present_websocket(
+            symbol, req_type="book", socket_type=self.orderbook
+        )
 
 
 class GateIOSocket(CoinExchangeSocketClient):
@@ -62,10 +73,14 @@ class GateIOSocket(CoinExchangeSocketClient):
         super().__init__(target="gateio", socket_parameter=gateio_socket_parameter)
 
     async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="tickers")
+        return await super().get_present_websocket(
+            symbol, req_type="tickers", socket_type=self.ticker
+        )
 
     async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="order_book")
+        return await super().get_present_websocket(
+            symbol, req_type="order_book", socket_type=self.orderbook
+        )
 
 
 class OKXSocket(CoinExchangeSocketClient):
@@ -73,10 +88,14 @@ class OKXSocket(CoinExchangeSocketClient):
         super().__init__(target="okx", socket_parameter=okx_socket_parameter)
 
     async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="tickers")
+        return await super().get_present_websocket(
+            symbol, req_type="tickers", socket_type=self.ticker
+        )
 
     async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="books")
+        return await super().get_present_websocket(
+            symbol, req_type="books", socket_type=self.orderbook
+        )
 
 
 class ByBitSocket(CoinExchangeSocketClient):
@@ -84,7 +103,11 @@ class ByBitSocket(CoinExchangeSocketClient):
         super().__init__(target="bybit", socket_parameter=bybit_socket_parameter)
 
     async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="tickers")
+        return await super().get_present_websocket(
+            symbol, req_type="tickers", socket_type=self.ticker
+        )
 
     async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(symbol, req_type="orderbook")
+        return await super().get_present_websocket(
+            symbol, req_type="orderbook", socket_type=self.orderbook
+        )

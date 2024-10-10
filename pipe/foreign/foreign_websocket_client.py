@@ -53,7 +53,7 @@ class ForeignWebsocketConnection(WebsocketConnectionManager):
         )
 
     async def websocket_to_json(
-        self, uri: str, subs_fmt: SubScribeFormat, symbol: str
+        self, uri: str, subs_fmt: SubScribeFormat, symbol: str, socket_type: str
     ) -> None:
         """말단 소켓 시작 지점"""
 
@@ -71,6 +71,6 @@ class ForeignWebsocketConnection(WebsocketConnectionManager):
             ) as websocket:
                 await self.socket_param_send(websocket, subs_fmt)
                 await self.handle_connection(websocket, uri)
-                await self.handle_message(websocket, uri, symbol)
+                await self.handle_message(websocket, uri, symbol, socket_type)
 
         await connection()

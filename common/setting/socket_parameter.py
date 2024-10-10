@@ -70,15 +70,13 @@ def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter
         method="subscribe",
         params=KrakenParameter(
             channel=f"{req_type}", 
-            symbol=[f"{symbol.upper}/USD"]
-        ),
+            symbol=[f"{symbol.upper()}/USD"]
+        )
     )
     
     if req_type == "book":
-        kraken["depth"] = 1000
-        kraken["update"] = True
         kraken["req_id"] = int(datetime.now().timestamp())
-        
+    
     return kraken
 
 

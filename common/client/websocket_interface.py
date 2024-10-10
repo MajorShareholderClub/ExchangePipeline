@@ -13,8 +13,8 @@ from config.yml_param_load import SocketMarketLoader
 from mq.data_interaction import KafkaMessageSender
 from common.core.types import (
     SubScribeFormat,
-    SocketLowData,
     ExchangeResponseData,
+    SocketLowData,
 )
 from common.utils.logger import AsyncLogger
 from common.core.abstract import (
@@ -49,7 +49,12 @@ class MessageDataPreprocessing:
         await self.message_async_q.put((uri, market, p_message, symbol))
 
     async def message_producer(
-        self, uri: str, market: str, message: ExchangeResponseData, symbol: str
+        self,
+        uri: str,
+        market: str,
+        message: ExchangeResponseData,
+        symbol: str,
+        socket_type: str,
     ) -> None:
         try:
             await self._logger.log_message(
@@ -68,7 +73,8 @@ class MessageDataPreprocessing:
                     message=data,
                     market_name=market,
                     symbol=symbol,
-                    type_="SocketDataIn",
+                    socket_type=socket_type,
+                    type_=f"SocketDataIn",
                 )
                 self.message_by_data[market].clear()
         except (TypeError, KeyError) as error:
@@ -77,10 +83,14 @@ class MessageDataPreprocessing:
                 message=f"타입오류 --> {error} url --> {market}",
             )
 
-    async def producing_start(self) -> None:
+    async def producing_start(self, socket_type: str) -> None:
         uri, market, message, symbol = await self.message_async_q.get()
         await self.message_producer(
-            uri=uri, market=market, message=message, symbol=symbol
+            uri=uri,
+            market=market,
+            message=message,
+            symbol=symbol,
+            socket_type=socket_type,
         )
 
 
@@ -117,7 +127,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             await self._logger.log_message(logging.INFO, f"{market} 연결 완료")
 
     async def handle_message(
-        self, websocket: socket_protocol, uri: str, symbol: str
+        self, websocket: socket_protocol, uri: str, symbol: str, socket_type: str
     ) -> None:
         """메시지 전송하는 메서드"""
         while True:
@@ -129,7 +139,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 await self.process.put_message_to_logging(
                     message=message, uri=uri, symbol=symbol, market=market
                 )
-                await self.process.producing_start()
+                await self.process.producing_start(socket_type=socket_type)
             except (TypeError, ValueError) as error:
                 message = f"다음과 같은 이유로 실행하지 못했습니다 --> {error}"
                 self._logger.log_message(logging.ERROR, message)

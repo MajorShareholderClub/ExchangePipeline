@@ -8,3 +8,4 @@ websocket-client
 aiokafka
 cctx
 kafka-python-ng
+mmh3
