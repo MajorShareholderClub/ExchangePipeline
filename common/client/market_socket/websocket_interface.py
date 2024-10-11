@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 import json
 import logging
 from collections import defaultdict
@@ -8,7 +6,6 @@ import websockets
 import asyncio
 
 from typing import Callable
-from config.yml_param_load import SocketMarketLoader
 
 from mq.data_interaction import KafkaMessageSender
 from common.core.types import (
@@ -16,6 +13,7 @@ from common.core.types import (
     ExchangeResponseData,
     SocketLowData,
 )
+from common.exception import SocketRetryOnFailure
 from common.utils.logger import AsyncLogger
 from common.core.abstract import (
     WebsocketConnectionAbstract,
@@ -31,7 +29,7 @@ Socket -------------------------------------------------------------------------
 # socket
 class MessageDataPreprocessing:
     def __init__(self, type_: str, location: str) -> None:
-        self.market = SocketMarketLoader(location).process_market_info()
+        # self.market = SocketMarketLoader(location).process_market_info()
         self._logger = AsyncLogger(
             target=f"{type_}_websocket", folder=f"websocket_{location}"
         )
@@ -98,10 +96,15 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
     """웹소켓 승인 전송 로직"""
 
     def __init__(
-        self, target: str, folder: str, process: MessageDataPreprocessing
+        self,
+        target: str,
+        folder: str,
+        process: MessageDataPreprocessing,
+        rest_client: SocketRetryOnFailure,
     ) -> None:
         self._logger = AsyncLogger(target=target, folder=folder)
         self.process = process
+        self.rest_client = rest_client
 
     async def socket_param_send(
         self, websocket: socket_protocol, subs_fmt: SubScribeFormat
@@ -144,60 +147,29 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 message = f"다음과 같은 이유로 실행하지 못했습니다 --> {error}"
                 self._logger.log_message(logging.ERROR, message)
 
-
-class BaseSettingWebsocket(ABC):
-    """Coin Stream"""
-
-    def __init__(
+    async def websocket_to_json(
         self,
-        location: str,
+        uri: str,
+        subs_fmt: SubScribeFormat,
         symbol: str,
-        market: str = "all",
+        socket_type: str,
     ) -> None:
-        """socket 시작
-        Args:
-            symbol: 긁어올 코인
-            market: 활성화할 마켓. Defaults to "all"이면 모든 거래소 선택.
-        """
-        self.market = market
-        self.symbol = symbol
-        self.market_env = SocketMarketLoader(location).process_market_info()
+        """말단 소켓 시작 지점"""
 
-    @abstractmethod
-    def get_websocket_method(self, api: Callable) -> Callable:
-        """각 자식 클래스에서 구현할 웹소켓 메서드 \n
-        price_present_websocket -- orderbook_present_websocket 경로 \n
-            -> korea or foreign_exchange/socket_foreign or korea_exchange.py
-        """
-        pass
+        @SocketRetryOnFailure(
+            retries=3,
+            base_delay=2,
+            rest_client=self.rest_client,
+            symbol=symbol,
+            uri=uri,
+            subs=subs_fmt,
+        )
+        async def connection():
+            async with websockets.connect(
+                uri, ping_interval=30.0, ping_timeout=60.0
+            ) as websocket:
+                await self.socket_param_send(websocket, subs_fmt)
+                await self.handle_connection(websocket, uri)
+                await self.handle_message(websocket, uri, symbol, socket_type)
 
-    async def select_websocket(self) -> list:
-        """마켓 선택"""
-        parameter = self.market_env
-        if self.market == "all":
-            return [
-                self.get_websocket_method(parameter[i]["api"])(self.symbol)
-                for i in parameter
-            ]
-        else:
-            return [
-                self.get_websocket_method(parameter[self.market]["api"])(self.symbol)
-            ]
-
-    async def coin_present_architecture(self) -> None:
-        coroutines: list = await self.select_websocket()
-        await asyncio.gather(*coroutines, return_exceptions=False)
-
-
-class MarketsCoinTickerPriceWebsocket(BaseSettingWebsocket):
-    """티커 웹소켓"""
-
-    def get_websocket_method(self, api: Callable) -> Callable:
-        return api.price_present_websocket
-
-
-class MarketsCoinOrderBookWebsocket(BaseSettingWebsocket):
-    """오더북 웹소켓"""
-
-    def get_websocket_method(self, api: Callable) -> Callable:
-        return api.orderbook_present_websocket
+        await connection()

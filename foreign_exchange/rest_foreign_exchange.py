@@ -1,7 +1,7 @@
 """코인 Rest Resquest 설계 (국내)"""
 
 from common.core.types import ExchangeResponseData
-from common.client.async_api_client import CoinExchangeRestClient
+from common.client.market_rest.async_api_client import CoinExchangeRestClient
 
 
 class BinanceRest(CoinExchangeRestClient):

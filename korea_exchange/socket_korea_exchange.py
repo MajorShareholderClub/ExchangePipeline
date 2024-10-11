@@ -2,36 +2,12 @@
 코인 정보 추상화
 """
 
-from typing import Callable
-from common.utils.other_utils import get_symbol_collect_url
-from common.core.abstract import AbstractExchangeSocketClient
-from common.core.types import SubScribeFormat
+from common.client.market_socket.async_socket_client import CoinExchangeSocketClient
 from common.setting.socket_parameter import (
     upbithumb_socket_parameter,
     coinone_socket_parameter,
     korbit_socket_parameter,
 )
-
-
-class CoinExchangeSocketClient(AbstractExchangeSocketClient):
-    def __init__(
-        self, target: str, socket_parameter: Callable[[str], SubScribeFormat]
-    ) -> None:
-        self._websocket = get_symbol_collect_url(target, "socket")
-        self.socket_parameter = socket_parameter
-
-    # fmt: off
-    async def get_present_websocket(self, symbol: str, req_type: str) -> None:
-        from pipe.korea.korea_websocket_client import (
-            KoreaWebsocketConnection as WCM
-        )
-
-        return await WCM().websocket_to_json(
-            uri=self._websocket,
-            subs_fmt=self.socket_parameter(symbol=symbol, req_type=req_type),
-            symbol=symbol,
-            socket_type=req_type
-        )
 
 
 class UpbitSocket(CoinExchangeSocketClient):
