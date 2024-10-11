@@ -1,12 +1,13 @@
 import json
 import websockets
 
-from pipe.korea.korea_rest_client import KoreaExchangeRestAPI
+from korea.connection.korea_rest_connect import KoreaExchangeRestAPI
 from common.core.types import ExchangeResponseData
 from common.client.market_socket.websocket_interface import (
     WebsocketConnectionManager,
     MessageDataPreprocessing,
 )
+
 
 socket_protocol = websockets.WebSocketClientProtocol
 

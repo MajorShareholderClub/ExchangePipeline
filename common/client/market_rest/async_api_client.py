@@ -2,13 +2,12 @@ import aiohttp
 from abc import abstractmethod
 from typing import Any
 
+from common.exception import RestRetryOnFailure
 from common.core.types import ExchangeResponseData
 from common.core.abstract import (
     AbstractAsyncRequestAcquisition,
     AbstractExchangeRestClient,
 )
-from common.utils.other_utils import get_symbol_collect_url
-from common.exception import RestRetryOnFailure
 
 # fmt: off
 class AsyncRequestAcquisition(AbstractAsyncRequestAcquisition):
@@ -35,9 +34,6 @@ class AsyncRequestJSON(AsyncRequestAcquisition):
 
 
 class CoinExchangeRestClient(AbstractExchangeRestClient):
-    def __init__(self, market: str) -> None:
-        self._rest = get_symbol_collect_url(market=market, type_="rest")
-
     @RestRetryOnFailure(retries=3, base_delay=2)        
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """코인데이터 호출"""

@@ -1,9 +1,8 @@
 import json
 import websockets
 
-from pipe.foreign.foreign_rest_client import ForeignExchangeRestAPI
-from common.exception import SocketRetryOnFailure
-from common.core.types import SubScribeFormat, ExchangeResponseData
+from foreign.connection.foreign_rest_connect import ForeignExchangeRestAPI
+from common.core.types import ExchangeResponseData
 from common.client.market_socket.websocket_interface import (
     WebsocketConnectionManager,
     MessageDataPreprocessing,
