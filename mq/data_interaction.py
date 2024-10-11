@@ -90,13 +90,13 @@ class KafkaMessageSender:
         market_name: str,
         key: Any,
         symbol: str,
-        socket_type: str,
+        request_type: str,
         type_: str,
     ):
         await self.start_producer()
 
         topic = f"{symbol.lower()}{type_}{market_name}"
-        key: str = f"{key}_{symbol}_{socket_type}"
+        key: str = f"{key}_{symbol}_{request_type}"
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록

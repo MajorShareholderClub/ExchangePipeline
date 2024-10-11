@@ -19,6 +19,7 @@ from common.core.types import (
     OKXArgsSocketParameter,
     OKXSocketParameter,
     BybitSocketParameter,
+    CoinbaseSocketParameter,
 )
 
 uu_id = str(uuid.uuid4())
@@ -111,4 +112,12 @@ def okx_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
     return OKXSocketParameter(
         op="subscribe",
         args=[OKXArgsSocketParameter(channel=req_type, instId=f"{symbol}-USDT")],
+    )
+
+
+def coinbase_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
+    return CoinbaseSocketParameter(
+        type="subscribe",
+        product_ids=[f"{symbol}-USDT"],
+        channels=[req_type]
     )

@@ -31,6 +31,7 @@ class ForeignExchangeRestAPI(BaseExchangeRestAPI):
                 message=message,
                 market_name="Total",
                 symbol=coin_symbol,
+                request_type="rest",
                 type_="RestDataIn",
                 key="Foreign-",
             )

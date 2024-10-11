@@ -4,7 +4,7 @@ from typing import Callable
 from typing import Coroutine, Any
 from abc import abstractmethod, ABC
 from common.core.types import ExchangeResponseData
-from common.utils.other_utils import get_symbol_collect_url
+from common.setting.properties import get_symbol_collect_url
 from common.core.types import SubScribeFormat
 
 

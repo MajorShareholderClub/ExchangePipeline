@@ -30,6 +30,7 @@ from foreign.client.rest_foreign_exchange import (
     OKXRest,
     BybitRest,
     GateIORest,
+    CoinbaseRest,
 )
 from foreign.client.socket_foreign_exchange import (
     KrakenSocket,
@@ -37,6 +38,7 @@ from foreign.client.socket_foreign_exchange import (
     GateIOSocket,
     BinanceSocket,
     ByBitSocket,
+    CoinbaseSocket,
 )
 
 path = Path(__file__).parent.parent
@@ -68,6 +70,7 @@ class MarketAPIFactory:
                 okx=OKXRest,
                 bybit=BybitRest,
                 gateio=GateIORest,
+                coinbase=CoinbaseRest,
             ),
             socket=ForeignExchageSocket(
                 binance=BinanceSocket,
@@ -75,6 +78,7 @@ class MarketAPIFactory:
                 okx=OKXSocket,
                 gateio=GateIOSocket,
                 bybit=ByBitSocket,
+                coinbase=CoinbaseSocket,
             ),
         ),
     )

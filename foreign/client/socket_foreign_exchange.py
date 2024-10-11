@@ -9,6 +9,7 @@ from common.setting.socket_parameter import (
     okx_socket_parameter,
     gateio_socket_parameter,
     bybit_socket_parameter,
+    coinbase_socket_parameter,
 )
 
 
@@ -101,4 +102,14 @@ class ByBitSocket(CoinExchangeSocketClient):
     async def orderbook_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(
             symbol, req_type="orderbook", socket_type=self.orderbook
+        )
+
+
+class CoinbaseSocket(CoinExchangeSocketClient):
+    def __init__(self) -> None:
+        super().__init__(target="coinbase", socket_parameter=coinbase_socket_parameter)
+
+    async def price_present_websocket(self, symbol: str) -> None:
+        return await super().get_present_websocket(
+            symbol, req_type="ticker", socket_type=self.ticker
         )

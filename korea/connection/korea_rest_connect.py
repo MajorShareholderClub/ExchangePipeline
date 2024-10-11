@@ -33,6 +33,7 @@ class KoreaExchangeRestAPI(BaseExchangeRestAPI):
                 market_name="Total",
                 symbol=coin_symbol,
                 type_="RestDataIn",
+                request_type="rest",
                 key="Korea-Total",
             )
             i += 1

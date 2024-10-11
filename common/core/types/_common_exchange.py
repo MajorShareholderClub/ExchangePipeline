@@ -34,12 +34,11 @@ class KoreaCoinMarketData(TypedDict):
 
 
 class ForeignCoinMarketData(TypedDict):
-    time: int
     binance: ExchangeData | bool
     kraken: ExchangeData | bool
     okx: ExchangeData | bool
     gateio: ExchangeData | bool
-    htx: ExchangeData | bool
+    coinbase: ExchangeData | bool
 
 
 class SocketLowData(TypedDict):
@@ -138,6 +137,12 @@ class BybitSocketParameter(TypedDict):
     args: list[str]
 
 
+class CoinbaseSocketParameter(TypedDict):
+    type: UUID
+    product_ids: list[str]
+    channels: list[str]
+
+
 UpBithumbSocketParmater = list[TicketUUID | CombinedRequest]
 SubScribeFormat = (
     UpBithumbSocketParmater
@@ -148,4 +153,5 @@ SubScribeFormat = (
     | GateioSocketParameter
     | OKXSocketParameter
     | BybitSocketParameter
+    | CoinbaseSocketParameter
 )

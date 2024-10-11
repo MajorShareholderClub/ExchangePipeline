@@ -1,11 +1,10 @@
 import json
 import logging
+from typing import Callable
 from collections import defaultdict
 
 import websockets
 import asyncio
-
-from typing import Callable
 
 from mq.data_interaction import KafkaMessageSender
 from common.core.types import (
@@ -15,15 +14,24 @@ from common.core.types import (
 )
 from common.exception import SocketRetryOnFailure
 from common.utils.logger import AsyncLogger
-from common.core.abstract import (
-    WebsocketConnectionAbstract,
-)
+from common.core.abstract import WebsocketConnectionAbstract
 
 socket_protocol = websockets.WebSocketClientProtocol
 
-"""
-Socket -----------------------------------------------------------------------------------------------------------------------------
-"""
+
+# fmt: off
+def market_name_extract(uri: str) -> str:
+    """소켓 에서 마켓 이름 추출하는 메서드"""
+    # 'wss://' 제거
+    uri_parts = uri.split("//")[-1].split(".")
+
+    # 도메인의 마지막 부분이 'coinbase'이면 그 부분을 선택
+    if uri_parts[-2] == "coinbase":
+        return uri_parts[-2].upper()
+
+    # 그렇지 않으면 첫 번째 파트를 반환
+    return uri_parts[1].upper()
+
 
 
 # socket
@@ -41,7 +49,7 @@ class MessageDataPreprocessing:
         symbol: str,
         process: Callable[[str, ExchangeResponseData], ExchangeResponseData],
     ) -> None:
-        market: str = uri.split("//")[1].split(".")[1]
+        market: str = market_name_extract(uri=uri)
         p_message: dict = process
         await self.message_async_q.put((uri, market, p_message, symbol))
 
@@ -70,7 +78,7 @@ class MessageDataPreprocessing:
                     message=data,
                     market_name=market,
                     symbol=symbol,
-                    socket_type=socket_type,
+                    request_type=socket_type,
                     type_=f"SocketDataIn",
                 )
                 self.message_by_data[market].clear()
@@ -124,7 +132,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         """
         message: str = await asyncio.wait_for(websocket.recv(), timeout=30.0)
         data = json.loads(message)
-        market: str = uri.split("//")[1].split(".")[1]
+        market: str = market_name_extract(uri=uri)
         if data:
             await self._logger.log_message(logging.INFO, f"{market} 연결 완료")
 
@@ -134,7 +142,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         """메시지 전송하는 메서드"""
         while True:
             try:
-                market: str = uri.split("//")[1].split(".")[1]
+                market: str = market_name_extract(uri=uri)
                 message: ExchangeResponseData = await asyncio.wait_for(
                     websocket.recv(), timeout=30.0
                 )

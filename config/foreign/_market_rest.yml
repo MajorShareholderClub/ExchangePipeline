@@ -42,3 +42,14 @@ bybit:
     - lowPrice24h
     - prevPrice24h
     - volume24h
+
+
+coinbase:
+  parameter:
+    - open
+    - last
+    - high
+    - low
+    - last
+    - volume24h
+

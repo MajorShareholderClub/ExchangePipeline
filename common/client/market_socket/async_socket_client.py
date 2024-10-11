@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from typing import Callable
-
 import asyncio
 
 
@@ -33,17 +32,23 @@ class BaseSettingWebsocket(ABC):
     async def select_websocket(self) -> list:
         """마켓 선택"""
         parameter = self.market_env
-        if self.market == "all":
-            return [
-                self.get_websocket_method(parameter[i]["api"])(self.symbol)
-                for i in parameter
-            ]
-        else:
-            return [
-                self.get_websocket_method(parameter[self.market]["api"])(self.symbol)
-            ]
+        coroutines = []
+
+        match self.market:
+            case "all":
+                for i in parameter:
+                    websocket_method = self.get_websocket_method(parameter[i]["api"])
+                    coroutines.append(websocket_method(self.symbol))
+            case _:
+                websocket_method = self.get_websocket_method(
+                    parameter[self.market]["api"]
+                )
+                coroutines.append(websocket_method(self.symbol))
+
+        return coroutines
 
     async def coin_present_architecture(self) -> None:
+        """코루틴들을 실행"""
         coroutines: list = await self.select_websocket()
         await asyncio.gather(*coroutines, return_exceptions=False)
 
