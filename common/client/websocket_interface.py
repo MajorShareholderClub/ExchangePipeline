@@ -61,7 +61,7 @@ class MessageDataPreprocessing:
                 logging.INFO, message=f"{market} -- {message}"
             )
             self.message_by_data[market].append(message)
-            if len(self.message_by_data[market]) >= 10:
+            if len(self.message_by_data[market]) >= 1:
                 data = SocketLowData(
                     market=market,
                     uri=uri,

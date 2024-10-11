@@ -16,9 +16,7 @@ def run_coin_websocket(
     loop = asyncio.new_event_loop()  # 스레드별로 event loop 생성
     asyncio.set_event_loop(loop)
     loop.run_until_complete(
-        client_class(
-            symbol=symbol, location=location, market="upbit"
-        ).coin_present_architecture()
+        client_class(symbol=symbol, location=location).coin_present_architecture()
     )
     loop.close()
 
@@ -32,12 +30,14 @@ async def coin_present_websocket() -> None:
         korea_task_ticker = loop.run_in_executor(
             executor, run_coin_websocket, CoinPresentPriceWebsocket, "BTC", "korea"
         )
-        # foreign_task_ticker = loop.run_in_executor(
-        #     executor, run_coin_websocket, CoinPresentPriceWebsocket, "BTC", "foreign"
-        # )
+        foreign_task_ticker = loop.run_in_executor(
+            executor, run_coin_websocket, CoinPresentPriceWebsocket, "BTC", "foreign"
+        )
 
         # 두 작업이 완료될 때까지 기다림
-        await asyncio.gather(korea_task_ticker, return_exceptions=False)
+        await asyncio.gather(
+            korea_task_ticker, foreign_task_ticker, return_exceptions=False
+        )
 
 
 if __name__ == "__main__":
