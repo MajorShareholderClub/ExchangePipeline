@@ -29,7 +29,6 @@ Socket -------------------------------------------------------------------------
 # socket
 class MessageDataPreprocessing:
     def __init__(self, type_: str, location: str) -> None:
-        # self.market = SocketMarketLoader(location).process_market_info()
         self._logger = AsyncLogger(
             target=f"{type_}_websocket", folder=f"websocket_{location}"
         )

@@ -2,13 +2,6 @@ from abc import ABC, abstractmethod
 from typing import Callable
 
 import asyncio
-from common.core.types import SubScribeFormat
-from common.core.abstract import AbstractExchangeSocketClient
-from common.utils.other_utils import get_symbol_collect_url
-from common.client.market_socket.websocket_interface import (
-    WebsocketConnectionManager as WCM,
-)
-from config.yml_param_load import SocketMarketLoader
 
 
 class BaseSettingWebsocket(ABC):
@@ -16,8 +9,8 @@ class BaseSettingWebsocket(ABC):
 
     def __init__(
         self,
-        location: str,
         symbol: str,
+        market_env,
         market: str = "all",
     ) -> None:
         """socket 시작
@@ -27,7 +20,7 @@ class BaseSettingWebsocket(ABC):
         """
         self.market = market
         self.symbol = symbol
-        self.market_env = SocketMarketLoader(location).process_market_info()
+        self.market_env = market_env
 
     @abstractmethod
     def get_websocket_method(self, api: Callable) -> Callable:
@@ -55,21 +48,15 @@ class BaseSettingWebsocket(ABC):
         await asyncio.gather(*coroutines, return_exceptions=False)
 
 
-class CoinExchangeSocketClient(AbstractExchangeSocketClient):
-    def __init__(
-        self, target: str, socket_parameter: Callable[[str], SubScribeFormat]
-    ) -> None:
-        self._websocket = get_symbol_collect_url(target, "socket")
-        self.socket_parameter = socket_parameter
-        self.ticker = "ticker"
-        self.orderbook = "orderbook"
+class MarketsCoinTickerPriceWebsocket(BaseSettingWebsocket):
+    """티커 웹소켓"""
 
-    # fmt: off
-    async def get_present_websocket(self, symbol: str, req_type: str) -> None:
-        """소켓 출발점"""
-        return await WCM().websocket_to_json(
-            uri=self._websocket,
-            subs_fmt=self.socket_parameter(symbol=symbol, req_type=req_type),
-            symbol=symbol,
-            socket_type=req_type
-        )
+    def get_websocket_method(self, api: Callable) -> Callable:
+        return api.price_present_websocket
+
+
+class MarketsCoinOrderBookWebsocket(BaseSettingWebsocket):
+    """오더북 웹소켓"""
+
+    def get_websocket_method(self, api: Callable) -> Callable:
+        return api.orderbook_present_websocket
