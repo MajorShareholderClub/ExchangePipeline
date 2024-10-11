@@ -1,7 +1,7 @@
 """코인 Rest Resquest 설계 (국내)"""
 
 from common.core.types import ExchangeResponseData
-from common.client.async_api_client import CoinExchangeRestClient
+from common.client.market_rest.async_api_client import CoinExchangeRestClient
 
 
 class BinanceRest(CoinExchangeRestClient):
@@ -83,3 +83,18 @@ class BybitRest(CoinExchangeRestClient):
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         data = await super().get_coin_all_info_price(coin_name)
         return data["result"]["list"][0]
+
+
+class CoinbaseRest(CoinExchangeRestClient):
+    def __init__(self) -> None:
+        super().__init__(market="coinbase")
+
+    def _get_orderbook_url(self, coin_name: str) -> str:
+        pass
+
+    def _get_ticker_url(self, coin_name: str) -> str:
+        return f"{self._rest}/products/{coin_name.upper()}-USDT/stats"
+
+    async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
+        data = await super().get_coin_all_info_price(coin_name)
+        return data

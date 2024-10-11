@@ -34,6 +34,7 @@ class ForeignExchageRest(TypedDict):
     okx: ExchangeResponseData
     bybit: ExchangeResponseData
     gateio: ExchangeResponseData
+    coinbase: ExchangeResponseData
 
 class ForeignExchageSocket(TypedDict):
     binance: ExchangeResponseData
@@ -41,7 +42,7 @@ class ForeignExchageSocket(TypedDict):
     okx: ExchangeResponseData
     bybit: ExchangeResponseData
     gateio: ExchangeResponseData
-
+    coinbase: ExchangeResponseData
 
 
 class ForeignMarketRequestType(TypedDict):

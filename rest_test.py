@@ -3,8 +3,8 @@ Rest Test
 """
 
 import asyncio
-from pipe.korea.korea_rest_client import KoreaExchangeRestAPI
-from pipe.foreign.foreign_rest_client import ForeignExchangeRestAPI
+from korea.connection.korea_rest_connect import KoreaExchangeRestAPI
+from foreign.connection.foreign_rest_connect import ForeignExchangeRestAPI
 
 
 async def f_btc_present_start() -> None:

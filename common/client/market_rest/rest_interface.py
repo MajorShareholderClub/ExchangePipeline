@@ -16,10 +16,6 @@ from common.utils.logger import AsyncLogger
 
 socket_protocol = websockets.WebSocketClientProtocol
 
-"""
-REST -----------------------------------------------------------------------------------------------------------------------------
-"""
-
 
 # rest
 async def schema_create(

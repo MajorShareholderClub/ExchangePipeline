@@ -140,3 +140,4 @@ class ForeignCoinMarket(CoinMarketValidationBase):
     okx: CoinMarketData | bool
     bybit: CoinMarketData | bool
     gateio: CoinMarketData | bool
+    coinbase: CoinMarketData | bool

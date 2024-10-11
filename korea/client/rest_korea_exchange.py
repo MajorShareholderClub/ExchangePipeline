@@ -4,7 +4,7 @@ import tracemalloc
 
 tracemalloc.start()
 
-from common.client.async_api_client import CoinExchangeRestClient
+from common.client.market_rest.async_api_client import CoinExchangeRestClient
 from common.core.types import ExchangeResponseData
 
 

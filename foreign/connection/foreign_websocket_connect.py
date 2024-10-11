@@ -1,10 +1,9 @@
 import json
 import websockets
 
-from pipe.foreign.foreign_rest_client import ForeignExchangeRestAPI
-from common.exception import SocketRetryOnFailure
-from common.core.types import SubScribeFormat, ExchangeResponseData
-from common.client.websocket_interface import (
+from foreign.connection.foreign_rest_connect import ForeignExchangeRestAPI
+from common.core.types import ExchangeResponseData
+from common.client.market_socket.websocket_interface import (
     WebsocketConnectionManager,
     MessageDataPreprocessing,
 )
@@ -50,27 +49,5 @@ class ForeignWebsocketConnection(WebsocketConnectionManager):
             target="foreign",
             folder="foreign",
             process=ForeignMessageDataPreprocessing(),
-        )
-
-    async def websocket_to_json(
-        self, uri: str, subs_fmt: SubScribeFormat, symbol: str, socket_type: str
-    ) -> None:
-        """말단 소켓 시작 지점"""
-
-        @SocketRetryOnFailure(
-            retries=3,
-            base_delay=2,
             rest_client=ForeignExchangeRestAPI(),
-            symbol=symbol,
-            uri=uri,
-            subs=subs_fmt,
         )
-        async def connection() -> None:
-            async with websockets.connect(
-                uri, ping_interval=30.0, ping_timeout=60.0
-            ) as websocket:
-                await self.socket_param_send(websocket, subs_fmt)
-                await self.handle_connection(websocket, uri)
-                await self.handle_message(websocket, uri, symbol, socket_type)
-
-        await connection()
