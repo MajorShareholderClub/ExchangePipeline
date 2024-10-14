@@ -10,7 +10,7 @@ from aiokafka.errors import NoBrokersAvailable, KafkaProtocolError, KafkaConnect
 from kafka.partitioner.default import DefaultPartitioner
 from mq.data_partitional import (
     CoinHashingCustomPartitional,
-    ImprovedExchangeDataPartitioner,
+    CoinSocketDataCustomPartition,
 )
 from common.utils.logger import AsyncLogger
 from common.setting.properties import (
@@ -34,7 +34,11 @@ class KafkaConfig(TypedDict):
     security_protocol: str
     max_batch_size: int
     max_request_size: int
-    partitioner: DefaultPartitioner | CoinHashingCustomPartitional
+    partitioner: (
+        DefaultPartitioner
+        | CoinHashingCustomPartitional
+        | CoinSocketDataCustomPartition
+    )
     acks: str | int
     value_serializer: Callable[[Any], bytes]
     key_serializer: Callable[[Any], bytes]
@@ -50,7 +54,7 @@ class KafkaMessageSender:
     """
 
     def __init__(
-        self, partition_pol: Callable = ImprovedExchangeDataPartitioner()
+        self, partition_pol: Callable = CoinSocketDataCustomPartition()
     ) -> None:
         self.except_list: defaultdict[Any, list] = defaultdict(list)
         self.producer = None  # Producer를 클래스 속성으로 저장
@@ -87,16 +91,10 @@ class KafkaMessageSender:
     async def produce_sending(
         self,
         message: dict,
-        market_name: str,
-        key: Any,
-        symbol: str,
-        request_type: str,
-        type_: str,
+        topic: str,
+        key: str
     ):
         await self.start_producer()
-
-        topic = f"{symbol.lower()}{type_}{market_name}"
-        key: str = f"{key}_{symbol}_{request_type}"
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록

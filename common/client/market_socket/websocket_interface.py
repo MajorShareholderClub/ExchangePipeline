@@ -15,11 +15,14 @@ from common.core.types import (
 from common.exception import SocketRetryOnFailure
 from common.utils.logger import AsyncLogger
 from common.core.abstract import WebsocketConnectionAbstract
+from common.setting.properties import (
+    KOREA_REAL_TOPIC_NAME,
+    FOREIGN_REAL_TOPIC_NAME,
+)
 
 socket_protocol = websockets.WebSocketClientProtocol
 
 
-# fmt: off
 def market_name_extract(uri: str) -> str:
     """소켓 에서 마켓 이름 추출하는 메서드"""
     # 'wss://' 제거
@@ -33,13 +36,13 @@ def market_name_extract(uri: str) -> str:
     return uri_parts[1].upper()
 
 
-
 # socket
 class BaseMessageDataPreprocessing:
     def __init__(self, type_: str, location: str) -> None:
         self._logger = AsyncLogger(
             target=f"{type_}_websocket", folder=f"websocket_{location}"
         )
+        self.location = location
         self.message_by_data = defaultdict(list)
         self.message_async_q = asyncio.Queue()
 
@@ -62,24 +65,27 @@ class BaseMessageDataPreprocessing:
         socket_type: str,
     ) -> None:
         try:
-            await self._logger.log_message(
-                logging.INFO, message=f"{market} -- {message}"
-            )
+            # await self._logger.log_message(
+            #     logging.INFO, message=f"{market} -- {message}"
+            # )
             self.message_by_data[market].append(message)
-            if len(self.message_by_data[market]) >= 1:
-                data = SocketLowData(
-                    market=market,
-                    uri=uri,
-                    symbol=symbol,
-                    data=self.message_by_data[market],
-                )
+
+            if self.location.lower() == "korea":
+                topic = f"{KOREA_REAL_TOPIC_NAME}{symbol.upper()}"
+            else:
+                topic = f"{FOREIGN_REAL_TOPIC_NAME}{symbol.upper()}"
+
+            key: str = f"{market}:{socket_type}"
+            if len(self.message_by_data[market]) >= 100:
                 await KafkaMessageSender().produce_sending(
-                    key=market,
-                    message=data,
-                    market_name=market,
-                    symbol=symbol,
-                    request_type=socket_type,
-                    type_=f"SocketDataIn",
+                    message=SocketLowData(
+                        market=market,
+                        uri=uri,
+                        symbol=symbol,
+                        data=self.message_by_data[market],
+                    ),
+                    topic=topic,
+                    key=key,
                 )
                 self.message_by_data[market].clear()
         except (TypeError, KeyError) as error:

@@ -4,8 +4,13 @@ numpy
 confluent-kafka
 pydantic
 websocket
+websockets
 websocket-client
 aiokafka
 cctx
 kafka-python-ng
+kafka-python
 mmh3
+pyyaml
+aiohttp
+setuptools

@@ -1,8 +1,28 @@
 from kafka.partitioner.default import DefaultPartitioner, murmur2
 
-from typing import Optional
+from typing import Optional, TypedDict
 import random
 import mmh3
+
+
+class ExchangeMapping(TypedDict):
+    ticker: int
+    orderbook: int
+
+
+class KoreaPartitionMapping(TypedDict):
+    upbit: ExchangeMapping
+    bithumb: ExchangeMapping
+    coinone: ExchangeMapping
+    korbit: ExchangeMapping
+
+
+class ForeignPartitionMapping(TypedDict):
+    binance: ExchangeMapping
+    kraken: ExchangeMapping
+    okx: ExchangeMapping
+    bybit: ExchangeMapping
+    gateio: ExchangeMapping
 
 
 class CoinHashingCustomPartitional(DefaultPartitioner):
@@ -42,40 +62,52 @@ class CoinHashingCustomPartitional(DefaultPartitioner):
             return random.choice(all_partitions)
 
 
-class ImprovedExchangeDataPartitioner(DefaultPartitioner):
-    def __init__(self):
-        self.exchange_ids = {
-            "upbit": 0,
-            "bithumb": 1,
-            "coinone": 2,
-            "korbit": 3,
-            # 해외 거래소 추가
-        }
-        self.data_type_ids = {"ticker": 0, "orderbook": 1}
+class CoinSocketDataCustomPartition(DefaultPartitioner):
+    KOREA_PARTITION_MAPPING = KoreaPartitionMapping(
+        upbit=ExchangeMapping(ticker=0, orderbook=1),
+        bithumb=ExchangeMapping(ticker=2, orderbook=3),
+        coinone=ExchangeMapping(ticker=4, orderbook=5),
+        korbit=ExchangeMapping(ticker=6, orderbook=7),
+    )
 
-    def __call__(
-        self, key: Optional[str], all_partitions: list[int], available: list[int]
-    ):
-        if key is None:
-            return super().__call__(key, all_partitions, available)
+    FOREIGN_PARTITION_MAPPING = ForeignPartitionMapping(
+        binance=ExchangeMapping(ticker=0, orderbook=1),
+        kraken=ExchangeMapping(ticker=2, orderbook=3),
+        okx=ExchangeMapping(ticker=4, orderbook=5),
+        bybit=ExchangeMapping(ticker=6, orderbook=7),
+        gateio=ExchangeMapping(ticker=8, orderbook=9),
+    )
 
+    @classmethod
+    def __call__(cls, key: str, all_partitions: list[int], available: list[int]) -> int:
         try:
-            key_str = key.encode("utf-8")  # 문자열을 bytes로 변환
-            exchange, data_type, _ = key_str.split("_")
-            exchange_id = self.exchange_ids.get(exchange, len(self.exchange_ids))
-            data_type_id = self.data_type_ids.get(data_type, 0)
+            decoded_key = key.decode()
+            ex_keys = decoded_key.split(":")
+            exchange = ex_keys[0].strip('"').lower()
+            data_type = ex_keys[1].strip('"').lower()
 
-            # 파티션 계산 로직 변경
-            partition_count = len(all_partitions)
-            exchange_partition_count = (
-                partition_count // 2
-            )  # 각 데이터 타입당 파티션 수
+            # 한국 거래소 매핑 체크
+            if exchange in cls.KOREA_PARTITION_MAPPING:
+                partition_mapping = cls.KOREA_PARTITION_MAPPING[exchange]
+            # 외국 거래소 매핑 체크
+            elif exchange in cls.FOREIGN_PARTITION_MAPPING:
+                partition_mapping = cls.FOREIGN_PARTITION_MAPPING[exchange]
 
-            base_partition = (exchange_id * 2 + data_type_id) % exchange_partition_count
-            final_partition = base_partition + (data_type_id * exchange_partition_count)
+            # 데이터 타입에 따른 파티션 선택
+            if data_type == "ticker":
+                partition = partition_mapping[data_type]
+            elif data_type == "orderbook":
+                partition = partition_mapping[data_type]
+            else:
+                raise ValueError(f"Unknown data type: {data_type}")
 
-            return final_partition % partition_count
+            # 사용 가능한 파티션 목록 중에서 선택
+            if partition in available:
+                return partition
+            else:
+                # 해당 파티션이 사용 불가능할 경우 fallback
+                return available[0]
 
-        except Exception:
-            # 키 형식이 잘못되었거나 예상치 못한 오류 발생 시 기본 파티셔너 사용
-            return mmh3.hash(key) % len(all_partitions)
+        except Exception as e:
+            print(f"파티션 오류 {key}: {e}")
+            return random.choice(all_partitions)
