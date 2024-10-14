@@ -14,6 +14,7 @@ class ExchangeRestAPI(BaseExchangeRestAPI):
     """한국거래소 API"""
 
     def __init__(self, location: str) -> None:
+        super().__init__(location=location)
         self.location = location
 
     def create_schema(self, market_result: list[ExchangeData]) -> dict:
@@ -48,14 +49,14 @@ class ExchangeRestAPI(BaseExchangeRestAPI):
                 i = 0  # 카운터 초기화
 
 
-class KoreaExchangeRestAPI(BaseExchangeRestAPI):
+class KoreaExchangeRestAPI(ExchangeRestAPI):
     """한국거래소 API"""
 
     def __init__(self) -> None:
         super().__init__(location="korea")
 
 
-class ForeignExchangeRestAPI(BaseExchangeRestAPI):
+class ForeignExchangeRestAPI(ExchangeRestAPI):
     """해외거래소 API"""
 
     def __init__(self) -> None:

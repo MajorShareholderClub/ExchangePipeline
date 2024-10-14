@@ -1,3 +1,5 @@
+from abc import abstractmethod
+
 import time
 import logging
 
@@ -7,7 +9,7 @@ import asyncio
 from typing import Any
 from config.yml_param_load import RestMarketLoader
 
-from common.core.types import ExchangeData, KoreaCoinMarketData
+from common.core.types import ExchangeData
 from common.core.data_format import CoinMarketData
 from common.utils.logger import AsyncLogger
 
@@ -76,10 +78,13 @@ class BaseExchangeRestAPI(CoinPresentPriceClient):
         ]
         return await asyncio.gather(*tasks, return_exceptions=True)
 
+    @abstractmethod
+    def create_schema(self, market_result: list[ExchangeData]) -> dict: ...
+
     async def _log_market_schema(self, coin_symbol: str) -> None:
         """공통 로깅 함수"""
         market_result = await self.fetch_market_data(coin_symbol)
-        schema: KoreaCoinMarketData = self.create_schema(market_result)
+        schema = self.create_schema(market_result)
         await self.logging.log_message(logging.INFO, message=schema)
 
         return schema
