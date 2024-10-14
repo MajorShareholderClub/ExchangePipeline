@@ -3,21 +3,25 @@ Coin async present price kafka data streaming
 """
 
 import asyncio
-from common.core.data_format import KoreaCoinMarket
-from common.core.types import KoreaCoinMarketData, ExchangeData
+from common.core.data_format import KoreaCoinMarket, ForeignCoinMarket
+from common.core.types import ExchangeCollection, ExchangeData
 from common.client.market_rest.rest_interface import BaseExchangeRestAPI
 from mq.data_interaction import KafkaMessageSender
 from mq.data_partitional import CoinHashingCustomPartitional
 
 
-class KoreaExchangeRestAPI(BaseExchangeRestAPI):
+class ExchangeRestAPI(BaseExchangeRestAPI):
     """한국거래소 API"""
 
-    def __init__(self) -> None:
-        super().__init__(location="korea")
+    def __init__(self, location: str) -> None:
+        self.location = location
 
-    def create_schema(self, market_result: list[ExchangeData]) -> KoreaCoinMarketData:
-        return KoreaCoinMarket(
+    def create_schema(self, market_result: list[ExchangeData]) -> dict:
+        market_classes: ExchangeCollection = {
+            "korea": KoreaCoinMarket,
+            "foreign": ForeignCoinMarket,
+        }
+        return market_classes[self.location](
             **dict(zip(self.market_env.keys(), market_result)),
         ).model_dump()
 
@@ -25,7 +29,6 @@ class KoreaExchangeRestAPI(BaseExchangeRestAPI):
         i = 0
         while True:
             message = await self._log_market_schema(coin_symbol)
-            await asyncio.sleep(interval)
             await KafkaMessageSender(
                 partition_pol=CoinHashingCustomPartitional()
             ).produce_sending(
@@ -34,7 +37,7 @@ class KoreaExchangeRestAPI(BaseExchangeRestAPI):
                 symbol=coin_symbol,
                 type_="RestDataIn",
                 request_type="rest",
-                key="Korea-Total",
+                key=f"{self.location}-Total",
             )
             i += 1
 
@@ -43,3 +46,17 @@ class KoreaExchangeRestAPI(BaseExchangeRestAPI):
                 print("100번 호출 후 10초 대기합니다.")
                 await asyncio.sleep(10)  # 10초 대기
                 i = 0  # 카운터 초기화
+
+
+class KoreaExchangeRestAPI(BaseExchangeRestAPI):
+    """한국거래소 API"""
+
+    def __init__(self) -> None:
+        super().__init__(location="korea")
+
+
+class ForeignExchangeRestAPI(BaseExchangeRestAPI):
+    """해외거래소 API"""
+
+    def __init__(self) -> None:
+        super().__init__(location="foreign")

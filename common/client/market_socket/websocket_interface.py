@@ -35,7 +35,7 @@ def market_name_extract(uri: str) -> str:
 
 
 # socket
-class MessageDataPreprocessing:
+class BaseMessageDataPreprocessing:
     def __init__(self, type_: str, location: str) -> None:
         self._logger = AsyncLogger(
             target=f"{type_}_websocket", folder=f"websocket_{location}"
@@ -106,7 +106,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         self,
         target: str,
         folder: str,
-        process: MessageDataPreprocessing,
+        process: BaseMessageDataPreprocessing,
         rest_client: SocketRetryOnFailure,
     ) -> None:
         self._logger = AsyncLogger(target=target, folder=folder)

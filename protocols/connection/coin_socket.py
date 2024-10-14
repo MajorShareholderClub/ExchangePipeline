@@ -1,20 +1,22 @@
 import json
 import websockets
 
-from korea.connection.korea_rest_connect import KoreaExchangeRestAPI
 from common.core.types import ExchangeResponseData
 from common.client.market_socket.websocket_interface import (
     WebsocketConnectionManager,
-    MessageDataPreprocessing,
+    BaseMessageDataPreprocessing,
 )
-
+from protocols.connection.coin_rest_api import (
+    ForeignExchangeRestAPI,
+    KoreaExchangeRestAPI,
+)
 
 socket_protocol = websockets.WebSocketClientProtocol
 
 
-class KoreaMessageDataPreprocessing(MessageDataPreprocessing):
-    def __init__(self) -> None:
-        super().__init__(type_="socket", location="korea")
+class MessageDataPreprocessing(BaseMessageDataPreprocessing):
+    def __init__(self, location: str) -> None:
+        super().__init__(type_="socket", location=location)
 
     def process_exchange(
         self, market: str, message: ExchangeResponseData
@@ -30,14 +32,22 @@ class KoreaMessageDataPreprocessing(MessageDataPreprocessing):
         # fmt: off
         filters = {
             "coinone": lambda msg: msg.get("response_type") != "SUBSCRIBED" and msg.get("data"),
-            "korbit": lambda msg: msg.get("event") != 'korbit:subscribe' and msg.get("data")
+            "korbit": lambda msg: msg.get("event") != "korbit:subscribe" and msg.get("data"),
         }
+
         # 해당 거래소에 대한 필터가 정의되어 있는지 확인
         filter_function = filters.get(market)
-        if filter_function:
-            result = filters[market](message)
-            if result:
-                return result
+
+        if isinstance(message, dict):
+            # 'arg' 키가 존재하면 삭제하고 'data'로 변경
+            if "arg" in message:
+                del message["arg"]
+                message = message.get("data", {})  # 'data'가 없으면 빈 dict 반환
+            else:
+                # 필터링 적용
+                if filter_function and filter_function(message):
+                    return message
+
         return message
 
     async def put_message_to_logging(
@@ -53,13 +63,26 @@ class KoreaMessageDataPreprocessing(MessageDataPreprocessing):
         await super().put_message_to_logging(uri, symbol, process)
 
 
+class ForeignWebsocketConnection(WebsocketConnectionManager):
+    """웹소켓 승인 전송 로직"""
+
+    def __init__(self, location="foreign") -> None:
+        self.location = location
+        super().__init__(
+            target="foreign",
+            folder="foreign",
+            process=MessageDataPreprocessing(location=location),
+            rest_client=ForeignExchangeRestAPI(),
+        )
+
+
 class KoreaWebsocketConnection(WebsocketConnectionManager):
     """웹소켓 승인 전송 로직"""
 
-    def __init__(self) -> None:
+    def __init__(self, location="korea") -> None:
         super().__init__(
             target="korea",
             folder="korea",
-            process=KoreaMessageDataPreprocessing(),
+            process=MessageDataPreprocessing(location=location),
             rest_client=KoreaExchangeRestAPI(),
         )

@@ -12,19 +12,19 @@ from .types import (
     WorldMarket,
     WorldMarketsRequestType,
 )
-from korea.client.rest_korea_exchange import (
+from protocols.client.korea.rest_korea_exchange import (
     UpbitRest,
     BithumbRest,
     CoinoneRest,
     KorbitRest,
 )
-from korea.client.socket_korea_exchange import (
+from protocols.client.korea.socket_korea_exchange import (
     UpbitSocket,
     BithumbSocket,
     CoinoneSocket,
     KorbitSocket,
 )
-from foreign.client.rest_foreign_exchange import (
+from protocols.client.foreign.rest_foreign_exchange import (
     BinanceRest,
     KrakenRest,
     OKXRest,
@@ -32,7 +32,7 @@ from foreign.client.rest_foreign_exchange import (
     GateIORest,
     CoinbaseRest,
 )
-from foreign.client.socket_foreign_exchange import (
+from protocols.client.foreign.socket_foreign_exchange import (
     KrakenSocket,
     OKXSocket,
     GateIOSocket,

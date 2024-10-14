@@ -48,6 +48,8 @@ class SocketLowData(TypedDict):
     data: dict | list
 
 
+ExchangeCollection = dict[str, KoreaCoinMarketData | ForeignCoinMarketData]
+
 """
 -----------------------------
 |  websocket parameter Type |

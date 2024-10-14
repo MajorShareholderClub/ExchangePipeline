@@ -12,7 +12,7 @@ from common.setting.socket_parameter import (
 
 class CoinExchangeSocketConnection(AbstractExchangeSocketClient):
     async def get_present_websocket(self, symbol: str, socket_type: str) -> None:
-        from korea.connection.korea_websocket_connect import (
+        from protocols.connection.coin_socket import (
             KoreaWebsocketConnection as WCM,
         )
 

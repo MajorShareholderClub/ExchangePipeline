@@ -1,5 +1,3 @@
-from abc import ABC, abstractmethod
-
 import time
 import logging
 
@@ -67,11 +65,8 @@ class CoinPresentPriceClient:
         return market_data_architecture
 
 
-class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
+class BaseExchangeRestAPI(CoinPresentPriceClient):
     """기본 거래소 API"""
-
-    def __init__(self, location: str) -> None:
-        super().__init__(location=location)
 
     async def fetch_market_data(self, symbol: str) -> list[ExchangeData | Exception]:
         """시장 데이터 가져오기"""
@@ -81,11 +76,6 @@ class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
         ]
         return await asyncio.gather(*tasks, return_exceptions=True)
 
-    @abstractmethod
-    def create_schema(self, market_result: list[ExchangeData]) -> Any:
-        """스키마 생성 메서드"""
-        raise NotImplementedError("메서드 구현 필수 입니다")
-
     async def _log_market_schema(self, coin_symbol: str) -> None:
         """공통 로깅 함수"""
         market_result = await self.fetch_market_data(coin_symbol)
@@ -93,8 +83,3 @@ class BaseExchangeRestAPI(CoinPresentPriceClient, ABC):
         await self.logging.log_message(logging.INFO, message=schema)
 
         return schema
-
-    @abstractmethod
-    async def total_pull_request(self, coin_symbol: str, interval: int = 1) -> None:
-        """Rest 시작점"""
-        raise NotImplementedError("메서드 구현 필수 입니다")

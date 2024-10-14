@@ -17,7 +17,7 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
     async def get_present_websocket(
         self, symbol: str, req_type: str, socket_type: str
     ) -> None:
-        from foreign.connection.foreign_websocket_connect import (
+        from protocols.connection.coin_socket import (
             ForeignWebsocketConnection as WCM,
         )
 
@@ -113,3 +113,5 @@ class CoinbaseSocket(CoinExchangeSocketClient):
         return await super().get_present_websocket(
             symbol, req_type="ticker", socket_type=self.ticker
         )
+
+    async def orderbook_present_websocket(self, symbol: str) -> None: ...
