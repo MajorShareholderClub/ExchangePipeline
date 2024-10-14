@@ -65,9 +65,9 @@ class BaseMessageDataPreprocessing:
         socket_type: str,
     ) -> None:
         try:
-            # await self._logger.log_message(
-            #     logging.INFO, message=f"{market} -- {message}"
-            # )
+            await self._logger.log_message(
+                logging.INFO, message=f"{market} -- {message}"
+            )
             self.message_by_data[market].append(message)
 
             if self.location.lower() == "korea":
