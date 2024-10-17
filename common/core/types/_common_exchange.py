@@ -1,6 +1,7 @@
 import uuid
 from typing import TypedDict, NewType
 from decimal import Decimal
+from dataclasses import dataclass
 
 
 # request Type
@@ -43,9 +44,16 @@ class ForeignCoinMarketData(TypedDict):
 
 class SocketLowData(TypedDict):
     market: str
-    uri: str
     symbol: str
     data: dict | list
+
+
+class ProducerMetadataDict(TypedDict):
+    market: str
+    symbol: str
+    couting: int
+    topic: str
+    key: str
 
 
 ExchangeCollection = dict[str, KoreaCoinMarketData | ForeignCoinMarketData]

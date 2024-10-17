@@ -1,0 +1,7 @@
+kafka:
+  clusters:
+    -
+      bootstrapServers: kafka1:19092,kafka2:29092,kafka3:39092
+      # metrics:
+      #   port: 9997
+      #   type: JMX
