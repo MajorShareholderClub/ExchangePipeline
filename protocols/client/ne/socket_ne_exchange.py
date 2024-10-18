@@ -15,7 +15,7 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
         self, symbol: str, req_type: str, socket_type: str
     ) -> None:
         from protocols.connection.coin_socket import (
-            ForeignWebsocketConnection as WCM,
+            NEWebsocketConnection as WCM,
         )
 
         """소켓 출발점"""

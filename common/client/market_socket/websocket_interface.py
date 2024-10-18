@@ -132,11 +132,11 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         target: str,
         folder: str,
         process: Callable,
-        # rest_client: SocketRetryOnFailure,
+        rest_client: SocketRetryOnFailure,
     ) -> None:
         self._logger = AsyncLogger(target=target, folder=folder)
         self.process = process
-        # self.rest_client = rest_client
+        self.rest_client = rest_client
 
     async def socket_param_send(
         self, websocket: socket_protocol, subs_fmt: SubScribeFormat
@@ -190,14 +190,14 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
     ) -> None:
         """말단 소켓 시작 지점"""
 
-        # @SocketRetryOnFailure(
-        #     retries=3,
-        #     base_delay=2,
-        #     rest_client=self.rest_client,
-        #     symbol=symbol,
-        #     uri=uri,
-        #     subs=subs_fmt,
-        # )
+        @SocketRetryOnFailure(
+            retries=3,
+            base_delay=2,
+            rest_client=self.rest_client,
+            symbol=symbol,
+            uri=uri,
+            subs=subs_fmt,
+        )
         async def connection():
             async with websockets.connect(
                 uri, ping_interval=30.0, ping_timeout=60.0

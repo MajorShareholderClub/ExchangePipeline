@@ -7,8 +7,9 @@ from common.client.market_socket.websocket_interface import (
     BaseMessageDataPreprocessing,
 )
 from protocols.connection.coin_rest_api import (
-    ForeignExchangeRestAPI,
+    AsiaxchangeRestAPI,
     KoreaExchangeRestAPI,
+    NEExchangeRestAPI,
 )
 
 socket_protocol = websockets.WebSocketClientProtocol
@@ -25,16 +26,29 @@ class MessageDataPreprocessing(BaseMessageDataPreprocessing):
         await super().put_message_to_logging(market, symbol, message)
 
 
-class ForeignWebsocketConnection(WebsocketConnectionManager):
+class AsiaWebsocketConnection(WebsocketConnectionManager):
     """웹소켓 승인 전송 로직"""
 
-    def __init__(self, location="foreign") -> None:
+    def __init__(self, location="asia") -> None:
         self.location = location
         super().__init__(
-            target="foreign",
-            folder="foreign",
+            target="asia",
+            folder="asia",
             process=MessageDataPreprocessing(location=location),
-            # rest_client=ForeignExchangeRestAPI(),
+            rest_client=AsiaxchangeRestAPI(),
+        )
+
+
+class NEWebsocketConnection(WebsocketConnectionManager):
+    """웹소켓 승인 전송 로직"""
+
+    def __init__(self, location="ne") -> None:
+        self.location = location
+        super().__init__(
+            target="ne",
+            folder="ne",
+            process=MessageDataPreprocessing(location=location),
+            rest_client=NEExchangeRestAPI(),
         )
 
 
