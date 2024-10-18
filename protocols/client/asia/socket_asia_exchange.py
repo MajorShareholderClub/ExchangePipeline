@@ -4,12 +4,9 @@
 
 from common.core.abstract import AbstractExchangeSocketClient
 from common.setting.socket_parameter import (
-    binance_socket_paramater,
-    kraken_socket_parameter,
     okx_socket_parameter,
     gateio_socket_parameter,
     bybit_socket_parameter,
-    coinbase_socket_parameter,
 )
 
 
@@ -18,7 +15,7 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
         self, symbol: str, req_type: str, socket_type: str
     ) -> None:
         from protocols.connection.coin_socket import (
-            ForeignWebsocketConnection as WCM,
+            AsiaWebsocketConnection as WCM,
         )
 
         """소켓 출발점"""
@@ -30,39 +27,11 @@ class CoinExchangeSocketClient(AbstractExchangeSocketClient):
         )
 
 
-class BinanceSocket(CoinExchangeSocketClient):
-    def __init__(self) -> None:
-        super().__init__(target="binance", socket_parameter=binance_socket_paramater)
-
-    async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(
-            symbol, req_type="ticker", socket_type=self.ticker
-        )
-
-    async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(
-            symbol, req_type="depth20", socket_type=self.orderbook
-        )
-
-
-class KrakenSocket(CoinExchangeSocketClient):
-    def __init__(self) -> None:
-        super().__init__(target="kraken", socket_parameter=kraken_socket_parameter)
-
-    async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(
-            symbol, req_type="ticker", socket_type=self.ticker
-        )
-
-    async def orderbook_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(
-            symbol, req_type="book", socket_type=self.orderbook
-        )
-
-
 class GateIOSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
-        super().__init__(target="gateio", socket_parameter=gateio_socket_parameter)
+        super().__init__(
+            target="gateio", location="asia", socket_parameter=gateio_socket_parameter
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(
@@ -77,7 +46,9 @@ class GateIOSocket(CoinExchangeSocketClient):
 
 class OKXSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
-        super().__init__(target="okx", socket_parameter=okx_socket_parameter)
+        super().__init__(
+            target="okx", location="asia", socket_parameter=okx_socket_parameter
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(
@@ -92,7 +63,9 @@ class OKXSocket(CoinExchangeSocketClient):
 
 class ByBitSocket(CoinExchangeSocketClient):
     def __init__(self) -> None:
-        super().__init__(target="bybit", socket_parameter=bybit_socket_parameter)
+        super().__init__(
+            target="bybit", location="asia", socket_parameter=bybit_socket_parameter
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(
@@ -103,15 +76,3 @@ class ByBitSocket(CoinExchangeSocketClient):
         return await super().get_present_websocket(
             symbol, req_type="orderbook", socket_type=self.orderbook
         )
-
-
-class CoinbaseSocket(CoinExchangeSocketClient):
-    def __init__(self) -> None:
-        super().__init__(target="coinbase", socket_parameter=coinbase_socket_parameter)
-
-    async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(
-            symbol, req_type="ticker", socket_type=self.ticker
-        )
-
-    async def orderbook_present_websocket(self, symbol: str) -> None: ...

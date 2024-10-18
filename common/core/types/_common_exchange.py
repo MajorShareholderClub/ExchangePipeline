@@ -1,7 +1,23 @@
 import uuid
-from typing import TypedDict, NewType
+from typing import TypedDict, NewType, Generic, TypeVar, Union
 from decimal import Decimal
-from dataclasses import dataclass
+
+
+T = TypeVar("T")  # 성공 타입
+E = TypeVar("E")  # 오류 타입
+
+
+class Ok(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Err(Generic[E]):
+    def __init__(self, error: E) -> None:
+        self.error = error
+
+
+Result = Union[Ok[T], Err[E]]
 
 
 # request Type
@@ -53,7 +69,6 @@ class SocketLowData(TypedDict):
 class ProducerMetadataDict(TypedDict):
     market: str
     symbol: str
-    couting: int
     topic: str
     key: str
 
@@ -107,6 +122,8 @@ class KorbitSocketParameter(TypedDict):
     data: KorbitChannelParameter
 
 
+# ------------------------------------------------------------------
+# --------------------------파라미터 정의-------------------------------
 # ------------------------------------------------------------------
 
 
@@ -167,3 +184,40 @@ SubScribeFormat = (
     | BybitSocketParameter
     | CoinbaseSocketParameter
 )
+
+# ------------------------------------------------------------------
+# -----------------------------거래소 주소 매핑----------------------------
+# ------------------------------------------------------------------
+
+
+# 각 거래소에 대한 타입 정의
+class ResponseExchangeURL(TypedDict):
+    socket: str
+    rest: str
+
+
+# 각 지역에 대한 URL 구조 정의
+class RegionURLs(TypedDict):
+    upbit: ResponseExchangeURL
+    bithumb: ResponseExchangeURL
+    korbit: ResponseExchangeURL
+    coinone: ResponseExchangeURL
+
+
+class AsiaRegionURLs(TypedDict):
+    okx: ResponseExchangeURL
+    gateio: ResponseExchangeURL
+    bybit: ResponseExchangeURL
+
+
+class NERegionURLs(TypedDict):
+    binance: ResponseExchangeURL
+    kraken: ResponseExchangeURL
+    coinbase: ResponseExchangeURL
+
+
+# 전체 URL 구조 정의
+class URLs(TypedDict):
+    korea: RegionURLs
+    asia: AsiaRegionURLs
+    ne: NERegionURLs

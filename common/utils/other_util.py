@@ -1,6 +1,7 @@
 from common.setting.properties import (
     KOREA_REAL_TOPIC_NAME,
-    FOREIGN_REAL_TOPIC_NAME,
+    ASIA_REAL_TOPIC_NAME,
+    NE_REAL_TOPIC_NAME,
 )
 
 
@@ -21,4 +22,6 @@ def get_topic_name(location: str, symbol: str) -> str:
     """토픽 이름을 결정하는 로직을 처리"""
     if location.lower() == "korea":
         return f"{KOREA_REAL_TOPIC_NAME}{symbol.upper()}"
-    return f"{FOREIGN_REAL_TOPIC_NAME}{symbol.upper()}"
+    elif location.lower() == "ne":
+        return f"{NE_REAL_TOPIC_NAME}{symbol.upper()}"
+    return f"{ASIA_REAL_TOPIC_NAME}{symbol.upper()}"

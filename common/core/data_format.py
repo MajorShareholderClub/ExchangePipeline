@@ -132,12 +132,17 @@ class KoreaCoinMarket(CoinMarketValidationBase):
     korbit: CoinMarketData | bool
 
 
-class ForeignCoinMarket(CoinMarketValidationBase):
+class AsiaCoinMarket(CoinMarketValidationBase):
+    """해외 거래소 데이터 모델"""
+
+    okx: CoinMarketData | bool
+    bybit: CoinMarketData | bool
+    gateio: CoinMarketData | bool
+
+
+class NECoinMarket(CoinMarketValidationBase):
     """해외 거래소 데이터 모델"""
 
     binance: CoinMarketData | bool
     kraken: CoinMarketData | bool
-    okx: CoinMarketData | bool
-    bybit: CoinMarketData | bool
-    gateio: CoinMarketData | bool
     coinbase: CoinMarketData | bool

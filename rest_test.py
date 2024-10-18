@@ -5,7 +5,8 @@ Rest Test
 import asyncio
 from protocols.connection.coin_rest_api import (
     KoreaExchangeRestAPI,
-    ForeignExchangeRestAPI,
+    AsiaxchangeRestAPI,
+    NEExchangeRestAPI,
 )
 
 
@@ -13,7 +14,7 @@ async def f_btc_present_start() -> None:
     """
     bitcoin kafak stream
     """
-    await ForeignExchangeRestAPI().total_pull_request("BTC")
+    await AsiaxchangeRestAPI().total_pull_request("BTC")
 
 
 async def k_btc_present_start() -> None:

@@ -7,6 +7,7 @@ import websockets
 import asyncio
 
 from typing import Any
+
 from config.yml_param_load import RestMarketLoader
 
 from common.core.types import ExchangeData

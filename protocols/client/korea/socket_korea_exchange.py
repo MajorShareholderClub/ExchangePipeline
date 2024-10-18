@@ -27,7 +27,11 @@ class CoinExchangeSocketConnection(AbstractExchangeSocketClient):
 
 class UpbitSocket(CoinExchangeSocketConnection):
     def __init__(self) -> None:
-        super().__init__(target="upbit", socket_parameter=upbithumb_socket_parameter)
+        super().__init__(
+            target="upbit",
+            location="korea",
+            socket_parameter=upbithumb_socket_parameter,
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, socket_type=self.ticker)
@@ -38,7 +42,11 @@ class UpbitSocket(CoinExchangeSocketConnection):
 
 class BithumbSocket(CoinExchangeSocketConnection):
     def __init__(self) -> None:
-        super().__init__(target="bithumb", socket_parameter=upbithumb_socket_parameter)
+        super().__init__(
+            target="bithumb",
+            location="korea",
+            socket_parameter=upbithumb_socket_parameter,
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, socket_type=self.ticker)
@@ -49,7 +57,11 @@ class BithumbSocket(CoinExchangeSocketConnection):
 
 class CoinoneSocket(CoinExchangeSocketConnection):
     def __init__(self) -> None:
-        super().__init__(target="coinone", socket_parameter=coinone_socket_parameter)
+        super().__init__(
+            target="coinone",
+            location="korea",
+            socket_parameter=coinone_socket_parameter,
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, socket_type=self.ticker)
@@ -60,7 +72,11 @@ class CoinoneSocket(CoinExchangeSocketConnection):
 
 class KorbitSocket(CoinExchangeSocketConnection):
     def __init__(self) -> None:
-        super().__init__(target="korbit", socket_parameter=korbit_socket_parameter)
+        super().__init__(
+            target="korbit",
+            location="korea",
+            socket_parameter=korbit_socket_parameter,
+        )
 
     async def price_present_websocket(self, symbol: str) -> None:
         return await super().get_present_websocket(symbol, socket_type=self.ticker)

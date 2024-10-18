@@ -1,5 +1,6 @@
 import json
 import logging
+import traceback
 from typing import Callable
 from collections import defaultdict
 
@@ -85,6 +86,8 @@ class BaseMessageDataPreprocessing:
             """메시지와 담을 default_data 선택하여 보내기"""
             kafka_metadata["default_data"] = default_data
             kafka_metadata["message"] = msg
+            kafka_metadata["couting"] = 10
+
             await self.producer_sending(**kafka_metadata)
 
         # 크라켄 메시지 처리
@@ -109,7 +112,6 @@ class BaseMessageDataPreprocessing:
             producer_metadata = ProducerMetadataDict(
                 market=market,
                 symbol=symbol,
-                couting=100,
                 topic=get_topic_name(self.location, symbol),
                 key=f"{market}:{socket_type}",
             )
@@ -148,35 +150,45 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         sub = json.dumps(subs_fmt)
         await websocket.send(sub)
 
-    async def handle_connection(self, websocket: socket_protocol, uri: str) -> None:
-        """웹 소켓 커넥션 확인 함수
-        Args:
-            websocket: 소켓 연결
-            uri: 각 uri들
-        """
-        message: str = await asyncio.wait_for(websocket.recv(), timeout=30.0)
-        data = json.loads(message)
+    async def handle_message(
+        self,
+        websocket: socket_protocol,
+        uri: str,
+        symbol: str = None,
+        socket_type: str = None,
+    ) -> None:
+        """웹 소켓 커넥션 및 메시지 전송 처리"""
         market: str = market_name_extract(uri=uri)
-        if data:
+
+        # 커넥션 초기 메시지 수신
+        initial_message: str = await self.receive_message(websocket)
+        if initial_message:
             await self._logger.log_message(logging.INFO, f"{market} 연결 완료")
 
-    async def handle_message(
-        self, websocket: socket_protocol, uri: str, symbol: str, socket_type: str
-    ) -> None:
-        """메시지 전송하는 메서드"""
         while True:
             try:
-                market: str = market_name_extract(uri=uri)
-                message: ExchangeResponseData = await asyncio.wait_for(
-                    websocket.recv(), timeout=30.0
-                )
-                await self.process.put_message_to_logging(
-                    message=message, uri=uri, symbol=symbol, market=market
-                )
-                await self.process.producing_start(socket_type=socket_type)
+                # 메시지 수신
+                message = await self.receive_message(websocket)
+                if message:
+                    await self.process.put_message_to_logging(
+                        message=message, uri=uri, symbol=symbol
+                    )
+                    if socket_type:
+                        await self.process.producing_start(socket_type=socket_type)
             except (TypeError, ValueError) as error:
-                message = f"다음과 같은 이유로 실행하지 못했습니다 --> {error}"
-                await self._logger.log_message(logging.ERROR, message)
+                await self._logger.log_message(
+                    logging.ERROR,
+                    f"다음과 같은 이유로 실행하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.print_exc()}",
+                )
+
+    async def receive_message(self, websocket: socket_protocol) -> ExchangeResponseData:
+        """메시지를 수신하고 JSON으로 변환하는 메서드"""
+        try:
+            message: bytes = await asyncio.wait_for(websocket.recv(), timeout=30.0)
+            return json.loads(message) if isinstance(message, bytes) else message
+        except (TypeError, ValueError) as error:
+            message = f"다음과 같은 이유로 메시지 수신하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.print_exc()}"
+            await self._logger.log_message(logging.ERROR, message)
 
     async def websocket_to_json(
         self,
@@ -200,7 +212,6 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                 uri, ping_interval=30.0, ping_timeout=60.0
             ) as websocket:
                 await self.socket_param_send(websocket, subs_fmt)
-                await self.handle_connection(websocket, uri)
                 await self.handle_message(websocket, uri, symbol, socket_type)
 
         await connection()
