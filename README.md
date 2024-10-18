@@ -90,7 +90,7 @@ python socket_test.py
 │   ├── 🐍 data_admin.py         # 데이터 관리 모듈
 │   ├── 🐍 data_interaction.py   # 데이터 상호작용 모듈
 │   ├── 🐍 data_partitional.py   # 데이터 분할 처리 모듈
-|	├── 📂 kafka-docker             # 🐳 Kafka 관련 Docker 설정 파일
+|   ├── 📂 kafka-docker             # 🐳 Kafka 관련 Docker 설정 파일
 │   	├── 📜 docker_container_remove.sh  # Docker 컨테이너 삭제 스크립트
 │   	├── 🐳 fluentd-cluster.yml        # Fluentd 클러스터 설정 파일
 │   	├── 📂 jmx_exporter            # JMX Exporter 관련 설정
