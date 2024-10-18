@@ -7,6 +7,8 @@ from dataclasses import dataclass
 # request Type
 ExchangeResponseData = dict[str, str | int | float | dict[str, int | str]]
 ExchangeOrderingData = dict[str, int]
+ResponseData = ExchangeResponseData | ExchangeOrderingData
+
 UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
 
 
