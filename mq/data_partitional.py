@@ -63,6 +63,7 @@ class CoinHashingCustomPartitional(DefaultPartitioner):
 
 
 class CoinSocketDataCustomPartition(DefaultPartitioner):
+    # 한국 거래소 파티션 매핑
     KOREA_PARTITION_MAPPING = KoreaPartitionMapping(
         upbit=ExchangeMapping(ticker=0, orderbook=1),
         bithumb=ExchangeMapping(ticker=2, orderbook=3),
@@ -70,44 +71,56 @@ class CoinSocketDataCustomPartition(DefaultPartitioner):
         korbit=ExchangeMapping(ticker=6, orderbook=7),
     )
 
-    FOREIGN_PARTITION_MAPPING = ForeignPartitionMapping(
+    # NE 거래소의 파티션 매핑
+    NE_PARTITION_MAPPING = ForeignPartitionMapping(
         binance=ExchangeMapping(ticker=0, orderbook=1),
         kraken=ExchangeMapping(ticker=2, orderbook=3),
-        okx=ExchangeMapping(ticker=4, orderbook=5),
-        bybit=ExchangeMapping(ticker=6, orderbook=7),
-        gateio=ExchangeMapping(ticker=8, orderbook=9),
+        coinbase=ExchangeMapping(ticker=4),
+    )
+
+    # ASIA 거래소의 파티션 매핑
+    ASIA_PARTITION_MAPPING = ForeignPartitionMapping(
+        okx=ExchangeMapping(ticker=1, orderbook=2),
+        bybit=ExchangeMapping(ticker=3, orderbook=4),
+        gateio=ExchangeMapping(ticker=5, orderbook=6),
     )
 
     @classmethod
     def __call__(cls, key: str, all_partitions: list[int], available: list[int]) -> int:
         try:
-            decoded_key = key.decode()
+            decoded_key = key.decode() if isinstance(key, bytes) else key
             ex_keys = decoded_key.split(":")
             exchange = ex_keys[0].strip('"').lower()
             data_type = ex_keys[1].strip('"').lower()
 
-            # 한국 거래소 매핑 체크
-            if exchange in cls.KOREA_PARTITION_MAPPING:
-                partition_mapping = cls.KOREA_PARTITION_MAPPING[exchange]
-            # 외국 거래소 매핑 체크
-            elif exchange in cls.FOREIGN_PARTITION_MAPPING:
-                partition_mapping = cls.FOREIGN_PARTITION_MAPPING[exchange]
+            match exchange:
+                case exchange if exchange in cls.KOREA_PARTITION_MAPPING:
+                    partition_mapping = cls.KOREA_PARTITION_MAPPING[exchange]
 
-            # 데이터 타입에 따른 파티션 선택
-            if data_type == "ticker":
-                partition = partition_mapping[data_type]
-            elif data_type == "orderbook":
-                partition = partition_mapping[data_type]
-            else:
-                raise ValueError(f"Unknown data type: {data_type}")
+                case exchange if exchange in cls.NE_PARTITION_MAPPING:
+                    partition_mapping = cls.NE_PARTITION_MAPPING[exchange]
 
-            # 사용 가능한 파티션 목록 중에서 선택
+                case exchange if exchange in cls.ASIA_PARTITION_MAPPING:
+                    partition_mapping = cls.ASIA_PARTITION_MAPPING[exchange]
+
+                case _:
+                    raise ValueError(f"Unknown exchange: {exchange}")
+
+            match data_type:
+                case "ticker" | "orderbook":
+                    partition = partition_mapping[data_type]
+                case _:
+                    raise ValueError(f"Unknown data type: {data_type}")
+
             if partition in available:
                 return partition
             else:
                 # 해당 파티션이 사용 불가능할 경우 fallback
                 return available[0]
 
-        except Exception as e:
+        except (ValueError, IndexError) as e:
             print(f"파티션 오류 {key}: {e}")
+            return random.choice(all_partitions)
+        except Exception as e:
+            print(f"예외 발생 {key}: {e}")
             return random.choice(all_partitions)
