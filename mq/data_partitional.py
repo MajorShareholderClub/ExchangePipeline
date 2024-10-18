@@ -1,7 +1,28 @@
 from kafka.partitioner.default import DefaultPartitioner, murmur2
 
-from typing import Optional
+from typing import Optional, TypedDict
 import random
+import mmh3
+
+
+class ExchangeMapping(TypedDict):
+    ticker: int
+    orderbook: int
+
+
+class KoreaPartitionMapping(TypedDict):
+    upbit: ExchangeMapping
+    bithumb: ExchangeMapping
+    coinone: ExchangeMapping
+    korbit: ExchangeMapping
+
+
+class ForeignPartitionMapping(TypedDict):
+    binance: ExchangeMapping
+    kraken: ExchangeMapping
+    okx: ExchangeMapping
+    bybit: ExchangeMapping
+    gateio: ExchangeMapping
 
 
 class CoinHashingCustomPartitional(DefaultPartitioner):
@@ -38,4 +59,68 @@ class CoinHashingCustomPartitional(DefaultPartitioner):
             )
         except Exception as e:
             print(f"파티션 오류 {key}: {e}")
+            return random.choice(all_partitions)
+
+
+class CoinSocketDataCustomPartition(DefaultPartitioner):
+    # 한국 거래소 파티션 매핑
+    KOREA_PARTITION_MAPPING = KoreaPartitionMapping(
+        upbit=ExchangeMapping(ticker=0, orderbook=1),
+        bithumb=ExchangeMapping(ticker=2, orderbook=3),
+        coinone=ExchangeMapping(ticker=4, orderbook=5),
+        korbit=ExchangeMapping(ticker=6, orderbook=7),
+    )
+
+    # NE 거래소의 파티션 매핑
+    NE_PARTITION_MAPPING = ForeignPartitionMapping(
+        binance=ExchangeMapping(ticker=0, orderbook=1),
+        kraken=ExchangeMapping(ticker=2, orderbook=3),
+        coinbase=ExchangeMapping(ticker=4),
+    )
+
+    # ASIA 거래소의 파티션 매핑
+    ASIA_PARTITION_MAPPING = ForeignPartitionMapping(
+        okx=ExchangeMapping(ticker=1, orderbook=2),
+        bybit=ExchangeMapping(ticker=3, orderbook=4),
+        gateio=ExchangeMapping(ticker=5, orderbook=6),
+    )
+
+    @classmethod
+    def __call__(cls, key: str, all_partitions: list[int], available: list[int]) -> int:
+        try:
+            decoded_key = key.decode() if isinstance(key, bytes) else key
+            ex_keys = decoded_key.split(":")
+            exchange = ex_keys[0].strip('"').lower()
+            data_type = ex_keys[1].strip('"').lower()
+
+            match exchange:
+                case exchange if exchange in cls.KOREA_PARTITION_MAPPING:
+                    partition_mapping = cls.KOREA_PARTITION_MAPPING[exchange]
+
+                case exchange if exchange in cls.NE_PARTITION_MAPPING:
+                    partition_mapping = cls.NE_PARTITION_MAPPING[exchange]
+
+                case exchange if exchange in cls.ASIA_PARTITION_MAPPING:
+                    partition_mapping = cls.ASIA_PARTITION_MAPPING[exchange]
+
+                case _:
+                    raise ValueError(f"Unknown exchange: {exchange}")
+
+            match data_type:
+                case "ticker" | "orderbook":
+                    partition = partition_mapping[data_type]
+                case _:
+                    raise ValueError(f"Unknown data type: {data_type}")
+
+            if partition in available:
+                return partition
+            else:
+                # 해당 파티션이 사용 불가능할 경우 fallback
+                return available[0]
+
+        except (ValueError, IndexError) as e:
+            print(f"파티션 오류 {key}: {e}")
+            return random.choice(all_partitions)
+        except Exception as e:
+            print(f"예외 발생 {key}: {e}")
             return random.choice(all_partitions)

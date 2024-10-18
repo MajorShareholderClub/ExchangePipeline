@@ -1,47 +1,48 @@
+# fmt: off
+
 import yaml
 from pathlib import Path
-from typing import NoReturn, ClassVar, Callable
+from typing import ClassVar, Callable
+from common.core.types import Result, Ok, Err
+
+from protocols.client.korea.rest_korea_exchange import (
+    UpbitRest, BithumbRest, CoinoneRest, KorbitRest
+)
+from protocols.client.korea.socket_korea_exchange import (
+    UpbitSocket, BithumbSocket, CoinoneSocket, KorbitSocket
+)
+
+from protocols.client.ne.rest_ne_exchange import (
+    BinanceRest, KrakenRest, CoinbaseRest
+)
+from protocols.client.ne.socket_ne_exchange import (
+    BinanceSocket, KrakenSocket, CoinbaseSocket
+)
+
+from protocols.client.asia.rest_asia_exchange import (
+    OKXRest, GateIORest, BybitRest
+)
+from protocols.client.asia.socket_asia_exchange import (
+    OKXSocket, GateIOSocket, ByBitSocket
+)
 from .types import (
     MarketRequestJsonType,
     KoreaExchageRest,
     KoreaExchageSocket,
     KoreaMarketRequestType,
-    ForeignExchageRest,
-    ForeignExchageSocket,
-    ForeignMarketRequestType,
+    AsiaExchangeRest,
+    AsiaExchangeSocket,
+    AsiaMarketRequestType,
+    NEExchangeRest,
+    NEExchangeSocket,
+    NEMarketRequestType,
     WorldMarket,
     WorldMarketsRequestType,
-)
-from korea_exchange.rest_korea_exchange import (
-    UpbitRest,
-    BithumbRest,
-    CoinoneRest,
-    KorbitRest,
-)
-from korea_exchange.socket_korea_exchange import (
-    UpbitSocket,
-    BithumbSocket,
-    CoinoneSocket,
-    KorbitSocket,
-)
-from foreign_exchange.rest_foreign_exchange import (
-    BinanceRest,
-    KrakenRest,
-    OKXRest,
-    BybitRest,
-    GateIORest,
-)
-from foreign_exchange.socket_foreign_exchange import (
-    KrakenSocket,
-    OKXSocket,
-    GateIOSocket,
-    BinanceSocket,
-    ByBitSocket,
 )
 
 path = Path(__file__).parent.parent
 RequestDict = dict[str, str | WorldMarket]
-
+ClassAddress = str
 
 class MarketAPIFactory:
     """Factory for market APIs."""
@@ -61,20 +62,28 @@ class MarketAPIFactory:
                 coinone=CoinoneSocket,
             ),
         ),
-        foreign=ForeignMarketRequestType(
-            rest=ForeignExchageRest(
-                binance=BinanceRest,
-                kraken=KrakenRest,
+        asia=AsiaMarketRequestType(
+            rest=AsiaExchangeRest(
                 okx=OKXRest,
                 bybit=BybitRest,
                 gateio=GateIORest,
             ),
-            socket=ForeignExchageSocket(
+            socket=AsiaExchangeSocket(
+                okx=OKXSocket,
+                bybit=ByBitSocket,
+                gateio=GateIOSocket,
+            ),
+        ),
+        ne=NEMarketRequestType(
+            rest=NEExchangeRest(
+               binance=BinanceRest,
+               kraken=KrakenRest,
+               coinbase=CoinbaseRest
+            ),
+            socket=NEExchangeSocket(
                 binance=BinanceSocket,
                 kraken=KrakenSocket,
-                okx=OKXSocket,
-                gateio=GateIOSocket,
-                bybit=ByBitSocket,
+                coinbase=CoinbaseSocket
             ),
         ),
     )
@@ -82,15 +91,17 @@ class MarketAPIFactory:
     @classmethod
     def market_load(
         cls, conn_type: str, market: str, c: str, *args, **kwargs
-    ) -> WorldMarket | NoReturn:
+    ) -> Result[str, ClassAddress]:
         """
         거래소 API의 인스턴스를 생성합니다.
         """
-        if conn_type not in cls._create[c]:
-            raise ValueError(f"잘못된 연결 유형: {conn_type}")
+        match conn_type:
+            case conn_type if conn_type not in cls._create[c]:
+                return Err(f"잘못된 연결 유형: {conn_type}").error
 
-        creator = cls._create[c][conn_type][market]
-        return creator(*args, **kwargs)
+            case _:
+                creator = cls._create[c][conn_type][market]
+                return Ok(creator(*args, **kwargs)).value
 
 
 class MarketLoadType:
@@ -106,10 +117,10 @@ class MarketLoadType:
         yml_path = f"{path}/config/{self.location}/_market_{self.conn_type}.yml"
         with open(file=yml_path, mode="r", encoding="utf-8") as file:
             market_info: MarketRequestJsonType = yaml.safe_load(file)
-
+        
         return market_info
 
-    def _market_api_load(self, market: str):
+    def _market_api_load(self, market: str) -> Result[str, ClassAddress]:
         return MarketAPIFactory.market_load(
             conn_type=self.conn_type, market=market, c=self.location
         )

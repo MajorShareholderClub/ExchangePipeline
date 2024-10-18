@@ -1,11 +1,8 @@
 from mq.data_admin import new_topic_initialization, delete_all_topics
 from common.setting.properties import (
-    BTC_TOPIC_NAME,
-    ETH_TOPIC_NAME,
-    UPBIT_BTC_REAL_TOPIC_NAME,
-    BITHUMB_BTC_REAL_TOPIC_NAME,
-    KORBIT_BTC_REAL_TOPIC_NAME,
-    COINONE_BTC_REAL_TOPIC_NAME,
+    KOREA_REAL_TOPIC_NAME,
+    ASIA_REAL_TOPIC_NAME,
+    NE_REAL_TOPIC_NAME,
 )
 
 
@@ -14,14 +11,11 @@ def data_sending_start() -> None:
     Topic create
     """
     topic = [
-        UPBIT_BTC_REAL_TOPIC_NAME,
-        BITHUMB_BTC_REAL_TOPIC_NAME,
-        KORBIT_BTC_REAL_TOPIC_NAME,
-        COINONE_BTC_REAL_TOPIC_NAME,
-        BTC_TOPIC_NAME,
-        ETH_TOPIC_NAME,
+        f"{ASIA_REAL_TOPIC_NAME}BTC",
+        f"{KOREA_REAL_TOPIC_NAME}BTC",
+        f"{NE_REAL_TOPIC_NAME}BTC",
     ]
-    partition = [4] * len(topic)
+    partition = [10] * len(topic)
     replication = [3] * len(topic)
 
     return new_topic_initialization(

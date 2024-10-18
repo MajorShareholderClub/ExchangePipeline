@@ -7,18 +7,20 @@
 
 주요 서브디렉토리 및 파일
 
-
-### commmon file 구조 
+### 📂 config                   # 🗂️ 설정 관련 파일을 모아둔 디렉토리
 ```
-📂 config                      # 🗂️ 설정 관련 파일을 모아둔 디렉토리
-├── 🐍 yml_param_load.py       # yml 로드 하여 class 주소값과 함께 보내주는 파일
-├── 📂 foreign                 # 해외 거래소 설정
-│   ├── 🔧 _market_rest.yml    # 해외 거래소 REST API 설정
-│   └── 🔧 _market_socket.yml  # 해외 거래소 소켓 설정
-├── 📂 korea                   # 한국 거래소 설정
-│   ├── 🔧 _market_rest.yml    # 한국 거래소 REST API 설정
-│   └── 🔧 _market_socket.yml  # 한국 거래소 소켓 설정
-└── 📂 types                   # 설정 관련 데이터 타입 정의
-    ├── 🐍 __init__.py         # 타입 모듈 초기화 파일
-    └── 🐍 _exchange.py        # 거래소 타입 정의
+├── 📂 asia                     # 🌏 아시아 거래소 관련 설정
+│   ├── 🔧 _market_rest.yml     # 아시아 거래소 REST API 설정
+│   └── 🔧 _market_socket.yml    # 아시아 거래소 소켓 설정
+├── 📂 korea                    # 🇰🇷 한국 거래소 관련 설정
+│   ├── 🔧 _market_rest.yml     # 한국 거래소 REST API 설정
+│   └── 🔧 _market_socket.yml    # 한국 거래소 소켓 설정
+├── 📂 ne                       # 🏦 북미 거래소 관련 설정
+│   ├── 🔧 _market_rest.yml     # 북미 거래소 REST API 설정
+│   └── 🔧 _market_socket.yml    # 북미 거래소 소켓 설정
+├── 📜 readme.md               # config 디렉토리에 대한 설명을 담고 있는 파일
+├── 📂 types                   # 📂 설정 관련 데이터 타입 정의
+│   ├── 🐍 __init__.py          # 타입 모듈 초기화 파일
+│   └── 🐍 _exchange.py         # 거래소 타입 정의
+└── 🐍 yml_param_load.py       # yml 파라미터 로드 모듈
 ```

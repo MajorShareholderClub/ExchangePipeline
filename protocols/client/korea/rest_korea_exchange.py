@@ -4,13 +4,13 @@ import tracemalloc
 
 tracemalloc.start()
 
-from common.client.async_api_client import CoinExchangeRestClient
+from common.client.market_rest.async_api_client import CoinExchangeRestClient
 from common.core.types import ExchangeResponseData
 
 
 class UpbitRest(CoinExchangeRestClient):
     def __init__(self) -> None:
-        super().__init__(market="upbit")
+        super().__init__(market="upbit", location="korea")
 
     def _get_orderbook_url(self, coin_name: str) -> str:
         return f"{self._rest}/orderbook?level=0&markets=KRW-{coin_name.upper()}"
@@ -27,7 +27,7 @@ class UpbitRest(CoinExchangeRestClient):
 
 class BithumbRest(CoinExchangeRestClient):
     def __init__(self) -> None:
-        super().__init__(market="bithumb")
+        super().__init__(market="bithumb", location="korea")
 
     def _get_orderbook_url(self, coin_name: str) -> str:
         return f"{self._rest}/orderbook?level=0&markets=KRW-{coin_name.upper()}"
@@ -44,7 +44,7 @@ class BithumbRest(CoinExchangeRestClient):
 
 class CoinoneRest(CoinExchangeRestClient):
     def __init__(self) -> None:
-        super().__init__(market="coinone")
+        super().__init__(market="coinone", location="korea")
 
     def _get_orderbook_url(self, coin_name: str) -> str:
         return f"{self._rest}/orderbook/KRW/{coin_name.upper()}?size=15"
@@ -61,7 +61,7 @@ class CoinoneRest(CoinExchangeRestClient):
 
 class KorbitRest(CoinExchangeRestClient):
     def __init__(self) -> None:
-        super().__init__(market="korbit")
+        super().__init__(market="korbit", location="korea")
 
     def _get_orderbook_url(self, coin_name: str) -> str:
         return f"{self._rest}/orderbook?symbol={coin_name.lower()}_krw"

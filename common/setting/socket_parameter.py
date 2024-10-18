@@ -19,6 +19,7 @@ from common.core.types import (
     OKXArgsSocketParameter,
     OKXSocketParameter,
     BybitSocketParameter,
+    CoinbaseSocketParameter,
 )
 
 uu_id = str(uuid.uuid4())
@@ -70,15 +71,13 @@ def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter
         method="subscribe",
         params=KrakenParameter(
             channel=f"{req_type}", 
-            symbol=[f"{symbol.upper}/USD"]
-        ),
+            symbol=[f"{symbol.upper()}/USD"]
+        )
     )
     
     if req_type == "book":
-        kraken["depth"] = 1000
-        kraken["update"] = True
         kraken["req_id"] = int(datetime.now().timestamp())
-        
+    
     return kraken
 
 
@@ -113,4 +112,12 @@ def okx_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
     return OKXSocketParameter(
         op="subscribe",
         args=[OKXArgsSocketParameter(channel=req_type, instId=f"{symbol}-USDT")],
+    )
+
+
+def coinbase_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
+    return CoinbaseSocketParameter(
+        type="subscribe",
+        product_ids=[f"{symbol}-USDT"],
+        channels=[req_type]
     )

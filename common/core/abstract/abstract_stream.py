@@ -26,17 +26,6 @@ class WebsocketConnectionAbstract(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def handle_connection(self, websocket: Any, uri: str) -> None:
-        """웹 소켓 커넥션 확인 함수
-        Args:
-            websocket (Any):
-                -> 업비트, 빗썸, 코인원
-            uri (str):
-                ->각 uri들
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
     async def handle_message(self, websocket: Any, uri: str, symbol: str) -> None:
         """승인된 소켓 메시지를 전처리 클래스에전송할 로직
         Args:

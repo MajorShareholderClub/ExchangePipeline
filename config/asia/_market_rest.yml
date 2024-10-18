@@ -1,21 +1,3 @@
-binance:
-  parameter:
-    - openPrice
-    - lastPrice
-    - highPrice
-    - lowPrice
-    - prevClosePrice
-    - volume
-
-kraken:
-  parameter:
-    - o
-    - c
-    - h
-    - l
-    - p
-    - v
-
 okx:
   parameter:
     - open24h

@@ -1,11 +1,30 @@
 import uuid
-from typing import TypedDict, NewType
+from typing import TypedDict, NewType, Generic, TypeVar, Union
 from decimal import Decimal
+
+
+T = TypeVar("T")  # 성공 타입
+E = TypeVar("E")  # 오류 타입
+
+
+class Ok(Generic[T]):
+    def __init__(self, value: T) -> None:
+        self.value = value
+
+
+class Err(Generic[E]):
+    def __init__(self, error: E) -> None:
+        self.error = error
+
+
+Result = Union[Ok[T], Err[E]]
 
 
 # request Type
 ExchangeResponseData = dict[str, str | int | float | dict[str, int | str]]
 ExchangeOrderingData = dict[str, int]
+ResponseData = ExchangeResponseData | ExchangeOrderingData
+
 UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
 
 
@@ -34,20 +53,27 @@ class KoreaCoinMarketData(TypedDict):
 
 
 class ForeignCoinMarketData(TypedDict):
-    time: int
     binance: ExchangeData | bool
     kraken: ExchangeData | bool
     okx: ExchangeData | bool
     gateio: ExchangeData | bool
-    htx: ExchangeData | bool
+    coinbase: ExchangeData | bool
 
 
 class SocketLowData(TypedDict):
     market: str
-    uri: str
     symbol: str
     data: dict | list
 
+
+class ProducerMetadataDict(TypedDict):
+    market: str
+    symbol: str
+    topic: str
+    key: str
+
+
+ExchangeCollection = dict[str, KoreaCoinMarketData | ForeignCoinMarketData]
 
 """
 -----------------------------
@@ -97,6 +123,8 @@ class KorbitSocketParameter(TypedDict):
 
 
 # ------------------------------------------------------------------
+# --------------------------파라미터 정의-------------------------------
+# ------------------------------------------------------------------
 
 
 class BinanceSocketParameter(TypedDict):
@@ -138,6 +166,12 @@ class BybitSocketParameter(TypedDict):
     args: list[str]
 
 
+class CoinbaseSocketParameter(TypedDict):
+    type: UUID
+    product_ids: list[str]
+    channels: list[str]
+
+
 UpBithumbSocketParmater = list[TicketUUID | CombinedRequest]
 SubScribeFormat = (
     UpBithumbSocketParmater
@@ -148,4 +182,42 @@ SubScribeFormat = (
     | GateioSocketParameter
     | OKXSocketParameter
     | BybitSocketParameter
+    | CoinbaseSocketParameter
 )
+
+# ------------------------------------------------------------------
+# -----------------------------거래소 주소 매핑----------------------------
+# ------------------------------------------------------------------
+
+
+# 각 거래소에 대한 타입 정의
+class ResponseExchangeURL(TypedDict):
+    socket: str
+    rest: str
+
+
+# 각 지역에 대한 URL 구조 정의
+class RegionURLs(TypedDict):
+    upbit: ResponseExchangeURL
+    bithumb: ResponseExchangeURL
+    korbit: ResponseExchangeURL
+    coinone: ResponseExchangeURL
+
+
+class AsiaRegionURLs(TypedDict):
+    okx: ResponseExchangeURL
+    gateio: ResponseExchangeURL
+    bybit: ResponseExchangeURL
+
+
+class NERegionURLs(TypedDict):
+    binance: ResponseExchangeURL
+    kraken: ResponseExchangeURL
+    coinbase: ResponseExchangeURL
+
+
+# 전체 URL 구조 정의
+class URLs(TypedDict):
+    korea: RegionURLs
+    asia: AsiaRegionURLs
+    ne: NERegionURLs

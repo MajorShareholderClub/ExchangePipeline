@@ -28,33 +28,47 @@ class KoreaMarketRequestType(TypedDict):
     socket: KoreaExchageSocket
 
 
-class ForeignExchageRest(TypedDict):
+# NE 지역 거래소
+class NEExchangeRest(TypedDict):
     binance: ExchangeResponseData
     kraken: ExchangeResponseData
-    okx: ExchangeResponseData
-    bybit: ExchangeResponseData
-    gateio: ExchangeResponseData
+    coinbase: ExchangeResponseData
 
-class ForeignExchageSocket(TypedDict):
+class NEExchangeSocket(TypedDict):
     binance: ExchangeResponseData
     kraken: ExchangeResponseData
+    coinbase: ExchangeResponseData
+
+
+class NEMarketRequestType(TypedDict):
+    rest: NEExchangeRest
+    socket: NEExchangeSocket
+
+
+# Asia 지역 거래소
+class AsiaExchangeRest(TypedDict):
     okx: ExchangeResponseData
-    bybit: ExchangeResponseData
     gateio: ExchangeResponseData
+    bybit: ExchangeResponseData
+
+class AsiaExchangeSocket(TypedDict):
+    okx: ExchangeResponseData
+    gateio: ExchangeResponseData
+    bybit: ExchangeResponseData
 
 
-
-class ForeignMarketRequestType(TypedDict):
-    rest: ForeignExchageRest
-    socket: ForeignExchageSocket
+class AsiaMarketRequestType(TypedDict):
+    rest: AsiaExchangeRest
+    socket: AsiaExchangeSocket
 
 
 class WorldMarketsRequestType(TypedDict):
     korea: KoreaMarketRequestType
-    foreign: ForeignMarketRequestType
+    asia: AsiaMarketRequestType
+    ne: NEMarketRequestType
 
 
-ForeginMarkets = ForeignExchageRest
+ForeginMarkets = AsiaMarketRequestType | NEMarketRequestType
 KoreaMarkets = KoreaExchageRest | KoreaExchageSocket
 WorldMarket = ForeginMarkets | KoreaMarkets
 
