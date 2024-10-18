@@ -34,7 +34,7 @@ class ForeignWebsocketConnection(WebsocketConnectionManager):
             target="foreign",
             folder="foreign",
             process=MessageDataPreprocessing(location=location),
-            rest_client=ForeignExchangeRestAPI(),
+            # rest_client=ForeignExchangeRestAPI(),
         )
 
 

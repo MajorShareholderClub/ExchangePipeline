@@ -85,6 +85,8 @@ class BaseMessageDataPreprocessing:
             """메시지와 담을 default_data 선택하여 보내기"""
             kafka_metadata["default_data"] = default_data
             kafka_metadata["message"] = msg
+            kafka_metadata["couting"] = 100
+
             await self.producer_sending(**kafka_metadata)
 
         # 크라켄 메시지 처리
@@ -109,7 +111,6 @@ class BaseMessageDataPreprocessing:
             producer_metadata = ProducerMetadataDict(
                 market=market,
                 symbol=symbol,
-                couting=100,
                 topic=get_topic_name(self.location, symbol),
                 key=f"{market}:{socket_type}",
             )
@@ -131,11 +132,11 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         target: str,
         folder: str,
         process: Callable,
-        rest_client: SocketRetryOnFailure,
+        # rest_client: SocketRetryOnFailure,
     ) -> None:
         self._logger = AsyncLogger(target=target, folder=folder)
         self.process = process
-        self.rest_client = rest_client
+        # self.rest_client = rest_client
 
     async def socket_param_send(
         self, websocket: socket_protocol, subs_fmt: SubScribeFormat
@@ -166,17 +167,19 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         """메시지 전송하는 메서드"""
         while True:
             try:
-                market: str = market_name_extract(uri=uri)
                 message: ExchangeResponseData = await asyncio.wait_for(
                     websocket.recv(), timeout=30.0
                 )
                 await self.process.put_message_to_logging(
-                    message=message, uri=uri, symbol=symbol, market=market
+                    message=message, uri=uri, symbol=symbol
                 )
                 await self.process.producing_start(socket_type=socket_type)
             except (TypeError, ValueError) as error:
                 message = f"다음과 같은 이유로 실행하지 못했습니다 --> {error}"
                 await self._logger.log_message(logging.ERROR, message)
+                import traceback
+
+                traceback.print_exc()  # 스택 트레이스를 출력
 
     async def websocket_to_json(
         self,
@@ -187,14 +190,14 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
     ) -> None:
         """말단 소켓 시작 지점"""
 
-        @SocketRetryOnFailure(
-            retries=3,
-            base_delay=2,
-            rest_client=self.rest_client,
-            symbol=symbol,
-            uri=uri,
-            subs=subs_fmt,
-        )
+        # @SocketRetryOnFailure(
+        #     retries=3,
+        #     base_delay=2,
+        #     rest_client=self.rest_client,
+        #     symbol=symbol,
+        #     uri=uri,
+        #     subs=subs_fmt,
+        # )
         async def connection():
             async with websockets.connect(
                 uri, ping_interval=30.0, ping_timeout=60.0

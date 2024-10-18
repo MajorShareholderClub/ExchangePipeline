@@ -3,7 +3,7 @@ Coin async present price kafka data streaming
 """
 
 import asyncio
-from common.core.data_format import KoreaCoinMarket, ForeignCoinMarket
+from common.core.data_format import KoreaCoinMarket, AsiaCoinMarket, NECoinMarket
 from common.core.types import ExchangeCollection, ExchangeData
 from common.client.market_rest.rest_interface import BaseExchangeRestAPI
 from mq.data_interaction import KafkaMessageSender
@@ -20,7 +20,8 @@ class ExchangeRestAPI(BaseExchangeRestAPI):
     def create_schema(self, market_result: list[ExchangeData]) -> dict:
         market_classes: ExchangeCollection = {
             "korea": KoreaCoinMarket,
-            "foreign": ForeignCoinMarket,
+            "asia": AsiaCoinMarket,
+            "ne": NECoinMarket,
         }
         return market_classes[self.location](
             **dict(zip(self.market_env.keys(), market_result)),
@@ -28,18 +29,13 @@ class ExchangeRestAPI(BaseExchangeRestAPI):
 
     async def total_pull_request(self, coin_symbol: str, interval: int = 1) -> None:
         i = 0
+        topic = f"TotalRestDataIn{coin_symbol.upper()}"
+        key = f"{self.location}-Total"
         while True:
             message = await self._log_market_schema(coin_symbol)
             await KafkaMessageSender(
                 partition_pol=CoinHashingCustomPartitional()
-            ).produce_sending(
-                message=message,
-                market_name="Total",
-                symbol=coin_symbol,
-                type_="RestDataIn",
-                request_type="rest",
-                key=f"{self.location}-Total",
-            )
+            ).produce_sending(message=message, topic=topic, key=key)
             i += 1
 
             await asyncio.sleep(interval)  # 1초 대기
@@ -56,8 +52,15 @@ class KoreaExchangeRestAPI(ExchangeRestAPI):
         super().__init__(location="korea")
 
 
-class ForeignExchangeRestAPI(ExchangeRestAPI):
+class NEExchangeRestAPI(ExchangeRestAPI):
     """해외거래소 API"""
 
     def __init__(self) -> None:
-        super().__init__(location="foreign")
+        super().__init__(location="ne")
+
+
+class AsiaxchangeRestAPI(ExchangeRestAPI):
+    """해외거래소 API"""
+
+    def __init__(self) -> None:
+        super().__init__(location="asia")

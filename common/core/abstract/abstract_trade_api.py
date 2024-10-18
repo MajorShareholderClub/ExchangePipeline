@@ -10,8 +10,10 @@ from common.core.types import SubScribeFormat
 
 # Rest
 class AbstractExchangeRestClient(ABC):
-    def __init__(self, market: str) -> None:
-        self._rest = get_symbol_collect_url(market=market, type_="rest")
+    def __init__(self, market: str, location: str) -> None:
+        self._rest = get_symbol_collect_url(
+            market=market, type_="rest", location=location
+        )
 
     @abstractmethod
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
@@ -29,9 +31,12 @@ class AbstractExchangeRestClient(ABC):
 # Socket
 class AbstractExchangeSocketClient(ABC):
     def __init__(
-        self, target: str, socket_parameter: Callable[[str], SubScribeFormat]
+        self,
+        target: str,
+        location: str,
+        socket_parameter: Callable[[str], SubScribeFormat],
     ) -> None:
-        self._websocket = get_symbol_collect_url(target, "socket")
+        self._websocket = get_symbol_collect_url(target, "socket", location)
         self.socket_parameter = socket_parameter
         self.ticker = "ticker"
         self.orderbook = "orderbook"

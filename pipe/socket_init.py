@@ -18,21 +18,25 @@ async def coin_present_websocket(connection_class: connection) -> None:
     loop = asyncio.get_running_loop()
 
     # 스레드 풀을 생성
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         # run_in_executor 사용하여 비동기 작업 실행
-        korea_task = loop.run_in_executor(
+        # korea_task = loop.run_in_executor(
+        #     executor,
+        #     lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "korea")),
+        # )
+        # asia_task = loop.run_in_executor(
+        #     executor,
+        #     lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "asia")),
+        # )
+        ne_task = loop.run_in_executor(
             executor,
-            lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "korea")),
+            lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "ne")),
         )
-        foreign_task = loop.run_in_executor(
-            executor,
-            lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "foreign")),
-        )
-
         # 두 작업이 완료될 때까지 기다림
         await asyncio.gather(
-            korea_task,
-            foreign_task,
+            # korea_task,
+            # asia_task,
+            ne_task,
             return_exceptions=False,
         )
 

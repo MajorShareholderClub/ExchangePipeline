@@ -33,7 +33,7 @@ class AsyncRequestJSON(AsyncRequestAcquisition):
         return await self.async_source()
 
 
-class CoinExchangeRestClient(AbstractExchangeRestClient):
+class CoinExchangeRestClient(AbstractExchangeRestClient):        
     @RestRetryOnFailure(retries=3, base_delay=2)        
     async def get_coin_all_info_price(self, coin_name: str) -> ExchangeResponseData:
         """코인데이터 호출"""
