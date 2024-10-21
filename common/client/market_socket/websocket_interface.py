@@ -82,7 +82,7 @@ class BaseMessageDataPreprocessing:
     ) -> None:
         """message에 따라 처리하고 적절한 함수를 호출"""
 
-        def process_exchange(message: str) -> dict | None:
+        def process_exchange(message: str | dict) -> dict | None:
             """message 필터링
             Args:
                 message: 데이터 (JSON 문자열)
@@ -90,24 +90,29 @@ class BaseMessageDataPreprocessing:
                 dict | None: connection 거친 후 본 데이터, 필터링된 경우 None
             """
             try:
-                parsed_message = json.loads(message)
+                if isinstance(message, str):
+                    parsed_message = json.loads(message)
+                else:
+                    parsed_message = message  # 이미 dict인 경우
+
+                match parsed_message:
+                    case {"event": "korbit:subscribe"}:
+                        return None  # 구독 메시지 무시
+                    case {"response_type": "SUBSCRIBED"}:
+                        return None  # 구독 메시지 무시
+                    case {"channel": "heartbeat"}:
+                        return None  # 구독 메시지 무시
+                    case {"method": "subscribe"}:
+                        return None  # 구독 메시지 무시
+                    case _:
+                        return message  # 본 데이터 반환
+
             except json.JSONDecodeError:
                 return None  # JSON 파싱 오류가 발생하면 None 반환
 
             # fmt: off
             # KORBIT -- {"timestamp":1729511536,"event":"korbit:subscribe","data":{"channels":["orderbook:btc_krw"]}}
             # COINONE -- {"response_type":"SUBSCRIBED","channel":"ORDERBOOK","data":{"quote_currency":"KRW","target_currency":"BTC"}}
-            match parsed_message:
-                case {"event": "korbit:subscribe"}:
-                    return None  # 구독 메시지 무시
-                case {"response_type": "SUBSCRIBED"}:
-                    return None  # 구독 메시지 무시
-                case {"channel": "heartbeat"}:
-                    return None  # 구독 메시지 무시
-                case {"method": "subscribe"}:
-                    return None  # 구독 메시지 무시
-                case _:
-                    return message  # 본 데이터 반환
 
         async def update_and_send(default_data: defaultdict, msg: dict) -> None:
             """메시지와 담을 default_data 선택하여 보내기"""
