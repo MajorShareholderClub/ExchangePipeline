@@ -104,6 +104,8 @@ class BaseMessageDataPreprocessing:
                     return None  # 구독 메시지 무시
                 case {"channel": "heartbeat"}:
                     return None  # 구독 메시지 무시
+                case {"method": "subscribe"}:
+                    return None  # 구독 메시지 무시
                 case _:
                     return message  # 본 데이터 반환
 
@@ -111,7 +113,7 @@ class BaseMessageDataPreprocessing:
             """메시지와 담을 default_data 선택하여 보내기"""
             kafka_metadata["default_data"] = default_data
             kafka_metadata["message"] = msg
-            kafka_metadata["counting"] = 100
+            kafka_metadata["counting"] = 10
 
             await self.producer_sending(**kafka_metadata)
 

@@ -15,7 +15,7 @@ def data_sending_start() -> None:
         f"{KOREA_REAL_TOPIC_NAME}BTC",
         f"{NE_REAL_TOPIC_NAME}BTC",
     ]
-    partition = [8] * len(topic)
+    partition = [3] * len(topic)
     replication = [3] * len(topic)
 
     return new_topic_initialization(

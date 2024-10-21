@@ -76,9 +76,9 @@ class CoinSocketDataCustomPartition(DefaultPartitioner):
 
     # ASIA 거래소의 파티션 매핑
     ASIA_PARTITION_MAPPING = AsiaPartitionMapping(
-        okx=ExchangeMapping(ticker=1, orderbook=2),
-        bybit=ExchangeMapping(ticker=3, orderbook=4),
-        gateio=ExchangeMapping(ticker=5, orderbook=6),
+        okx=ExchangeMapping(ticker=0, orderbook=1),
+        bybit=ExchangeMapping(ticker=2, orderbook=3),
+        gateio=ExchangeMapping(ticker=4, orderbook=5),
     )
 
     # NE 거래소의 파티션 매핑
