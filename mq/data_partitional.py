@@ -2,7 +2,6 @@ from kafka.partitioner.default import DefaultPartitioner, murmur2
 
 from typing import Optional, TypedDict
 import random
-import mmh3
 
 
 class ExchangeMapping(TypedDict):
@@ -17,12 +16,16 @@ class KoreaPartitionMapping(TypedDict):
     korbit: ExchangeMapping
 
 
-class ForeignPartitionMapping(TypedDict):
-    binance: ExchangeMapping
-    kraken: ExchangeMapping
+class AsiaPartitionMapping(TypedDict):
     okx: ExchangeMapping
     bybit: ExchangeMapping
     gateio: ExchangeMapping
+
+
+class NEPartitionMapping(TypedDict):
+    binance: ExchangeMapping
+    kraken: ExchangeMapping
+    coinbase: ExchangeMapping
 
 
 class CoinHashingCustomPartitional(DefaultPartitioner):
@@ -71,18 +74,18 @@ class CoinSocketDataCustomPartition(DefaultPartitioner):
         korbit=ExchangeMapping(ticker=6, orderbook=7),
     )
 
-    # NE 거래소의 파티션 매핑
-    NE_PARTITION_MAPPING = ForeignPartitionMapping(
-        binance=ExchangeMapping(ticker=0, orderbook=1),
-        kraken=ExchangeMapping(ticker=2, orderbook=3),
-        coinbase=ExchangeMapping(ticker=4),
-    )
-
     # ASIA 거래소의 파티션 매핑
-    ASIA_PARTITION_MAPPING = ForeignPartitionMapping(
+    ASIA_PARTITION_MAPPING = AsiaPartitionMapping(
         okx=ExchangeMapping(ticker=1, orderbook=2),
         bybit=ExchangeMapping(ticker=3, orderbook=4),
         gateio=ExchangeMapping(ticker=5, orderbook=6),
+    )
+
+    # NE 거래소의 파티션 매핑
+    NE_PARTITION_MAPPING = NEPartitionMapping(
+        binance=ExchangeMapping(ticker=0, orderbook=1),
+        kraken=ExchangeMapping(ticker=2, orderbook=3),
+        coinbase=ExchangeMapping(ticker=4),
     )
 
     @classmethod

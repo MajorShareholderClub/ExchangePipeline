@@ -63,7 +63,7 @@ class KafkaMessageSender:
         self.logger = AsyncLogger(target="kafka", folder="kafka")
 
     # fmt: off
-    async def start_producer(self):
+    async def start_producer(self) -> None:
         """Producer 시작 및 재사용"""
         if not self.producer_started:
             config = KafkaConfig(

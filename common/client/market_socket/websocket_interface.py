@@ -3,6 +3,7 @@ import logging
 import traceback
 from typing import Callable
 from collections import defaultdict
+from asyncio.exceptions import CancelledError
 
 import websockets
 import asyncio
@@ -38,7 +39,6 @@ class BaseMessageDataPreprocessing:
         self.location = location
         self.message_data = defaultdict(list)
         self.snapshot = defaultdict(list)
-        self.heartbeat = defaultdict(list)
         self.message_async_q = asyncio.Queue()
 
     async def put_message_to_logging(
@@ -65,7 +65,7 @@ class BaseMessageDataPreprocessing:
         """Kafka로 메시지를 전송하고, 데이터가 count 만큼 다 차면 clear"""
         default_data: defaultdict = metadata["default_data"]
         market: str = metadata["market"]
-        counting: int = metadata["couting"]
+        counting: int = metadata["counting"]
         symbol: str = metadata["symbol"]
         message: ResponseData = metadata["message"]
         topic: str = metadata["topic"]
@@ -78,28 +78,59 @@ class BaseMessageDataPreprocessing:
             default_data[market].clear()  # 데이터를 비우기
 
     async def append_and_process(
-        self, message: ResponseData, kafka_metadata: ProducerMetadataDict
+        self, message: str, kafka_metadata: ProducerMetadataDict
     ) -> None:
         """message에 따라 처리하고 적절한 함수를 호출"""
 
-        async def update_and_send(default_data: defaultdict, msg: ResponseData) -> None:
+        def process_exchange(message: str) -> dict | None:
+            """message 필터링
+            Args:
+                message: 데이터 (JSON 문자열)
+            Returns:
+                dict | None: connection 거친 후 본 데이터, 필터링된 경우 None
+            """
+            try:
+                parsed_message = json.loads(message)
+            except json.JSONDecodeError:
+                return None  # JSON 파싱 오류가 발생하면 None 반환
+
+            # fmt: off
+            # KORBIT -- {"timestamp":1729511536,"event":"korbit:subscribe","data":{"channels":["orderbook:btc_krw"]}}
+            # COINONE -- {"response_type":"SUBSCRIBED","channel":"ORDERBOOK","data":{"quote_currency":"KRW","target_currency":"BTC"}}
+            match parsed_message:
+                case {"event": "korbit:subscribe"}:
+                    return None  # 구독 메시지 무시
+                case {"response_type": "SUBSCRIBED"}:
+                    return None  # 구독 메시지 무시
+                case {"channel": "heartbeat"}:
+                    return None  # 구독 메시지 무시
+                case _:
+                    return message  # 본 데이터 반환
+
+        async def update_and_send(default_data: defaultdict, msg: dict) -> None:
             """메시지와 담을 default_data 선택하여 보내기"""
             kafka_metadata["default_data"] = default_data
             kafka_metadata["message"] = msg
-            kafka_metadata["couting"] = 10
+            kafka_metadata["counting"] = 100
 
             await self.producer_sending(**kafka_metadata)
 
-        # 크라켄 메시지 처리
-        match message:
-            case {"channel": "heartbeat"}:
-                await update_and_send(self.heartbeat, message)
+        # 메시지 필터링
+        filtered_message = process_exchange(message)
+        if filtered_message is None:
+            await self._logger.log_message(
+                logging.INFO, f"구독 메시지 무시됨: {message}"
+            )
+            return  # 구독 메시지를 무시하고 반환
+
+        # 필터링된 메시지 처리
+        match filtered_message:
             case {"type": "snapshot"}:
-                await update_and_send(self.snapshot, message)
+                await update_and_send(self.snapshot, filtered_message)
             case {"type": "update"}:
-                await update_and_send(self.message_data, message)
+                await update_and_send(self.message_data, filtered_message)
             case _:
-                await update_and_send(self.message_data, message)
+                await update_and_send(self.message_data, filtered_message)
 
     async def producing_start(self, socket_type: str) -> None:
         """프로듀싱 시작점 socket_type: (orderbook, ticker)"""
@@ -108,7 +139,6 @@ class BaseMessageDataPreprocessing:
             await self._logger.log_message(
                 logging.INFO, message=f"{market} -- {message}"
             )
-
             producer_metadata = ProducerMetadataDict(
                 market=market,
                 symbol=symbol,
@@ -118,10 +148,15 @@ class BaseMessageDataPreprocessing:
             await self.append_and_process(
                 message=message, kafka_metadata=producer_metadata
             )
-        except (TypeError, KeyError, Exception) as error:
+        except (TypeError, KeyError) as error:
             await self._logger.log_message(
                 logging.ERROR,
                 message=f"타입오류 --> {error} market --> {market}",
+            )
+        except CancelledError as error:
+            await self._logger.log_message(
+                logging.ERROR,
+                message=f"가격 소켓 연결 오류 --> {error} url --> {market}",
             )
 
 

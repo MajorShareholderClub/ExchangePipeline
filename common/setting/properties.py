@@ -74,16 +74,17 @@ def get_symbol_collect_url(market: str, type_: str, location: str) -> Result[str
     ex_urls = region_urls.get(market)
     response_url = ex_urls.get(type_)
     
-    match urls.get(location):
-        case None:
-            return Err(f"등록되지 않은 지역입니다. --> {location}").error
-        case region_urls:
-            match ex_urls:
-                case None:
-                    return Err(f"{location} 지역에 등록되지 않은 거래소입니다. --> {market} ({type_})").error
-                case dict():
-                    match response_url:
-                        case None:
-                            return Err(f"등록되지 않은 URI 입니다. --> {market} ({type_})").error
-                        case _:
-                            return Ok(response_url).value
+    # 1. 지역 URL이 존재하는지 확인
+    if not (region_urls := urls.get(location)):
+        return Err(f"지역이 등록되지 않았습니다: {location}").error
+
+    # 2. 거래소 URL이 존재하는지 확인
+    if not ex_urls:
+        return Err(f"{location} 지역에서 등록되지 않은 거래소입니다: {market} ({type_})").error
+
+    # 3. URI가 등록되었는지 확인
+    if not response_url:
+        return Err(f"URI가 등록되지 않았습니다: {market} ({type_})").error
+
+    # 4. 모든 조건이 만족되면 URI 반환
+    return Ok(response_url).value

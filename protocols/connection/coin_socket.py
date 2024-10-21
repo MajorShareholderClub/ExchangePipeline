@@ -1,3 +1,4 @@
+import json
 import websockets
 
 from common.core.types import ResponseData
@@ -18,12 +19,13 @@ socket_protocol = websockets.WebSocketClientProtocol
 class MessageDataPreprocessing(BaseMessageDataPreprocessing):
     def __init__(self, location: str) -> None:
         super().__init__(type_="socket", location=location)
+        self.connect = []
 
     async def put_message_to_logging(
         self, message: ResponseData, uri: str, symbol: str
     ) -> None:
         market: str = market_name_extract(uri=uri)
-        await super().put_message_to_logging(market, symbol, message)
+        await super().put_message_to_logging(market, symbol, message=message)
 
 
 class AsiaWebsocketConnection(WebsocketConnectionManager):
