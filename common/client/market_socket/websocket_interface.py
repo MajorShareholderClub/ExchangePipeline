@@ -114,7 +114,7 @@ class BaseMessageDataPreprocessing:
             """메시지와 담을 default_data 선택하여 보내기"""
             kafka_metadata["default_data"] = default_data
             kafka_metadata["message"] = msg
-            kafka_metadata["counting"] = 1
+            kafka_metadata["counting"] = 100
 
             await self.producer_sending(**kafka_metadata)
 

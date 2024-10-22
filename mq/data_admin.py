@@ -29,9 +29,10 @@ def new_topic_initialization(
     for topic, f in create_topic.items():
         try:
             f.result()
+            print(f"Topic {topic} -->  successfully.")
         except (KafkaException, KafkaError, ProduceError) as error:
             if error.args[0].code() != KafkaError.TOPIC_ALREADY_EXISTS:
-                pass
+                print(error)
 
 
 def delete_all_topics() -> None:

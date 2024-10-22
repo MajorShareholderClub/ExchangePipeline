@@ -10,20 +10,26 @@ def data_sending_start() -> None:
     """
     Topic create
     """
-    topic = [
-        f"{ASIA_REAL_TOPIC_NAME}BTC",
-        f"{KOREA_REAL_TOPIC_NAME}BTC",
-        f"{NE_REAL_TOPIC_NAME}BTC",
-        "Region.NEOrderbookPreprocessingBTC",
-        "Region.ASIAOrderbookPreprocessingBTC",
-        "Region.KOREAOrderbookPreprocessingBTC",
-    ]
-    partition = [10] * len(topic)
-    replication = [3] * len(topic)
+    try:
+        topic = [
+            f"{ASIA_REAL_TOPIC_NAME}BTC",
+            f"{KOREA_REAL_TOPIC_NAME}BTC",
+            f"{NE_REAL_TOPIC_NAME}BTC",
+            "Region.NEOrderbookPreprocessingBTC",
+            "Region.ASIAOrderbookPreprocessingBTC",
+            "Region.KOREAOrderbookPreprocessingBTC",
+            "Region.Korea_TickerPreprocessing",
+            "Region.Asia_TickerPreprocessing",
+            "Region.NE_TickerPreprocessing",
+        ]
+        partition = [10] * len(topic)
+        replication = [3] * len(topic)
 
-    return new_topic_initialization(
-        topic=topic, partition=partition, replication_factor=replication
-    )
+        return new_topic_initialization(
+            topic=topic, partition=partition, replication_factor=replication
+        )
+    except Exception as error:
+        print(error)
 
 
 if __name__ == "__main__":
