@@ -49,7 +49,6 @@ def get_exchange_urls() -> URLs:
         ne=NERegionURLs(
             binance=ResponseExchangeURL(socket=parser.get("SOCKETURL", "BINANCE"), rest=parser.get("RESTURL", "BINANCE")),
             kraken=ResponseExchangeURL(socket=parser.get("SOCKETURL", "KRAKEN"), rest=parser.get("RESTURL", "KRAKEN")),
-            coinbase=ResponseExchangeURL(socket=parser.get("SOCKETURL", "COINBASE"), rest=parser.get("RESTURL", "COINBASE")),
         ),
     )
 

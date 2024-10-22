@@ -32,12 +32,10 @@ class KoreaMarketRequestType(TypedDict):
 class NEExchangeRest(TypedDict):
     binance: ExchangeResponseData
     kraken: ExchangeResponseData
-    coinbase: ExchangeResponseData
 
 class NEExchangeSocket(TypedDict):
     binance: ExchangeResponseData
     kraken: ExchangeResponseData
-    coinbase: ExchangeResponseData
 
 
 class NEMarketRequestType(TypedDict):

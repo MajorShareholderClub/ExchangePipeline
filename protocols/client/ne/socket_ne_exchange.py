@@ -6,7 +6,6 @@ from common.core.abstract import AbstractExchangeSocketClient
 from common.setting.socket_parameter import (
     binance_socket_paramater,
     kraken_socket_parameter,
-    coinbase_socket_parameter,
 )
 
 
@@ -63,19 +62,3 @@ class KrakenSocket(CoinExchangeSocketClient):
         return await super().get_present_websocket(
             symbol, req_type="book", socket_type=self.orderbook
         )
-
-
-class CoinbaseSocket(CoinExchangeSocketClient):
-    def __init__(self) -> None:
-        super().__init__(
-            target="coinbase",
-            location="ne",
-            socket_parameter=coinbase_socket_parameter,
-        )
-
-    async def price_present_websocket(self, symbol: str) -> None:
-        return await super().get_present_websocket(
-            symbol, req_type="ticker", socket_type=self.ticker
-        )
-
-    async def orderbook_present_websocket(self, symbol: str) -> None: ...

@@ -10,10 +10,6 @@ def market_name_extract(uri: str) -> str:
     # 'wss://' 제거
     uri_parts = uri.split("//")[-1].split(".")
 
-    # 도메인의 마지막 부분이 'coinbase'이면 그 부분을 선택
-    if uri_parts[-2] == "coinbase":
-        return uri_parts[-2].upper()
-
     # 그렇지 않으면 첫 번째 파트를 반환
     return uri_parts[1].upper()
 

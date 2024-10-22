@@ -13,10 +13,10 @@ from protocols.client.korea.socket_korea_exchange import (
 )
 
 from protocols.client.ne.rest_ne_exchange import (
-    BinanceRest, KrakenRest, CoinbaseRest
+    BinanceRest, KrakenRest
 )
 from protocols.client.ne.socket_ne_exchange import (
-    BinanceSocket, KrakenSocket, CoinbaseSocket
+    BinanceSocket, KrakenSocket
 )
 
 from protocols.client.asia.rest_asia_exchange import (
@@ -78,12 +78,10 @@ class MarketAPIFactory:
             rest=NEExchangeRest(
                binance=BinanceRest,
                kraken=KrakenRest,
-               coinbase=CoinbaseRest
             ),
             socket=NEExchangeSocket(
                 binance=BinanceSocket,
                 kraken=KrakenSocket,
-                coinbase=CoinbaseSocket
             ),
         ),
     )

@@ -110,15 +110,11 @@ class BaseMessageDataPreprocessing:
             except json.JSONDecodeError:
                 return None  # JSON 파싱 오류가 발생하면 None 반환
 
-            # fmt: off
-            # KORBIT -- {"timestamp":1729511536,"event":"korbit:subscribe","data":{"channels":["orderbook:btc_krw"]}}
-            # COINONE -- {"response_type":"SUBSCRIBED","channel":"ORDERBOOK","data":{"quote_currency":"KRW","target_currency":"BTC"}}
-
         async def update_and_send(default_data: defaultdict, msg: dict) -> None:
             """메시지와 담을 default_data 선택하여 보내기"""
             kafka_metadata["default_data"] = default_data
             kafka_metadata["message"] = msg
-            kafka_metadata["counting"] = 10
+            kafka_metadata["counting"] = 1
 
             await self.producer_sending(**kafka_metadata)
 

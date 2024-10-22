@@ -25,7 +25,6 @@ class AsiaPartitionMapping(TypedDict):
 class NEPartitionMapping(TypedDict):
     binance: ExchangeMapping
     kraken: ExchangeMapping
-    coinbase: ExchangeMapping
 
 
 class CoinHashingCustomPartitional(DefaultPartitioner):
@@ -85,7 +84,6 @@ class CoinSocketDataCustomPartition(DefaultPartitioner):
     NE_PARTITION_MAPPING = NEPartitionMapping(
         binance=ExchangeMapping(ticker=0, orderbook=1),
         kraken=ExchangeMapping(ticker=2, orderbook=3),
-        coinbase=ExchangeMapping(ticker=4),
     )
 
     @classmethod

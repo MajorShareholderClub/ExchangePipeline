@@ -145,4 +145,3 @@ class NECoinMarket(CoinMarketValidationBase):
 
     binance: CoinMarketData | bool
     kraken: CoinMarketData | bool
-    coinbase: CoinMarketData | bool
