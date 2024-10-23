@@ -79,7 +79,6 @@ services:
     volumes:
       - .kafkalogging/kafka/logs/1:/kafka
       - ./jmx_exporter:/usr/share/jmx_exporter/
-      # - ./connect/libs/jmx_prometheus_javaagent-1.0.1.jar:/opt/kafka/libs/jmx_prometheus_javaagent-1.0.1.jar
 
     networks:
       - kafka-network
@@ -106,7 +105,6 @@ services:
     volumes:
       - .kafkalogging/kafka/logs/1:/kafka
       - ./jmx_exporter:/usr/share/jmx_exporter/
-      # - ./connect/libs/jmx_prometheus_javaagent-1.0.1.jar:/opt/kafka/libs/jmx_prometheus_javaagent-1.0.1.jar
 
     networks:
       - kafka-network
@@ -133,41 +131,40 @@ services:
     volumes:
       - .kafkalogging/kafka/logs/1:/kafka
       - ./jmx_exporter:/usr/share/jmx_exporter/
-      # - ./connect/libs/jmx_prometheus_javaagent-1.0.1.jar:/opt/kafka/libs/jmx_prometheus_javaagent-1.0.1.jar
 
     networks:
       - kafka-network
 
-  # akhq:
-  #   image: tchiotludo/akhq:latest
-  #   hostname: akhq
-  #   depends_on:
-  #     - kafka-1
-  #     - kafka-2
-  #     - kafka-3
-  #   environment:
-  #     AKHQ_CONFIGURATION: |
-  #       akhq:
-  #         connections:
-  #           kafka:
-  #             properties:
-  #               bootstrap.servers: kafka1:19092,kafka2:29092,kafka3:39092
-  #   ports:
-  #     - 8081:8080
-  #   networks:
-  #     - kafka-network
-
-  kafbat-ui:
-    container_name: kafbat-ui
-    image: ghcr.io/kafbat/kafka-ui:latest
+  akhq:
+    image: tchiotludo/akhq:latest
+    hostname: akhq
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    environment:
+      AKHQ_CONFIGURATION: |
+        akhq:
+          connections:
+            kafka:
+              properties:
+                bootstrap.servers: kafka1:19092,kafka2:29092,kafka3:39092
     ports:
       - 8081:8080
-    environment:
-      DYNAMIC_CONFIG_ENABLED: 'true'
-    volumes:
-      - ./kui/config.yml:/etc/kafkaui/dynamic_config.yaml
     networks:
       - kafka-network
+
+  # kafbat-ui:
+  #   container_name: kafbat-ui
+  #   image: ghcr.io/kafbat/kafka-ui:latest
+  #   ports:
+  #     - 8081:8080
+  #   environment:
+  #     DYNAMIC_CONFIG_ENABLED: 'true'
+  #   volumes:
+  #     - ./kui/config.yml:/etc/kafkaui/dynamic_config.yaml
+  #   networks:
+  #     - kafka-network
 
   grafana:
     image: grafana/grafana-oss:8.2.6
@@ -202,44 +199,57 @@ services:
       - kafka-network
   
 
-  # kafka-connect:
-  #   image: confluentinc/cp-kafka-connect:6.2.0
-  #   hostname: kafka-connect
-  #   container_name: kafka-connect
-  #   env_file:
-  #     - ./.env
-  #   depends_on:
-  #     - kafka-1
-  #     - kafka-2
-  #     - kafka-3
-  #   environment:
-  #     CONNECT_BOOTSTRAP_SERVERS: kafka1:19092,kafka2:29092,kafka3:39092
-  #     CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
-  #     CONNECT_REST_PORT: 8083
-  #     CONNECT_GROUP_ID: kafka-s3-group
-  #     CONNECT_CONFIG_STORAGE_TOPIC: kafka-configs
-  #     CONNECT_OFFSET_STORAGE_TOPIC: kafka-offsets
-  #     CONNECT_STATUS_STORAGE_TOPIC: kafka-status
-  #     CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
-  #     CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
-  #     CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-  #     CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
-  #     CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/usr/share/java/kafka-connect/"
-  #     CONNECT_JMX_PORT: 9999
-  #     KAFKA_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
-  #     CONNECT_PARTITION_DURATION_MS: 60000
-  #     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-  #     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-  #   command: 
-  #     - bash
-  #     - -c
-  #     - |
-  #       confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest
-  #       /etc/confluent/docker/run
-  #   ports:
-  #     - "8083:8083"
-  #   networks:
-  #     - kafka-network
+  kafka-connect:
+    image: confluentinc/cp-kafka-connect:6.2.0
+    hostname: kafka-connect
+    container_name: kafka-connect
+    env_file:
+      - ./.env
+    depends_on:
+      - kafka-1
+      - kafka-2
+      - kafka-3
+    environment:
+      CONNECT_BOOTSTRAP_SERVERS: kafka1:19092,kafka2:29092,kafka3:39092
+      CONNECT_REST_ADVERTISED_HOST_NAME: kafka-connect
+      CONNECT_REST_PORT: 8083
+      CONNECT_GROUP_ID: kafka-s3-group
+      CONNECT_CONFIG_STORAGE_TOPIC: kafka-configs
+      CONNECT_OFFSET_STORAGE_TOPIC: kafka-offsets
+      CONNECT_STATUS_STORAGE_TOPIC: kafka-status
+      CONNECT_KEY_CONVERTER: org.apache.kafka.connect.storage.StringConverter
+      CONNECT_VALUE_CONVERTER: org.apache.kafka.connect.json.JsonConverter
+      CONNECT_INTERNAL_KEY_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_INTERNAL_VALUE_CONVERTER: "org.apache.kafka.connect.json.JsonConverter"
+      CONNECT_PLUGIN_PATH: "/usr/share/java,/usr/share/confluent-hub-components,/usr/share/java/kafka-connect/"
+      CONNECT_JMX_PORT: 9999
+      KAFKA_OPTS: "-Dcom.sun.management.jmxremote -Dcom.sun.management.jmxremote.port=9999 -Dcom.sun.management.jmxremote.authenticate=false -Dcom.sun.management.jmxremote.ssl=false"
+      CONNECT_PARTITION_DURATION_MS: 60000
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+    command: 
+      - bash
+      - -c
+      - |
+        confluent-hub install --no-prompt confluentinc/kafka-connect-s3:latest
+        /etc/confluent/docker/run
+    ports:
+      - "8083:8083"
+    networks:
+      - kafka-network
+
+  kafka-connect-ui:
+    image: landoop/kafka-connect-ui:0.9.6
+    hostname: kafka-connect-ui
+    depends_on:
+      - kafka-connect
+    ports:
+      - 8003:8000
+    networks:
+      - kafka-network
+    environment:
+      CONNECT_URL: "http://kafka-connect:8083/"
+      PROXY: "true" 
 
   kafka-exporter:
     image: danielqsj/kafka-exporter

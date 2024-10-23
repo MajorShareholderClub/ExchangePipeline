@@ -15,14 +15,14 @@ def data_sending_start() -> None:
             f"{ASIA_REAL_TOPIC_NAME}BTC",
             f"{KOREA_REAL_TOPIC_NAME}BTC",
             f"{NE_REAL_TOPIC_NAME}BTC",
-            "Region.NEOrderbookPreprocessingBTC",
-            "Region.ASIAOrderbookPreprocessingBTC",
-            "Region.KOREAOrderbookPreprocessingBTC",
+            "Region.NE_OrderbookPreprocessing",
+            "Region.Asia_OrderbookPreprocessing",
+            "Region.Korea_OrderbookPreprocessing",
             "Region.Korea_TickerPreprocessing",
             "Region.Asia_TickerPreprocessing",
             "Region.NE_TickerPreprocessing",
         ]
-        partition = [10] * len(topic)
+        partition = [2] * len(topic)
         replication = [3] * len(topic)
 
         return new_topic_initialization(
