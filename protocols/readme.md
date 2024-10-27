@@ -2,20 +2,14 @@
 
 각 거래소의 REST API 요청을 처리하기 위한 클라이언트 클래스들이 포함되어 있습니다.
 
-### 프로세스 구조 
+### REST API 프로세스 구조 
 ```mermaid
 classDiagram
     class AbstractExchangeRestClient {
         +get_coin_all_info_price(coin_name: str): ExchangeResponseData
     }
-    class AbstractExchangeSocketClient {
-        +get_present_websocket(symbol: str, req_type: str): Coroutine
-    }
     class CoinExchangeRestClient {
         +get_coin_all_info_price(coin_name: str): ExchangeResponseData
-    }
-    class CoinExchangeSocketClient {
-        +get_present_websocket(symbol: str, req_type: str): None
     }
     class BinanceRest {
         +get_coin_all_info_price(coin_name: str): ExchangeResponseData
@@ -29,6 +23,31 @@ classDiagram
     class BithumbRest {
         +get_coin_all_info_price(coin_name: str): ExchangeResponseData
     }
+    class GateIORest {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class BybitRest {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+
+    AbstractExchangeRestClient <|-- CoinExchangeRestClient
+    CoinExchangeRestClient <|-- BinanceRest
+    CoinExchangeRestClient <|-- KrakenRest
+    CoinExchangeRestClient <|-- UpbitRest
+    CoinExchangeRestClient <|-- BithumbRest
+    CoinExchangeRestClient <|-- GateIORest
+    CoinExchangeRestClient <|-- BybitRest
+``` 
+
+### WebSocket 프로세스 구조
+```mermaid      
+classDiagram
+    class AbstractExchangeSocketClient {
+        +get_present_websocket(symbol: str, req_type: str): Coroutine
+    }
+    class CoinExchangeSocketClient {
+        +get_present_websocket(symbol: str, req_type: str): None
+    }
     class BinanceSocket {
         +price_present_websocket(symbol: str): None
         +orderbook_present_websocket(symbol: str): None
@@ -37,17 +56,47 @@ classDiagram
         +price_present_websocket(symbol: str): None
         +orderbook_present_websocket(symbol: str): None
     }
+    class KrakenSocket {
+        +price_present_websocket(symbol: str): None
+        +orderbook_present_websocket(symbol: str): None
+    }
+    class BithumbSocket {
+        +price_present_websocket(symbol: str): None
+        +orderbook_present_websocket(symbol: str): None
+    }
+    class GateIOSocket {
+        +price_present_websocket(symbol: str): None
+        +orderbook_present_websocket(symbol: str): None
+    }
+    class BybitSocket {
+        +price_present_websocket(symbol: str): None
+        +orderbook_present_websocket(symbol: str): None
+    }
+    class NEWebsocketConnection {
+        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
+    }
+    class KoreaWebsocketConnection {
+        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
+    }
+    class AsiaWebsocketConnection {
+        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
+    }
 
-    AbstractExchangeRestClient <|-- CoinExchangeRestClient
     AbstractExchangeSocketClient <|-- CoinExchangeSocketClient
-    CoinExchangeRestClient <|-- BinanceRest
-    CoinExchangeRestClient <|-- KrakenRest
-    CoinExchangeRestClient <|-- UpbitRest
-    CoinExchangeRestClient <|-- BithumbRest
     CoinExchangeSocketClient <|-- BinanceSocket
     CoinExchangeSocketClient <|-- UpbitSocket
+    CoinExchangeSocketClient <|-- KrakenSocket
+    CoinExchangeSocketClient <|-- BithumbSocket
+    CoinExchangeSocketClient <|-- GateIOSocket
+    CoinExchangeSocketClient <|-- BybitSocket
     CoinExchangeSocketClient --> BaseMessageDataPreprocessing : uses
-``` 
+    BinanceSocket --> NEWebsocketConnection : uses
+    UpbitSocket --> KoreaWebsocketConnection : uses
+    KrakenSocket --> NEWebsocketConnection : uses
+    BithumbSocket --> KoreaWebsocketConnection : uses
+    GateIOSocket --> AsiaWebsocketConnection : uses
+    BybitSocket --> AsiaWebsocketConnection : uses
+```
 
 ### 📂 protocols               # 🌐 거래소와의 통신을 위한 클라이언트 모듈
 ```
