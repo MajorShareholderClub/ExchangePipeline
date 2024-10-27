@@ -1,6 +1,6 @@
 ### 클라이언트 모듈 설명
 
-각 거래소의 REST API 요청을 처리하기 위한 클라이언트 클래스들이 포함되어 있습니다.
+각 거래소의 REST API 와 WebSocket 요청을 처리하기 위한 클라이언트 클래스들이 포함되어 있습니다.
 
 ### REST API 프로세스 구조 
 ```mermaid
@@ -11,33 +11,27 @@ classDiagram
     class CoinExchangeRestClient {
         +get_coin_all_info_price(coin_name: str): ExchangeResponseData
     }
-    class BinanceRest {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    class ClassNE {
+        +BinanceRest
+        +KrakenRest
     }
-    class KrakenRest {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    class ClassKorea {
+        +UpbitRest
+        +BithumbRest
+        +CoinoneRest
+        +KorbitRest
     }
-    class UpbitRest {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
-    }
-    class BithumbRest {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
-    }
-    class GateIORest {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
-    }
-    class BybitRest {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    class ClassAsia {
+        +GateIORest
+        +BybitRest
+        +OKXRest
     }
 
     AbstractExchangeRestClient <|-- CoinExchangeRestClient
-    CoinExchangeRestClient <|-- BinanceRest
-    CoinExchangeRestClient <|-- KrakenRest
-    CoinExchangeRestClient <|-- UpbitRest
-    CoinExchangeRestClient <|-- BithumbRest
-    CoinExchangeRestClient <|-- GateIORest
-    CoinExchangeRestClient <|-- BybitRest
-``` 
+    CoinExchangeRestClient <|-- ClassNE
+    CoinExchangeRestClient <|-- ClassKorea
+    CoinExchangeRestClient <|-- ClassAsia
+```
 
 ### WebSocket 프로세스 구조
 ```mermaid      
@@ -48,30 +42,6 @@ classDiagram
     class CoinExchangeSocketClient {
         +get_present_websocket(symbol: str, req_type: str): None
     }
-    class BinanceSocket {
-        +price_present_websocket(symbol: str): None
-        +orderbook_present_websocket(symbol: str): None
-    }
-    class UpbitSocket {
-        +price_present_websocket(symbol: str): None
-        +orderbook_present_websocket(symbol: str): None
-    }
-    class KrakenSocket {
-        +price_present_websocket(symbol: str): None
-        +orderbook_present_websocket(symbol: str): None
-    }
-    class BithumbSocket {
-        +price_present_websocket(symbol: str): None
-        +orderbook_present_websocket(symbol: str): None
-    }
-    class GateIOSocket {
-        +price_present_websocket(symbol: str): None
-        +orderbook_present_websocket(symbol: str): None
-    }
-    class BybitSocket {
-        +price_present_websocket(symbol: str): None
-        +orderbook_present_websocket(symbol: str): None
-    }
     class NEWebsocketConnection {
         +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
     }
@@ -81,21 +51,30 @@ classDiagram
     class AsiaWebsocketConnection {
         +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
     }
+    class ClassNE {
+        +BinanceSocket
+        +KrakenSocket
+    }
+    class ClassKorea {
+        +UpbitSocket
+        +BithumbSocket
+        +CoinoneSocket
+        +KorbitSocket
+    }
+    class ClassAsia {
+        +GateIOSocket
+        +BybitSocket
+        +OKXSocket
+    }
 
     AbstractExchangeSocketClient <|-- CoinExchangeSocketClient
-    CoinExchangeSocketClient <|-- BinanceSocket
-    CoinExchangeSocketClient <|-- UpbitSocket
-    CoinExchangeSocketClient <|-- KrakenSocket
-    CoinExchangeSocketClient <|-- BithumbSocket
-    CoinExchangeSocketClient <|-- GateIOSocket
-    CoinExchangeSocketClient <|-- BybitSocket
+    CoinExchangeSocketClient <|-- ClassNE
+    CoinExchangeSocketClient <|-- ClassKorea
+    CoinExchangeSocketClient <|-- ClassAsia
     CoinExchangeSocketClient --> BaseMessageDataPreprocessing : uses
-    BinanceSocket --> NEWebsocketConnection : uses
-    UpbitSocket --> KoreaWebsocketConnection : uses
-    KrakenSocket --> NEWebsocketConnection : uses
-    BithumbSocket --> KoreaWebsocketConnection : uses
-    GateIOSocket --> AsiaWebsocketConnection : uses
-    BybitSocket --> AsiaWebsocketConnection : uses
+    ClassNE --> NEWebsocketConnection : uses
+    ClassKorea --> KoreaWebsocketConnection : uses
+    ClassAsia --> AsiaWebsocketConnection : uses
 ```
 
 ### 📂 protocols               # 🌐 거래소와의 통신을 위한 클라이언트 모듈
