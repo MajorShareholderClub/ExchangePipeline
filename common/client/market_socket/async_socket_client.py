@@ -23,10 +23,7 @@ class BaseSettingWebsocket(ABC):
 
     @abstractmethod
     def get_websocket_method(self, api: Callable) -> Callable:
-        """각 자식 클래스에서 구현할 웹소켓 메서드 \n
-        price_present_websocket -- orderbook_present_websocket 경로 \n
-            -> korea or foreign_exchange/socket_foreign or korea_exchange.py
-        """
+        """각 자식 클래스에서 구현할 웹소켓 메서드"""
         pass
 
     async def select_websocket(self) -> list:
