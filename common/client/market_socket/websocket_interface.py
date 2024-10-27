@@ -145,7 +145,7 @@ class BaseMessageDataPreprocessing:
             producer_metadata = ProducerMetadataDict(
                 market=market,
                 symbol=symbol,
-                topic=get_topic_name(self.location, symbol),
+                topic=f"{get_topic_name(self.location, symbol)}-{socket_type}",
                 key=f"{market}:{socket_type}",
             )
             await self.append_and_process(

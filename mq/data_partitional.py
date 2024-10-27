@@ -67,23 +67,23 @@ class CoinHashingCustomPartitional(DefaultPartitioner):
 class CoinSocketDataCustomPartition(DefaultPartitioner):
     # 한국 거래소 파티션 매핑
     KOREA_PARTITION_MAPPING = KoreaPartitionMapping(
-        upbit=ExchangeMapping(ticker=0, orderbook=1),
-        bithumb=ExchangeMapping(ticker=2, orderbook=3),
-        coinone=ExchangeMapping(ticker=4, orderbook=5),
-        korbit=ExchangeMapping(ticker=6, orderbook=7),
+        upbit=ExchangeMapping(ticker=0, orderbook=0),
+        bithumb=ExchangeMapping(ticker=1, orderbook=1),
+        coinone=ExchangeMapping(ticker=2, orderbook=2),
+        korbit=ExchangeMapping(ticker=3, orderbook=3),
     )
 
     # ASIA 거래소의 파티션 매핑
     ASIA_PARTITION_MAPPING = AsiaPartitionMapping(
-        okx=ExchangeMapping(ticker=0, orderbook=1),
-        bybit=ExchangeMapping(ticker=2, orderbook=3),
-        gateio=ExchangeMapping(ticker=4, orderbook=5),
+        okx=ExchangeMapping(ticker=0, orderbook=0),
+        bybit=ExchangeMapping(ticker=1, orderbook=1),
+        gateio=ExchangeMapping(ticker=2, orderbook=2),
     )
 
     # NE 거래소의 파티션 매핑
     NE_PARTITION_MAPPING = NEPartitionMapping(
-        binance=ExchangeMapping(ticker=0, orderbook=1),
-        kraken=ExchangeMapping(ticker=2, orderbook=3),
+        binance=ExchangeMapping(ticker=0, orderbook=0),
+        kraken=ExchangeMapping(ticker=1, orderbook=1),
     )
 
     @classmethod

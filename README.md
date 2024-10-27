@@ -119,3 +119,128 @@ python socket_test.py
 ├── 🐍 socket_order.py           # 주문 관련 소켓 모듈
 └── 🐍 socket_ticker.py          # 현재가 관련 소켓 모듈
 ```
+
+
+```mermaid
+graph TD;
+    A[Project Root]
+    A --> B[README.md]
+    A --> C[common]
+    A --> D[config]
+    A --> E[logs]
+    A --> F[mq]
+    A --> G[pipe]
+    A --> H[protocols]
+    A --> I[rest_test.py]
+    A --> J[socket_order.py]
+    A --> K[socket_ticker.py]
+    A --> L[poetry.lock]
+    A --> M[pyproject.toml]
+    A --> N[requirements.txt]
+
+    C --> C1[client]
+    C --> C2[core]
+    C --> C3[exception]
+    C --> C4[setting]
+    C --> C5[utils]
+
+    C1 --> C1A[market_rest]
+    C1 --> C1B[market_socket]
+
+    C1A --> C1A1[async_api_client.py]
+    C1A --> C1A2[rest_interface.py]
+
+    C1B --> C1B1[async_socket_client.py]
+    C1B --> C1B2[websocket_interface.py]
+
+    C2 --> C2A[abstract]
+    C2 --> C2B[data_format.py]
+    C2 --> C2C[types]
+
+    C2A --> C2A1[__init__.py]
+    C2A --> C2A2[abstract_async_request.py]
+    C2A --> C2A3[abstract_stream.py]
+    C2A --> C2A4[abstract_trade_api.py]
+
+    C2C --> C2C1[__init__.py]
+    C2C --> C2C2[_common_exchange.py]
+
+    C3 --> C3A[__init__.py]
+    C3 --> C3B[exception.py]
+
+    C4 --> C4A[properties.py]
+    C4 --> C4B[socket_parameter.py]
+    C4 --> C4C[urls.conf]
+
+    C5 --> C5A[logger.py]
+    C5 --> C5B[other_util.py]
+
+    D --> D1[asia]
+    D --> D2[korea]
+    D --> D3[ne]
+    D --> D4[yml_param_load.py]
+    D --> D5[types]
+
+    D1 --> D1A[_market_rest.yml]
+    D1 --> D1B[_market_socket.yml]
+
+    D2 --> D2A[_market_rest.yml]
+    D2 --> D2B[_market_socket.yml]
+
+    D3 --> D3A[_market_rest.yml]
+    D3 --> D3B[_market_socket.yml]
+
+    D5 --> D5A[__init__.py]
+    D5 --> D5B[_exchange.py]
+
+    F --> F1[data_admin.py]
+    F --> F2[data_interaction.py]
+    F --> F3[data_partitional.py]
+    F --> F4[kafka-docker]
+
+    F4 --> F4A[docker_container_remove.sh]
+    F4 --> F4B[fluentd-cluster.yml]
+    F4 --> F4C[jmx_exporter]
+    F4 --> F4D[kafka-compose.yml]
+    F4 --> F4E[kui]
+    F4 --> F4F[mq]
+    F4 --> F4G[visualization]
+
+    F4C --> F4C1[jmx_prometheus_javaagent-1.0.1.jar]
+    F4C --> F4C2[kafka-broker.yml]
+
+    F4E --> F4E1[config.yml]
+
+    F4F --> F4F1[kafka-docker]
+    F4F1 --> F4F1A[kui]
+    F4F1A --> F4F1A1[config.yml]
+
+    F4G --> F4G1[grafana]
+    F4G --> F4G2[prometheus]
+
+    F4G2 --> F4G2A[config]
+    F4G2A --> F4G2A1[prometheus.yml]
+
+    G --> G1[connection]
+    G1 --> G1A[connection.py]
+    G1 --> G1B[socket_init.py]
+
+    H --> H1[client]
+    H --> H2[connection]
+
+    H1 --> H1A[asia]
+    H1 --> H1B[korea]
+    H1 --> H1C[ne]
+
+    H1A --> H1A1[rest_asia_exchange.py]
+    H1A --> H1A2[socket_asia_exchange.py]
+
+    H1B --> H1B1[rest_korea_exchange.py]
+    H1B --> H1B2[socket_korea_exchange.py]
+
+    H1C --> H1C1[rest_ne_exchange.py]
+    H1C --> H1C2[socket_ne_exchange.py]
+
+    H2 --> H2A[coin_rest_api.py]
+    H2 --> H2B[coin_socket.py]
+```
