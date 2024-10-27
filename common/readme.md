@@ -5,39 +5,6 @@
 🛠️ 공통으로 사용되는 모듈을 모아놓은 디렉토리
 이 디렉토리는 다양한 모듈들이 서로 상호작용할 수 있도록 공통 기능과 인터페이스를 제공하여, 코드의 재사용성과 유지 보수성을 높이는 역할을 합니다.
 
-### 프로세스 구조 
-```mermaid
-classDiagram
-    class ABC {
-        <<abstract>>
-    }
-    class BaseRetry {
-        +retries: int
-        +base_delay: int
-        +execute_with_retry(func: Callable, *args, **kwargs): Any
-    }
-    class AbstractExchangeRestClient {
-        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
-    }
-    class AbstractExchangeSocketClient {
-        +get_present_websocket(symbol: str, req_type: str): Coroutine
-    }
-    class BaseSettingWebsocket {
-        +get_websocket_method(api: Callable): Callable
-    }
-    class BaseMessageDataPreprocessing {
-        +put_message_to_logging(market: str, symbol: str, message: ResponseData): None
-        +send_kafka_message(market: str, symbol: str, data: list, topic: str, key: str): None
-    }
-
-    ABC <|-- BaseRetry
-    ABC <|-- AbstractExchangeRestClient
-    ABC <|-- AbstractExchangeSocketClient
-    BaseSettingWebsocket <|-- BaseMessageDataPreprocessing
-    BaseMessageDataPreprocessing --> KafkaMessageSender : uses
-```
-
-
 
 ### 📂 common                   # 🛠️ 공통으로 사용되는 모듈을 모아놓은 디렉토리
 ```

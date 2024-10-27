@@ -37,19 +37,19 @@ classDiagram
 ```mermaid      
 classDiagram
     class AbstractExchangeSocketClient {
-        +get_present_websocket(symbol: str, req_type: str): Coroutine
+        +get_present_websocket(symbol: str, req_type: str, socket_type: str): Coroutine
     }
     class CoinExchangeSocketClient {
-        +get_present_websocket(symbol: str, req_type: str): None
+        +get_present_websocket(symbol: str, req_type: str, socket_type: str): None
     }
     class NEWebsocketConnection {
-        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
+        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str, socket_type: str): None
     }
     class KoreaWebsocketConnection {
-        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
+        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str, socket_type: str): None
     }
     class AsiaWebsocketConnection {
-        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str): None
+        +websocket_to_json(uri: str, subs_fmt: list[dict], symbol: str, socket_type: str): None
     }
     class ClassNE {
         +BinanceSocket
@@ -71,7 +71,6 @@ classDiagram
     CoinExchangeSocketClient <|-- ClassNE
     CoinExchangeSocketClient <|-- ClassKorea
     CoinExchangeSocketClient <|-- ClassAsia
-    CoinExchangeSocketClient --> BaseMessageDataPreprocessing : uses
     ClassNE --> NEWebsocketConnection : uses
     ClassKorea --> KoreaWebsocketConnection : uses
     ClassAsia --> AsiaWebsocketConnection : uses

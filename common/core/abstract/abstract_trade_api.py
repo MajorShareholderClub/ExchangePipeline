@@ -43,7 +43,7 @@ class AbstractExchangeSocketClient(ABC):
 
     @abstractmethod
     async def get_present_websocket(
-        self, symbol: str, req_type: str | None = None
+        self, symbol: str, req_type: str, socket_type: str
     ) -> Coroutine[Any, Any, None]:
         """
         Subject:
