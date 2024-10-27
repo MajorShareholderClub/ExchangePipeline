@@ -2,6 +2,52 @@
 
 각 거래소의 REST API 요청을 처리하기 위한 클라이언트 클래스들이 포함되어 있습니다.
 
+### 프로세스 구조 
+```mermaid
+classDiagram
+    class AbstractExchangeRestClient {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class AbstractExchangeSocketClient {
+        +get_present_websocket(symbol: str, req_type: str): Coroutine
+    }
+    class CoinExchangeRestClient {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class CoinExchangeSocketClient {
+        +get_present_websocket(symbol: str, req_type: str): None
+    }
+    class BinanceRest {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class KrakenRest {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class UpbitRest {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class BithumbRest {
+        +get_coin_all_info_price(coin_name: str): ExchangeResponseData
+    }
+    class BinanceSocket {
+        +price_present_websocket(symbol: str): None
+        +orderbook_present_websocket(symbol: str): None
+    }
+    class UpbitSocket {
+        +price_present_websocket(symbol: str): None
+        +orderbook_present_websocket(symbol: str): None
+    }
+
+    AbstractExchangeRestClient <|-- CoinExchangeRestClient
+    AbstractExchangeSocketClient <|-- CoinExchangeSocketClient
+    CoinExchangeRestClient <|-- BinanceRest
+    CoinExchangeRestClient <|-- KrakenRest
+    CoinExchangeRestClient <|-- UpbitRest
+    CoinExchangeRestClient <|-- BithumbRest
+    CoinExchangeSocketClient <|-- BinanceSocket
+    CoinExchangeSocketClient <|-- UpbitSocket
+    CoinExchangeSocketClient --> BaseMessageDataPreprocessing : uses
+``` 
 
 ### 📂 protocols               # 🌐 거래소와의 통신을 위한 클라이언트 모듈
 ```

@@ -1,3 +1,17 @@
+### 프로세스 구조 
+```mermaid
+classDiagram
+    class CoinPresentPriceWebsocket {
+        +__init__(symbol: str, location: str, market: str)
+    }
+    class CoinOrderBookWebsocket {
+        +__init__(symbol: str, location: str, market: str)
+    }
+
+    CoinPresentPriceWebsocket --> BaseSettingWebsocket : uses
+    CoinOrderBookWebsocket --> BaseSettingWebsocket : uses
+``` 
+
 ### 📂 mq                       # 📊 메시지 큐 관련 모듈
 ```
 ├── 🐍 data_admin.py            # 데이터 카프카 설정 관리 모듈
