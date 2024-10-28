@@ -1,4 +1,4 @@
-from mq.data_admin import new_topic_initialization
+from mq.data_admin import new_topic_initialization, delete_all_topics
 from common.setting.properties import (
     KOREA_REAL_TOPIC_NAME,
     ASIA_REAL_TOPIC_NAME,
@@ -21,12 +21,12 @@ def data_sending_start() -> None:
             f"{ASIA_REAL_TOPIC_NAME}BTC-ticker",
             f"{NE_REAL_TOPIC_NAME}BTC-orderbook",
             f"{NE_REAL_TOPIC_NAME}BTC-ticker",
-            "Region.NE_OrderbookPreprocessing",
-            "Region.Asia_OrderbookPreprocessing",
-            "Region.Korea_OrderbookPreprocessing",
-            "Region.Korea_TickerPreprocessing",
-            "Region.Asia_TickerPreprocessing",
-            "Region.NE_TickerPreprocessing",
+            "RegionNE_OrderbookPreprocessing",
+            "RegionAsia_OrderbookPreprocessing",
+            "RegionKorea_OrderbookPreprocessing",
+            "RegionKorea_TickerPreprocessing",
+            "RegionAsia_TickerPreprocessing",
+            "RegionNE_TickerPreprocessing",
         ]
 
         # Partition settings by region (matching the topic order above)

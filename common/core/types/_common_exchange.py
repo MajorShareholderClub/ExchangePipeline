@@ -60,6 +60,7 @@ class ForeignCoinMarketData(TypedDict):
 
 
 class SocketLowData(TypedDict):
+    region: str
     market: str
     symbol: str
     data: dict | list

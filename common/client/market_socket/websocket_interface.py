@@ -53,6 +53,7 @@ class BaseMessageDataPreprocessing:
         """Kafka에 메시지 전송"""
         await KafkaMessageSender().produce_sending(
             message=SocketLowData(
+                region=self.location,
                 market=market,
                 symbol=symbol,
                 data=data,
