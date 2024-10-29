@@ -171,3 +171,4 @@ kafka-docker/zookeeper/
 
 mq/kafka-docker/.kafkalogging
 mq/kafka-docker/visualization
+mq/kafka-docker/init.sql
