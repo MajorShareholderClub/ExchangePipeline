@@ -81,7 +81,7 @@ ExchangeCollection = dict[str, KoreaCoinMarketData | ForeignCoinMarketData]
 -----------------------------
 
 """
-UUID = NewType("UUID", str(uuid.uuid4()))
+UUID = NewType("UUID", str)
 
 
 class TicketUUID(TypedDict):

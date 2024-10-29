@@ -1,4 +1,3 @@
-import json
 import websockets
 
 from common.core.types import ResponseData
