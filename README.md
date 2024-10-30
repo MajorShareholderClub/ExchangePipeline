@@ -21,15 +21,19 @@
 
 ### 실행 방법 
 ```python3
+# poetry 가 설치되어 있어야 합니다
+cat requirements.txt | xargs poetry add 
 poetry shell
+
 # topic_create
 python topic_create.py
 
 # rest
 python rest_test.py
 
-# socket
-python socket_test.py
+# socket ticker
+python socket_ticker.py
+python socket_order.py
 ```
 
 
