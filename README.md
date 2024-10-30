@@ -38,7 +38,7 @@ python socket_order.py
 
 
 ### 시스템 아키텍처 
-<img src="https://github.com/user-attachments/assets/414e4ce0-daca-416c-97a2-7b273987bb19" alt="Description" width="800" height="500"/>
+<img alt="image" src="https://github.com/user-attachments/assets/f2668531-7741-4f74-ab7e-90fd18475bb5" width="800" height="500"/>
 
 
 
