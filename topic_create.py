@@ -15,12 +15,12 @@ def data_sending_start() -> None:
     """
     try:
         topic = [
-            f"{KOREA_REAL_TOPIC_NAME}BTC-orderbook",
-            f"{KOREA_REAL_TOPIC_NAME}BTC-ticker",
-            f"{ASIA_REAL_TOPIC_NAME}BTC-orderbook",
-            f"{ASIA_REAL_TOPIC_NAME}BTC-ticker",
-            f"{NE_REAL_TOPIC_NAME}BTC-orderbook",
-            f"{NE_REAL_TOPIC_NAME}BTC-ticker",
+            f"{KOREA_REAL_TOPIC_NAME}-orderbook",
+            f"{KOREA_REAL_TOPIC_NAME}-ticker",
+            f"{ASIA_REAL_TOPIC_NAME}-orderbook",
+            f"{ASIA_REAL_TOPIC_NAME}-ticker",
+            f"{NE_REAL_TOPIC_NAME}-orderbook",
+            f"{NE_REAL_TOPIC_NAME}-ticker",
             "RegionNE_OrderbookPreprocessing",
             "RegionAsia_OrderbookPreprocessing",
             "RegionKorea_OrderbookPreprocessing",
