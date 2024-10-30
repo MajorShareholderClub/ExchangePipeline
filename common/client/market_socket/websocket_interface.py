@@ -136,6 +136,18 @@ class BaseMessageDataPreprocessing:
             case _:
                 await update_and_send(self.message_data, filtered_message)
 
+    async def send_error_to_kafka(
+        self, market: str, symbol: str, error: Exception
+    ) -> None:
+        """오류 메시지를 Kafka로 전송하는 메서드"""
+        await self.send_kafka_message(
+            market=market,
+            symbol=symbol,
+            data=[{"error": str(error)}],
+            topic=f"{get_topic_name(self.location)}-error",
+            key=f"{market}:error-{symbol}",
+        )
+
     async def producing_start(self, socket_type: str) -> None:
         """프로듀싱 시작점 socket_type: (orderbook, ticker)"""
         try:
@@ -146,22 +158,19 @@ class BaseMessageDataPreprocessing:
             producer_metadata = ProducerMetadataDict(
                 market=market,
                 symbol=symbol,
-                topic=f"{get_topic_name(self.location, symbol)}-{socket_type}",
-                key=f"{market}:{socket_type}",
+                topic=f"{get_topic_name(self.location)}-{socket_type}",
+                key=f"{market}:{socket_type}-{symbol}",
             )
             await self.append_and_process(
                 message=message, kafka_metadata=producer_metadata
             )
-        except (TypeError, KeyError) as error:
+        except (TypeError, KeyError, CancelledError) as error:
+            message = f"오류 --> {error} market --> {market} symbol --> {symbol}"
             await self._logger.log_message(
                 logging.ERROR,
-                message=f"타입오류 --> {error} market --> {market}",
+                message=message,
             )
-        except CancelledError as error:
-            await self._logger.log_message(
-                logging.ERROR,
-                message=f"가격 소켓 연결 오류 --> {error} url --> {market}",
-            )
+            await self.send_error_to_kafka(market, symbol, error)
 
 
 class WebsocketConnectionManager(WebsocketConnectionAbstract):
@@ -217,8 +226,9 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             except (TypeError, ValueError) as error:
                 await self._logger.log_message(
                     logging.ERROR,
-                    f"다음과 같은 이유로 실행하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.print_exc()}",
+                    f"다음과 같은 이유로 실행하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.format_exc()}",
                 )
+                await self.process.send_error_to_kafka(market, symbol, error)
 
     async def receive_message(self, websocket: socket_protocol) -> ExchangeResponseData:
         """메시지를 수신하고 JSON으로 변환하는 메서드"""
@@ -226,8 +236,9 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             message: bytes = await asyncio.wait_for(websocket.recv(), timeout=30.0)
             return json.loads(message) if isinstance(message, bytes) else message
         except (TypeError, ValueError) as error:
-            message = f"다음과 같은 이유로 메시지 수신하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.print_exc()}"
+            message = f"다음과 같은 이유로 메시지 수신하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.format_exc()}"
             await self._logger.log_message(logging.ERROR, message)
+            await self.process.send_error_to_kafka("unknown", "unknown", error)
 
     async def websocket_to_json(
         self,

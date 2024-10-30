@@ -79,51 +79,54 @@ class KafkaMessageSender:
                 retry_backoff_ms=100,
             )
             self.producer = AIOKafkaProducer(**config)
-            await self.producer.start()
-            self.producer_started = True
+            try:
+                await self.producer.start()
+                self.producer_started = True
+            except (KafkaConnectionError, KafkaProtocolError) as e:
+                await self.logger.log_message(logging.ERROR, message=f"Producer 시작 실패: {e}")
 
     async def stop_producer(self) -> None:
         """Producer 종료"""
         if self.producer_started and self.producer is not None:
-            await self.producer.stop()
-            self.producer_started = False
+            try:
+                await self.producer.stop()
+                self.producer_started = False
+            except (KafkaConnectionError, KafkaProtocolError) as e:
+                await self.logger.log_message(logging.ERROR, message=f"Producer 종료 실패: {e}")
 
-    async def produce_sending(
-        self,
-        message: dict,
-        topic: str,
-        key: str
-    ):
+    async def produce_sending(self, message: dict, topic: str, key: bytes) -> None:
         await self.start_producer()
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록
             size: int = len(json.dumps(message, default=default).encode("utf-8"))
             log_message = f"Message to: {topic} --> size: {size} bytes"
-            await self.logger.log_message(logging.INFO, message=log_message)
+            try:
+                await self.logger.log_message(logging.INFO, message=log_message)
+            except Exception as log_error:
+                print(f"Logging 실패: {log_error}")
+
             # 실제 메시지 전송
             await self.producer.send_and_wait(
                 topic=topic, value=message, key=key
             )
 
             # 예외 상황에서 저장된 메시지 재전송
-            while self.except_list[topic]:
+            retry_count = 0
+            max_retries = 5
+            while self.except_list[topic] and retry_count < max_retries:
                 stored_message = self.except_list[topic].pop(0)
-                await self.producer.send_and_wait(topic, stored_message)
+                try:
+                    await self.producer.send_and_wait(topic, stored_message)
+                except (KafkaConnectionError, KafkaProtocolError) as resend_error:
+                    await self.logger.log_message(logging.ERROR, message=f"재전송 실패: {resend_error}")
+                    self.except_list[topic].append(stored_message)
+                    retry_count += 1
 
-        except Exception as error:
-            match error:
-                case NoBrokersAvailable() | KafkaProtocolError() | KafkaConnectionError():
-                    error_message = (
-                        f"Kafka broker error: {error}, 메시지 임시 저장합니다."
-                    )
-                    await self.logger.log_message(logging.ERROR, message=error_message)
-                    self.except_list[topic].append(message)  # 메시지 저장
-
-                case _:
-                    error_message = f"Unexpected error: {error}, 메시지를 보낼 수 없습니다 임시 저장합니다."
-                    await self.logger.log_message(logging.ERROR, message=error_message)
-                    self.except_list[topic].append(message)  # 메시지 저장
+        except (NoBrokersAvailable, KafkaProtocolError, KafkaConnectionError) as kafka_error:
+            error_message = f"Kafka broker error: {kafka_error}, 메시지 임시 저장합니다."
+            await self.logger.log_message(logging.ERROR, message=error_message)
+            self.except_list[topic].append(message)  # 메시지 저장
 
         finally:
             await self.stop_producer()
