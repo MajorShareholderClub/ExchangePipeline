@@ -63,7 +63,7 @@ class KafkaMessageSender:
         self.logger = AsyncLogger(target="kafka", folder="kafka")
 
     # fmt: off
-    async def start_producer(self) -> None:
+    async def start_producer(self, topic: str, message: dict) -> None:
         """Producer 시작 및 재사용"""
         if not self.producer_started:
             config = KafkaConfig(
@@ -83,8 +83,9 @@ class KafkaMessageSender:
                 await self.producer.start()
                 self.producer_started = True
             except (KafkaConnectionError, KafkaProtocolError) as e:
-                await self.logger.log_message(logging.ERROR, message=f"Producer 시작 실패: {e}")
-
+                await self.logger.log_message(logging.ERROR, message=f"Producer 시작 실패: {e} 데이터 임시 저장합니다 -> {message}")
+                self.except_list[topic].append(message)  # 메시지 저장
+                
     async def stop_producer(self) -> None:
         """Producer 종료"""
         if self.producer_started and self.producer is not None:
@@ -94,8 +95,9 @@ class KafkaMessageSender:
             except (KafkaConnectionError, KafkaProtocolError) as e:
                 await self.logger.log_message(logging.ERROR, message=f"Producer 종료 실패: {e}")
 
+
     async def produce_sending(self, message: dict, topic: str, key: bytes) -> None:
-        await self.start_producer()
+        await self.start_producer(topic, message)
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록
