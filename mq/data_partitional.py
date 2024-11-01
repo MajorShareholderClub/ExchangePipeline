@@ -92,7 +92,7 @@ class CoinSocketDataCustomPartition(DefaultPartitioner):
             decoded_key = key.decode() if isinstance(key, bytes) else key
             ex_keys = decoded_key.split(":")
             exchange = ex_keys[0].strip('"').lower()
-            data_type = ex_keys[1].strip('"').lower()
+            data_type = ex_keys[1].strip('"').lower().split("-")[0]
 
             match exchange:
                 case exchange if exchange in cls.KOREA_PARTITION_MAPPING:

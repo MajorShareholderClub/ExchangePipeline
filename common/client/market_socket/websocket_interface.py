@@ -1,7 +1,7 @@
 import json
 import logging
 import traceback
-from typing import Callable, TypedDict, Required
+from typing import TypedDict, Required
 from collections import defaultdict
 from asyncio.exceptions import CancelledError
 
@@ -104,7 +104,7 @@ class KafkaService:
 class MessageProcessor:
     """웹소켓 메시지 처리 클래스"""
 
-    def __init__(self, logger: AsyncLogger, kafka_service: KafkaService):
+    def __init__(self, logger: AsyncLogger, kafka_service: KafkaService) -> None:
         self._logger = logger
         self.kafka_service = kafka_service
         self.message_data = defaultdict(list)
@@ -254,7 +254,6 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
 
     async def receive_message(self, websocket: socket_protocol) -> ExchangeResponseData:
         """웹소켓에서 메시지 수신
-        
         Args:
             websocket: 웹소켓 프로토콜
             
@@ -281,11 +280,11 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             symbol: str = queue_data["symbol"]
             message: ResponseData = queue_data["message"]
             
-            await self._logger.log_message(logging.INFO, message=f"{market} -- {message}")
+            # await self._logger.log_message(logging.INFO, message=f"{market} -- {message}")
             producer_metadata = ProducerMetadataDict(
                 market=market,
                 symbol=symbol,
-                topic=f"{get_topic_name(self.kafka_service.location, symbol=symbol)}-{socket_type}",
+                topic=f"{get_topic_name(location=self.kafka_service.location)}-{socket_type}",
                 key=f"{market}:{socket_type}-{symbol}",
             )
             

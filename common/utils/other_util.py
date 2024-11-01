@@ -14,10 +14,10 @@ def market_name_extract(uri: str) -> str:
     return uri_parts[1].upper()
 
 
-def get_topic_name(location: str, symbol: str) -> str:
+def get_topic_name(location: str) -> str:
     """토픽 이름을 결정하는 로직을 처리"""
     if location.lower() == "korea":
-        return f"{KOREA_REAL_TOPIC_NAME}{symbol.upper()}"
+        return f"{KOREA_REAL_TOPIC_NAME}"
     elif location.lower() == "ne":
-        return f"{NE_REAL_TOPIC_NAME}{symbol.upper()}"
-    return f"{ASIA_REAL_TOPIC_NAME}{symbol.upper()}"
+        return f"{NE_REAL_TOPIC_NAME}"
+    return f"{ASIA_REAL_TOPIC_NAME}"
