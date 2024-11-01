@@ -22,7 +22,6 @@ from common.core.types import (
 )
 
 socket_protocol = websockets.WebSocketClientProtocol
-# logging.basicConfig(level=logging.DEBUG)  # 메인 스크립트 시작 부분에 추가
 
 
 class MessageQueueData(TypedDict):
@@ -207,12 +206,11 @@ class MessageProcessor:
 
         default_data[market].append(message)
         if len(default_data[market]) == counting:
-            cleared_data = default_data[market].copy()
             await self.kafka_service.send_message(
                 kafka_message=KafkaMessageData(
                     market=market,
                     symbol=symbol,
-                    data=cleared_data,
+                    data=default_data[market],
                     topic=topic,
                     key=key,
                 )
@@ -310,9 +308,9 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
                     symbol=symbol,
                     topic=f"{get_topic_name(location=self.kafka_service.location)}-{socket_type}",
                     key=f"{market}:{socket_type}-{symbol}",
-                )
+                ) 
             
-                await self.message_processor.append_and_process(message=message, kafka_metadata=producer_metadata)
+                await self.message_processor.append_and_process(message=json.dumps(message), kafka_metadata=producer_metadata)
         except (TypeError, KeyError, CancelledError) as error:
             message = f"오류 --> {error} market --> {market} symbol --> {symbol}"
             await self._logger.log_message(logging.ERROR, message=message)
