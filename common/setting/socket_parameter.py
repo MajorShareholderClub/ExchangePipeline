@@ -8,7 +8,6 @@ from common.core.types import (
     CombinedRequest,
     CoinoneSocketParameter,
     CoinoneTopicParameter,
-    KorbitChannelParameter,
     KorbitSocketParameter,
 )
 from common.core.types import (
@@ -46,15 +45,13 @@ def coinone_socket_parameter(symbol: str, req_type: str) -> CoinoneSocketParamet
     )
 
 
-def korbit_socket_parameter(symbol: str, req_type: str) -> KorbitSocketParameter:
-    return KorbitSocketParameter(
-        accessToken=None,
-        timestamp=int(datetime.now(timezone.utc).timestamp()),
-        event="korbit:subscribe",
-        data=KorbitChannelParameter(
-            channels=[f"{req_type.lower()}:{symbol.lower()}_krw"]
-        )
-    )
+def korbit_socket_parameter(symbol: str, req_type: str) -> list[KorbitSocketParameter]:
+    return [KorbitSocketParameter(
+        method="subscribe",
+        type=req_type,
+        symbols=[f"{symbol.lower()}_krw"]
+    )]
+
 
 
 def binance_socket_paramater(symbol: str, req_type: str) -> BinanceSocketParameter:
@@ -70,8 +67,11 @@ def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter
         method="subscribe",
         params=KrakenParameter(
             channel=f"{req_type}", 
-            symbol=[f"{symbol.upper()}/USD"]
-        )
+            symbol=[f"{symbol.upper()}/USD"],
+            event_trigger="trades",
+            snapshot=False
+        ),
+        req_id=1234
     )
     
     if req_type == "book":

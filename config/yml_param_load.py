@@ -146,3 +146,18 @@ class RestMarketLoader(MarketLoadType):
             market: {**info, "api": self._market_api_load(market)}
             for market, info in self.load_json().items()
         }
+
+
+
+
+def ticker_json(location: str) -> list[str]:
+    """
+    JSON 파일 로드 (socket 또는 rest)
+        - 어떤 가격대를 가지고 올지 파라미터 정의되어 있음
+    """
+    yml_path = f"{path}/config/_marekt_all_ticker.yml"
+    with open(file=yml_path, mode="r", encoding="utf-8") as file:
+        market_info = yaml.safe_load(file)
+    
+    
+    return market_info.get(location.lower(), {}).get("parameter", [])

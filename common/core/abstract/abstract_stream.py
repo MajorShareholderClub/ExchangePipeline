@@ -13,19 +13,6 @@ class WebsocketConnectionAbstract(ABC):
     """
 
     @abstractmethod
-    async def socket_param_send(
-        self, websocket: Any, subscribe_fmt: SubScribeFormat
-    ) -> None:
-        """웹소켓 승인 함수
-        Args:
-            websocket (Any):
-                -> 업비트, 빗썸, 코인원
-            subscribe_fmt (SubScribeFormat):
-                -> 각 웹소켓당 승인 list[dictionary] 전송 로직
-        """
-        raise NotImplementedError()
-
-    @abstractmethod
     async def handle_message(self, websocket: Any, uri: str, symbol: str) -> None:
         """승인된 소켓 메시지를 전처리 클래스에전송할 로직
         Args:

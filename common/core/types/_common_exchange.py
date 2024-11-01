@@ -110,16 +110,10 @@ class CoinoneSocketParameter(TypedDict):
 
 
 # 코빗
-class KorbitChannelParameter(TypedDict):
-    channels: list[str]
-
-
-# 코빗
 class KorbitSocketParameter(TypedDict):
-    accessToken: str | None
-    timestamp: int
-    event: str
-    data: KorbitChannelParameter
+    method: str
+    type: str
+    symbols: list[str]
 
 
 # ------------------------------------------------------------------
@@ -136,6 +130,9 @@ class BinanceSocketParameter(TypedDict):
 class KrakenParameter(TypedDict):
     channel: str
     symbol: list[str]
+    event_trigger: str
+    snapshot: bool
+    req_id: UUID
 
 
 class KrakenSocketParameter(TypedDict):

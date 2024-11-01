@@ -7,7 +7,7 @@ from asyncio.exceptions import CancelledError
 
 import websockets
 import asyncio
-
+from config.yml_param_load import ticker_json
 from mq.data_interaction import KafkaMessageSender
 from common.exception import SocketRetryOnFailure
 from common.utils.logger import AsyncLogger
@@ -22,12 +22,13 @@ from common.core.types import (
 )
 
 socket_protocol = websockets.WebSocketClientProtocol
+# logging.basicConfig(level=logging.DEBUG)  # 메인 스크립트 시작 부분에 추가
 
 
 class MessageQueueData(TypedDict):
     market: Required[str]
     symbol: Required[str]
-    message: Required[ResponseData]
+    message: Required[dict]
 
 
 class KafkaMessageData(TypedDict):
@@ -44,6 +45,58 @@ class MessageQueueManager:
     
     def __init__(self) -> None:
         self.message_async_q = asyncio.Queue()
+        self.garbage_data = []
+
+    def process_exchange(self, message: str | dict) -> dict:
+        """거래소 메시지 처리
+        
+        Args:
+            message: 처리할 메시지
+            
+        Returns:
+            dict | None: 처리된 메시지 또는 None
+        """
+        try:
+            if isinstance(message, str):
+                parsed_message = json.loads(message)
+            else:
+                parsed_message = message
+
+            match parsed_message:
+                case {"response_type": "SUBSCRIBED"}:
+                    return {"processed": "skip"}
+                case {"channel": "heartbeat"}:
+                    return {"processed": "skip"}
+                case {"method": "subscribe"}:
+                    return {"processed": "skip"}
+                case _:
+                    return parsed_message
+
+        except json.JSONDecodeError:
+            return None
+
+
+    def process_filtered_data(self, filtered_message: ResponseData, ticker_columns: list[str]) -> ResponseData:
+        """메시지 데이터를 필터링하여 처리"""
+        def _process_data(data: dict | list, ticker_columns: list[str]) -> dict:
+            """딕셔너리나 리스트 데이터를 처리"""
+            target_dict = data[0] if isinstance(data, list) else data
+            return {col: target_dict[col] for col in target_dict.keys() if col in ticker_columns}
+        
+        message_data = {}
+        for key, value in filtered_message.items():
+            if key not in ["data", "result", "time_ms", "ts", "timestamp"]:
+                if key in ticker_columns:
+                    message_data[key] = filtered_message[key]
+                continue
+                
+            match value:
+                case int() | float() as v:
+                    message_data[key] = v
+                case dict() | list() as d:
+                    message_data.update(_process_data(d, ticker_columns))
+                    
+        return message_data
 
     async def put_message(self, uri: str, symbol: str, message: ResponseData) -> None:
         """메시지를 큐에 추가
@@ -53,8 +106,20 @@ class MessageQueueManager:
             symbol: 심볼
             message: 응답 데이터
         """
+        filtered_message = self.process_exchange(message)
+
         market: str = market_name_extract(uri=uri)
-        await self.message_async_q.put(MessageQueueData(market=market, symbol=symbol, message=message))
+        ticker_columns: list[str] = ticker_json(location=market)
+        message_data = self.process_filtered_data(filtered_message, ticker_columns)   
+
+        await self.message_async_q.put(
+            MessageQueueData(
+                market=market, 
+                symbol=symbol, 
+                message=json.dumps(message_data)
+            )
+        )
+
 
     async def get_message(self) -> MessageQueueData:
         """큐에서 메시지를 가져옴
@@ -110,35 +175,7 @@ class MessageProcessor:
         self.message_data = defaultdict(list)
         self.snapshot = defaultdict(list)
 
-    def process_exchange(self, message: str | dict) -> dict | None:
-        """거래소 메시지 처리
-        
-        Args:
-            message: 처리할 메시지
-            
-        Returns:
-            dict | None: 처리된 메시지 또는 None
-        """
-        try:
-            if isinstance(message, str):
-                parsed_message = json.loads(message)
-            else:
-                parsed_message = message
 
-            match parsed_message:
-                case {"event": "korbit:subscribe"}:
-                    return None
-                case {"response_type": "SUBSCRIBED"}:
-                    return None
-                case {"channel": "heartbeat"}:
-                    return None
-                case {"method": "subscribe"}:
-                    return None
-                case _:
-                    return message
-
-        except json.JSONDecodeError:
-            return None
 
     async def update_and_send(self, default_data: defaultdict, msg: dict, kafka_metadata: ProducerMetadataDict) -> None:
         """메시지 업데이트 및 전송
@@ -189,22 +226,18 @@ class MessageProcessor:
             message: 처리할 메시지
             kafka_metadata: Kafka 메타데이터
         """
-        filtered_message = self.process_exchange(message)
-        if filtered_message is None:
-            await self._logger.log_message(logging.INFO, f"구독 메시지 무시됨: {message}")
-            return
 
-        match filtered_message:
+        match message:
             case {"type": "snapshot"}:
-                await self.update_and_send(self.snapshot, filtered_message, kafka_metadata)
+                await self.update_and_send(self.snapshot, message, kafka_metadata)
             case {"type": "update"}:
-                await self.update_and_send(self.message_data, filtered_message, kafka_metadata)
+                await self.update_and_send(self.message_data, message, kafka_metadata)
             case _:
-                await self.update_and_send(self.message_data, filtered_message, kafka_metadata)
+                await self.update_and_send(self.message_data, message, kafka_metadata)
 
 
 class WebsocketConnectionManager(WebsocketConnectionAbstract):
-    """웹소켓 연결 관리 클래스"""
+    """웹소��� 연결 관리 클래스"""
 
     def __init__(self, location: str, folder: str, rest_client: SocketRetryOnFailure) -> None:
         self._logger = AsyncLogger(target=location, folder=folder)
@@ -212,16 +245,6 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         self.message_queue = MessageQueueManager()
         self.kafka_service = KafkaService(location=location)
         self.message_processor = MessageProcessor(logger=self._logger, kafka_service=self.kafka_service)
-
-    async def socket_param_send(self, websocket: socket_protocol, subs_fmt: SubScribeFormat) -> None:
-        """웹소켓 구독 파라미터 전송
-        
-        Args:
-            websocket: 웹소켓 프로토콜
-            subs_fmt: 구독 형식
-        """
-        sub = json.dumps(subs_fmt)
-        await websocket.send(sub)
 
     async def handle_message(self, websocket: socket_protocol, uri: str, symbol: str = None, socket_type: str = None) -> None:
         """웹소켓 메시지 처리
@@ -241,11 +264,10 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         while True:
             try:
                 message = await self.receive_message(websocket)
-                if message:
-                    await self.message_queue.put_message(uri=uri, symbol=symbol, message=message)
-                    if socket_type:
-                        await self.producing_start(socket_type=socket_type)
-            except (TypeError, ValueError) as error:
+            
+                a = await self.message_queue.put_message(uri=uri, symbol=symbol, message=message)
+                await self.producing_start(socket_type)
+            except (TypeError, ValueError, Exception) as error:
                 await self._logger.log_message(
                     logging.ERROR,
                     f"다음과 같은 이유로 실행하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.format_exc()}",
@@ -261,10 +283,11 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             ExchangeResponseData: 수신된 메시지
         """
         try:
-            message: bytes = await asyncio.wait_for(websocket.recv(), timeout=30.0)
-            return json.loads(message) if isinstance(message, bytes) else message
+            # message: bytes = await asyncio.wait_for(websocket.recv(), timeout=30.0)
+            message: bytes = await websocket.recv()
+            return json.loads(message) if isinstance(message, bytes | str) else message
         except (TypeError, ValueError) as error:
-            message = f"다음과 같은 이유로 메시지 수신하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.format_exc()}"
+            message = f"다음과 같은 이유 메시지 수신하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.format_exc()}"
             await self._logger.log_message(logging.ERROR, message)
             await self.kafka_service.send_error(error, "Socket", "Socket")
 
@@ -278,17 +301,18 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             queue_data: MessageQueueData = await self.message_queue.get_message()
             market: str = queue_data["market"]
             symbol: str = queue_data["symbol"]
-            message: ResponseData = queue_data["message"]
+            message: ResponseData = json.loads(queue_data["message"])
             
-            # await self._logger.log_message(logging.INFO, message=f"{market} -- {message}")
-            producer_metadata = ProducerMetadataDict(
-                market=market,
-                symbol=symbol,
-                topic=f"{get_topic_name(location=self.kafka_service.location)}-{socket_type}",
-                key=f"{market}:{socket_type}-{symbol}",
-            )
+            if len(message) > 0:
+                await self._logger.log_message(logging.INFO, message=f"{market} -- {message}")
+                producer_metadata = ProducerMetadataDict(
+                    market=market,
+                    symbol=symbol,
+                    topic=f"{get_topic_name(location=self.kafka_service.location)}-{socket_type}",
+                    key=f"{market}:{socket_type}-{symbol}",
+                )
             
-            await self.message_processor.append_and_process(message=message, kafka_metadata=producer_metadata)
+                await self.message_processor.append_and_process(message=message, kafka_metadata=producer_metadata)
         except (TypeError, KeyError, CancelledError) as error:
             message = f"오류 --> {error} market --> {market} symbol --> {symbol}"
             await self._logger.log_message(logging.ERROR, message=message)
@@ -313,7 +337,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         )
         async def connection():
             async with websockets.connect(uri, ping_interval=30.0, ping_timeout=60.0) as websocket:
-                await self.socket_param_send(websocket, subs_fmt)
+                await websocket.send(json.dumps(subs_fmt))
                 await self.handle_message(websocket, uri, symbol, socket_type)
 
         await connection()
