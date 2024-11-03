@@ -97,19 +97,23 @@ class MessageQueueManager:
                     
         return message_data
 
-    async def put_message(self, uri: str, symbol: str, message: ResponseData) -> None:
+    async def put_message(self, uri: str, symbol: str, message: ResponseData, socket_type: str = None) -> None:
         """메시지를 큐에 추가
         
         Args:
             uri: 웹소켓 URI
             symbol: 심볼
             message: 응답 데이터
+            socket_type: 소켓 타입
         """
-        filtered_message = self.process_exchange(message)
-
         market: str = market_name_extract(uri=uri)
-        ticker_columns: list[str] = ticker_json(location=market)
-        message_data = self.process_filtered_data(filtered_message, ticker_columns)   
+        
+        if socket_type == "ticker":
+            filtered_message = self.process_exchange(message)
+            ticker_columns: list[str] = ticker_json(location=market)
+            message_data = self.process_filtered_data(filtered_message, ticker_columns)
+        else:
+            message_data = message
 
         await self.message_async_q.put(
             MessageQueueData(
@@ -235,7 +239,7 @@ class MessageProcessor:
 
 
 class WebsocketConnectionManager(WebsocketConnectionAbstract):
-    """웹소��� 연결 관리 클래스"""
+    """웹소켓 연결 관리 클래스"""
 
     def __init__(self, location: str, folder: str, rest_client: SocketRetryOnFailure) -> None:
         self._logger = AsyncLogger(target=location, folder=folder)
@@ -262,8 +266,7 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
         while True:
             try:
                 message = await self.receive_message(websocket)
-            
-                a = await self.message_queue.put_message(uri=uri, symbol=symbol, message=message)
+                await self.message_queue.put_message(uri=uri, symbol=symbol, message=message, socket_type=socket_type)
                 await self.producing_start(socket_type)
             except (TypeError, ValueError, Exception) as error:
                 await self._logger.log_message(
