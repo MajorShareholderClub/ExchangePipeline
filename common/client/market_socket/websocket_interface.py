@@ -88,7 +88,7 @@ class MessageQueueManager:
                 if key in ticker_columns:
                     message_data[key] = filtered_message[key]
                 continue
-                
+                                
             match value:
                 case int() | float() as v:
                     message_data[key] = v
@@ -113,7 +113,9 @@ class MessageQueueManager:
             ticker_columns: list[str] = ticker_json(location=market)
             message_data = self.process_filtered_data(filtered_message, ticker_columns)
         else:
-            message_data = message
+            message_data = filtered_message = self.process_exchange(message)
+            
+
 
         await self.message_async_q.put(
             MessageQueueData(
@@ -177,8 +179,24 @@ class MessageProcessor:
         self.kafka_service = kafka_service
         self.message_data = defaultdict(list)
         self.snapshot = defaultdict(list)
+        self.last_send_time = defaultdict(float)
+        self.BATCH_SIZE = 100  # 배치 크기
+        self.TIME_THRESHOLD = 60.0  # 시간 임계값 (초)
 
-
+    async def should_send_batch(self, market: str, data_size: int) -> bool:
+        """배치를 전송해야 하는지 확인
+        
+        Args:
+            market: 마켓 이름
+            data_size: 현재 데이터 크기
+            
+        Returns:
+            bool: 전송 여부
+        """
+        current_time = asyncio.get_event_loop().time()
+        time_elapsed = current_time - self.last_send_time[market]
+        
+        return (data_size >= self.BATCH_SIZE) or (time_elapsed >= self.TIME_THRESHOLD)
 
     async def update_and_send(self, default_data: defaultdict, msg: dict, kafka_metadata: ProducerMetadataDict) -> None:
         """메시지 업데이트 및 전송
@@ -195,31 +213,31 @@ class MessageProcessor:
         await self.producer_sending(**kafka_metadata)
 
     async def producer_sending(self, **metadata: ProducerMetadataDict) -> None:
-        """메시지를 Kafka로 전송
-        
-        Args:
-            metadata: Kafka 메타데이터 (market, symbol, topic, key, message, default_data, counting 포함)
-        """
+        """메시지를 Kafka로 전송"""
         default_data: defaultdict = metadata["default_data"]
         market: str = metadata["market"]
-        counting: int = metadata["counting"]
         symbol: str = metadata["symbol"]
         message: ResponseData = metadata["message"]
         topic: str = metadata["topic"]
         key: str = metadata["key"]
 
         default_data[market].append(message)
-        if len(default_data[market]) == counting:
-            await self.kafka_service.send_message(
-                kafka_message=KafkaMessageData(
-                    market=market,
-                    symbol=symbol,
-                    data=default_data[market],
-                    topic=topic,
-                    key=key,
+        current_size = len(default_data[market])
+
+        # 배치 전송 조건 확인 (배치 크기 또는 시간 임계값)
+        if await self.should_send_batch(market, current_size):
+            if current_size > 0: 
+                await self.kafka_service.send_message(
+                    kafka_message=KafkaMessageData(
+                        market=market,
+                        symbol=symbol,
+                        data=default_data[market],
+                        topic=topic,
+                        key=key,
+                    )
                 )
-            )
-            default_data[market].clear()
+                default_data[market].clear()
+                self.last_send_time[market] = asyncio.get_event_loop().time()
 
     async def append_and_process(self, message: str, kafka_metadata: ProducerMetadataDict) -> None:
         """메시지 처리 및 추가
@@ -306,6 +324,8 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             
             if len(message) > 0:
                 await self._logger.log_message(logging.INFO, message=f"{market} -- {message}")
+                if message.get("processed") == "skip":
+                    return
                 producer_metadata = ProducerMetadataDict(
                     market=market,
                     symbol=symbol,

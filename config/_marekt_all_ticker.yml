@@ -72,10 +72,10 @@ korbit:
   parameter:
     - timestamp
     - open
-    - ask
+    - close   
     - high
     - low
-    - close
+    - volume
     - priceChange
     - priceChangePercent
 
