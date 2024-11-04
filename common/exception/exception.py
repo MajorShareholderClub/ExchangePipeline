@@ -7,10 +7,15 @@ from typing import Callable, Any
 import asyncio
 from aiohttp import ClientConnectorError, ClientError
 from aiohttp.web_exceptions import HTTPException
-from asyncio.exceptions import CancelledError
+from asyncio.exceptions import CancelledError, TimeoutError
 
 import websockets
-from websockets.exceptions import ConnectionClosedOK, ConnectionClosedError
+from websockets.exceptions import WebSocketException
+from websockets.exceptions import (
+    ConnectionClosedOK,
+    ConnectionClosedError,
+    ConnectionClosed,
+)
 from common.utils.logger import AsyncLogger
 
 
@@ -87,9 +92,12 @@ class SocketRetryOnFailure(BaseRetry):
                 | ConnectionClosedError()
                 | SocketError()
                 | CancelledError()
+                | WebSocketException()
+                | ConnectionClosed()
+                | ClientConnectorError()
             ):
                 message = f"연결 오류: {e}. 재시도 합니다"
-            case ClientConnectorError():
+            case _:
                 message = "클라이언트 연결이 끊어졋음으로 RestAPI 로 전환합니다"
                 await self.log_error(message)
                 await self.switch_to_rest()
@@ -101,19 +109,21 @@ class SocketRetryOnFailure(BaseRetry):
             try:
                 await self.rest_client.total_pull_request(coin_symbol=self.symbol)
                 await self.log_error("REST API 호출 성공")
-                if await self.ping_pong():
+                if await self.connection_test():
                     await self.log_error("소켓 복구 감지, 소켓으로 전환합니다...")
                     return
             except Exception as e:
                 await self.log_error(f"REST API 요청 중 오류 발생: {e}")
                 await asyncio.sleep(self.base_delay)
 
-    async def ping_pong(self) -> bool:
+    async def connection_test(self) -> bool:
         """소켓 핑 테스트 메서드"""
         try:
             async with websockets.connect(self.uri, ping_interval=60) as websocket:
                 await websocket.send(json.dumps(self.subs))
-                await self.logging.log_message(logging.INFO, f"Ping sent -- {self.uri}")
+                await self.logging.log_message(
+                    logging.INFO, f"connection sent -- {self.uri}"
+                )
                 while True:
                     data = await websocket.recv()
                     if isinstance(data, (bytes, str)):
