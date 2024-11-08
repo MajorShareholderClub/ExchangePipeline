@@ -302,8 +302,8 @@ class WebsocketConnectionManager(WebsocketConnectionAbstract):
             ExchangeResponseData: 수신된 메시지
         """
         try:
-            # message: bytes = await asyncio.wait_for(websocket.recv(), timeout=30.0)
-            message: bytes = await websocket.recv()
+            message: bytes = await asyncio.wait_for(websocket.recv(), timeout=30.0)
+            # message: bytes = await websocket.recv()
             return json.loads(message) if isinstance(message, bytes | str) else message
         except (TypeError, ValueError) as error:
             message = f"다음과 같은 이유 메시지 수신하지 못했습니다 --> {error} \n 오류 라인 --> {traceback.format_exc()}"
