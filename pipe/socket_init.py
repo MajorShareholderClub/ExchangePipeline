@@ -1,44 +1,51 @@
 import asyncio
-from concurrent.futures import ThreadPoolExecutor
+from typing import Union
 from pipe.connection import CoinOrderBookWebsocket, CoinPresentPriceWebsocket
 
+# 타입 힌트 개선
+# Union 형태로 명시적 표현
+ConnectionType = Union[CoinOrderBookWebsocket, CoinPresentPriceWebsocket]
 
-connection = CoinOrderBookWebsocket | CoinPresentPriceWebsocket
 
+async def run_coin_websocket(
+    connection_class: ConnectionType, symbol: str, location: str
+) -> None:
+    """지정된 웹소켓 클라이언트로 시장 데이터 수집
 
-# fmt: off
-async def run_coin_websocket(connection_class: connection, symbol: str, location: str) -> None:
-    """지정된 웹소켓 클라이언트 클래스와 심볼을 사용하여 비동기 함수 실행."""
+    Args:
+        connection_class: 웹소켓 연결 클래스
+        symbol: 암호화폐 심볼 (예: BTC)
+        location: 지역 위치 (예: korea, asia, ne)
+
+    Returns:
+        None
+    """
     websocket_client = connection_class(symbol=symbol, location=location, market="all")
-    await websocket_client.coin_present_architecture()
+    await websocket_client.start()
 
 
-async def coin_present_websocket(connection_class: connection) -> None:
-    """두 개의 코인 웹소켓을 동시에 실행."""
-    loop = asyncio.get_running_loop()
+async def coin_present_websocket(connection_class: ConnectionType) -> None:
+    """여러 지역의 코인 웹소켓을 동시에 실행
 
-    # 스레드 풀을 생성
-    with ThreadPoolExecutor(max_workers=3) as executor:
-        # run_in_executor 사용하여 비동기 작업 실행
-        korea_task = loop.run_in_executor(
-            executor,
-            lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "korea")),
-        )
-        asia_task = loop.run_in_executor(
-            executor,
-            lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "asia")),
-        )
-        ne_task = loop.run_in_executor(
-            executor,
-            lambda: asyncio.run(run_coin_websocket(connection_class, "BTC", "ne")),
-        )
-        # 두 작업이 완료될 때까지 기다림
-        await asyncio.gather(
-            korea_task,
-            asia_task,
-            ne_task,
-            return_exceptions=False,
-        )
+    스레드풀 대신 asyncio.create_task를 사용하여 비동기 작업 관리
+
+    Args:
+        connection_class: 웹소켓 연결 클래스
+
+    Returns:
+        None
+    """
+    # 지역 목록 정의
+    locations = ["korea", "asia", "ne"]
+    symbol = "BTC"  # 상수를 변수로 분리하여 가독성 향상
+
+    # 각 지역별 태스크 생성
+    tasks = [
+        run_coin_websocket(connection_class, symbol, location) for location in locations
+    ]
+
+    # 모든 태스크 동시 실행
+    await asyncio.gather(*tasks, return_exceptions=False)
 
 
 if __name__ == "__main__":

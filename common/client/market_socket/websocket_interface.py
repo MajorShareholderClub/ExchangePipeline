@@ -44,57 +44,71 @@ class MessageQueueManager:
     
     def __init__(self) -> None:
         self.message_async_q = asyncio.Queue()
-        self.garbage_data = []
 
-    def process_exchange(self, message: str | dict) -> dict:
-        """거래소 메시지 처리
+    def process_exchange(self, message: str | dict) -> dict | None:
+        """거래소 메시지를 처리하는 메서드
         
         Args:
-            message: 처리할 메시지
+            message: 처리할 메시지 (문자열 또는 딕셔너리)
             
         Returns:
-            dict | None: 처리된 메시지 또는 None
+            dict | None: 처리된 메시지 또는 None (오류 발생 시)
         """
+        # 무시할 메시지 패턴 정의
+        SKIP_PATTERNS = [
+            {"response_type": "SUBSCRIBED"},  # 구독 확인 메시지
+            {"channel": "heartbeat"},        # 하트비트 메시지
+            {"method": "subscribe"},       # 구독 요청 메시지
+        ]
+        
         try:
-            if isinstance(message, str):
-                parsed_message = json.loads(message)
-            else:
-                parsed_message = message
-
-            match parsed_message:
-                case {"response_type": "SUBSCRIBED"}:
+            # 문자열이면 JSON으로 파싱
+            parsed_message = json.loads(message) if isinstance(message, str) else message
+            
+            # 무시할 패턴에 대한 검사
+            for pattern in SKIP_PATTERNS:
+                # 패턴의 모든 키-값 쌍이 메시지에 있는지 확인
+                if all(parsed_message.get(k) == v for k, v in pattern.items()):
                     return {"processed": "skip"}
-                case {"channel": "heartbeat"}:
-                    return {"processed": "skip"}
-                case {"method": "subscribe"}:
-                    return {"processed": "skip"}
-                case _:
-                    return parsed_message
-
+            
+            # 패턴에 맞지 않는 메시지는 그대로 반환
+            return parsed_message
+            
         except json.JSONDecodeError:
+            # JSON 파싱 오류 발생 시 None 반환
             return None
 
 
     def process_filtered_data(self, filtered_message: ResponseData, ticker_columns: list[str]) -> ResponseData:
-        """메시지 데이터를 필터링하여 처리"""
-        def _process_data(data: dict | list, ticker_columns: list[str]) -> dict:
-            """딕셔너리나 리스트 데이터를 처리"""
-            target_dict = data[0] if isinstance(data, list) else data
-            return {col: target_dict[col] for col in target_dict.keys() if col in ticker_columns}
+        """메시지 데이터를 필터링하여 처리하는 메서드
         
-        message_data = {}
-        for key, value in filtered_message.items():
-            if key not in ["data", "result", "time_ms", "ts", "timestamp"]:
-                if key in ticker_columns:
-                    message_data[key] = filtered_message[key]
-                continue
-                                
-            match value:
-                case int() | float() as v:
-                    message_data[key] = v
-                case dict() | list() as d:
-                    message_data.update(_process_data(d, ticker_columns))
-                    
+        Args:
+            filtered_message: 필터링할 응답 데이터
+            ticker_columns: 필터링에 사용할 컬럼 목록
+            
+        Returns:
+            ResponseData: 필터링된 메시지 데이터
+        """
+        # 특수 키 목록 정의
+        special_keys = {"data", "result", "time_ms", "ts", "timestamp"}
+        
+        # 기본 메시지 데이터 생성 - 필터링된 일반 필드
+        message_data = {k: v for k, v in filtered_message.items() 
+                        if k not in special_keys and k in ticker_columns}
+        
+        # 특수 키 처리
+        for key in special_keys & filtered_message.keys():  # 교집합으로 존재하는 키만 처리
+            value = filtered_message[key]
+            
+            # 숫자 타입은 그대로 추가
+            if isinstance(value, (int, float)):
+                message_data[key] = value
+            # 딕셔너리나 리스트는 필터링하여 추가
+            elif isinstance(value, (dict, list)):
+                target_dict = value[0] if isinstance(value, list) else value
+                # 딕셔너리 컴프리헨션으로 필터링
+                message_data.update({col: target_dict[col] for col in set(target_dict) & set(ticker_columns)})
+                
         return message_data
 
     async def put_message(self, uri: str, symbol: str, message: ResponseData, socket_type: str = None) -> None:

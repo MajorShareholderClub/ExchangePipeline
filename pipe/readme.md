@@ -25,3 +25,4 @@ classDiagram
 ├── 🐍 connection.py            # 데이터 소스와의 연결(실행)을 관리하는 모듈
 └── 🐍 socket_init.py           # 소켓 초기화 및 실행 출발점 을 담당하는 모듈
 ```
+

@@ -12,19 +12,10 @@ from protocols.client.korea.socket_korea_exchange import (
     UpbitSocket, BithumbSocket, CoinoneSocket, KorbitSocket
 )
 
-from protocols.client.ne.rest_ne_exchange import (
-    BinanceRest, KrakenRest
-)
-from protocols.client.ne.socket_ne_exchange import (
-    BinanceSocket, KrakenSocket
-)
-
-from protocols.client.asia.rest_asia_exchange import (
-    OKXRest, GateIORest, BybitRest
-)
-from protocols.client.asia.socket_asia_exchange import (
-    OKXSocket, GateIOSocket, ByBitSocket
-)
+from protocols.client.ne.rest_ne_exchange import BinanceRest, KrakenRest
+from protocols.client.ne.socket_ne_exchange import BinanceSocket, KrakenSocket
+from protocols.client.asia.rest_asia_exchange import OKXRest, GateIORest, BybitRest
+from protocols.client.asia.socket_asia_exchange import OKXSocket, GateIOSocket, ByBitSocket
 from .types import (
     MarketRequestJsonType,
     KoreaExchageRest,

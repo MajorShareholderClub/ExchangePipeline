@@ -1,11 +1,11 @@
 from common.client.market_socket.async_socket_client import (
-    MarketsCoinTickerPriceWebsocket,
-    MarketsCoinOrderBookWebsocket,
+    PriceWebSocketClient,
+    OrderBookWebSocketClient,
 )
 from config.yml_param_load import SocketMarketLoader
 
 
-class CoinPresentPriceWebsocket(MarketsCoinTickerPriceWebsocket):
+class CoinPresentPriceWebsocket(PriceWebSocketClient):
     def __init__(
         self,
         symbol: str,
@@ -16,7 +16,7 @@ class CoinPresentPriceWebsocket(MarketsCoinTickerPriceWebsocket):
         super().__init__(symbol=symbol, market=market, market_env=self.market_env)
 
 
-class CoinOrderBookWebsocket(MarketsCoinOrderBookWebsocket):
+class CoinOrderBookWebsocket(OrderBookWebSocketClient):
     def __init__(
         self,
         symbol: str,
