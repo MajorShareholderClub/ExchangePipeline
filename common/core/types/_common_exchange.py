@@ -1,4 +1,4 @@
-import uuid
+from dataclasses import dataclass
 from typing import TypedDict, NewType, Generic, TypeVar, Union
 from decimal import Decimal
 
@@ -35,6 +35,14 @@ UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
 """
 # 전처리 한거래 포맷 데이터
 PriceData = dict[str, Decimal | None]
+
+
+@dataclass(frozen=True)
+class CoinDataInfo:
+    market: str
+    timestamp: int | float
+    symbol: str
+    data: tuple[str]
 
 
 class ExchangeData(TypedDict):

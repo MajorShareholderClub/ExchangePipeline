@@ -7,13 +7,12 @@ import websockets
 import asyncio
 
 from typing import Any
-from dataclasses import dataclass
-
 from config.yml_param_load import RestMarketLoader
 
-from common.core.types import ExchangeData
+from common.core.types import ExchangeData, CoinDataInfo
 from common.core.data_format import CoinMarketData
 from common.utils.logger import AsyncLogger
+from pipeline.source.rest.async_api_client import CoinExchangeRestClient
 
 
 socket_protocol = websockets.WebSocketClientProtocol
@@ -36,36 +35,22 @@ async def schema_create(
     ).model_dump()
 
 
-class ExchangeDataLogger:
-    def __init__(self, location: str) -> None:
-        self.logger = AsyncLogger(target=location, folder="rest")
-
-    async def log_message(self, level: str, message: str) -> None:
-        """비동기적 메시지 로그"""
-        await self.logger.log_message(level, message)
-
-
 class CoinPresentPriceClient:
-
     def __init__(self, location: str) -> None:
         self.market_env = RestMarketLoader(location).process_market_info()
+        self._logger = AsyncLogger(target=location, folder="rest")
 
-    async def _transform_and_request(
-        self,
-        market: str,
-        time: int | float,
-        symbol: str,
-        api: Any,
-        data: tuple[str],
-    ) -> ExchangeData:
+    async def _transform_and_request(self, coin_data: CoinDataInfo) -> ExchangeData:
         """스키마 변환 함수"""
-        api_response = await api.get_coin_all_info_price(coin_name=symbol.upper())
-        if api_response is None:
-            return await schema_create(
-                market=market, time=time, symbol=symbol, api=None, data=data
-            )
+        api_response = await CoinExchangeRestClient.get_coin_all_info_price(
+            coin_name=coin_data.symbol.upper()
+        )
         return await schema_create(
-            market=market, time=time, symbol=symbol, api=api_response, data=data
+            market=coin_data.market,
+            time=coin_data.timestamp,
+            symbol=coin_data.symbol,
+            api=api_response if api_response is not None else None,
+            data=coin_data.data,
         )
 
     async def _trans_schema(self, market: str, symbol: str) -> ExchangeData:
@@ -100,6 +85,6 @@ class BaseExchangeRestAPI(CoinPresentPriceClient):
         """공통 로깅 함수"""
         market_result = await self.fetch_market_data(coin_symbol)
         schema = self.create_schema(market_result)
-        await self.logging.log_message(logging.INFO, message=schema)
+        await self._logger.log_message(logging.INFO, message=schema)
 
         return schema
