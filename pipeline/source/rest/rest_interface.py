@@ -7,6 +7,7 @@ import websockets
 import asyncio
 
 from typing import Any
+from dataclasses import dataclass
 
 from config.yml_param_load import RestMarketLoader
 
@@ -35,14 +36,27 @@ async def schema_create(
     ).model_dump()
 
 
+class ExchangeDataLogger:
+    def __init__(self, location: str) -> None:
+        self.logger = AsyncLogger(target=location, folder="rest")
+
+    async def log_message(self, level: str, message: str) -> None:
+        """비동기적 메시지 로그"""
+        await self.logger.log_message(level, message)
+
+
 class CoinPresentPriceClient:
 
     def __init__(self, location: str) -> None:
         self.market_env = RestMarketLoader(location).process_market_info()
-        self.logging = AsyncLogger(target=location, folder="rest")
 
     async def _transform_and_request(
-        self, market: str, time: int | float, symbol: str, api: Any, data: tuple[str]
+        self,
+        market: str,
+        time: int | float,
+        symbol: str,
+        api: Any,
+        data: tuple[str],
     ) -> ExchangeData:
         """스키마 변환 함수"""
         api_response = await api.get_coin_all_info_price(coin_name=symbol.upper())

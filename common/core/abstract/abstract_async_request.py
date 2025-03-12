@@ -23,5 +23,5 @@ class AbstractAsyncRequestAcquisition(ABC):
         raise NotImplementedError()
     
     @abstractmethod
-    async def async_source(self) -> Any:
+    async def json_async_source(self) -> Any:
         raise NotImplementedError()
