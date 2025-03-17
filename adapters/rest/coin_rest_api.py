@@ -1,13 +1,13 @@
 """
-Coin async present price kafka data streaming 
+Coin async present price kafka data streaming
 """
 
 import asyncio
 from common.core.data_format import KoreaCoinMarket, AsiaCoinMarket, NECoinMarket
 from common.core.types import ExchangeCollection, ExchangeData
-from common.client.market_rest.rest_interface import BaseExchangeRestAPI
-from mq.data_interaction import KafkaMessageSender
-from mq.data_partitional import CoinHashingCustomPartitional
+from pipeline.source.rest.rest_interface import BaseExchangeRestAPI
+from messaging.data_interaction import KafkaMessageSender
+from messaging.data_partitional import CoinHashingCustomPartitional
 
 
 class ExchangeRestAPI(BaseExchangeRestAPI):
@@ -17,15 +17,21 @@ class ExchangeRestAPI(BaseExchangeRestAPI):
         super().__init__(location=location)
         self.location = location
 
-    def create_schema(self, market_result: list[ExchangeData]) -> dict:
+    def create_schema(
+        self, market_result: list[ExchangeData]
+    ) -> dict[str, ExchangeData | bool]:
         market_classes: ExchangeCollection = {
             "korea": KoreaCoinMarket,
             "asia": AsiaCoinMarket,
             "ne": NECoinMarket,
         }
-        return market_classes[self.location](
-            **dict(zip(self.market_env.keys(), market_result)),
-        ).model_dump()
+
+        market_data: dict[str, ExchangeData | bool] = {
+            market: result
+            for market, result in zip(self.market_env.keys(), market_result)
+        }
+
+        return market_classes[self.location](**market_data).model_dump()
 
     async def total_pull_request(self, coin_symbol: str, interval: int = 1) -> None:
         i = 0
@@ -41,7 +47,7 @@ class ExchangeRestAPI(BaseExchangeRestAPI):
             await asyncio.sleep(interval)  # 1초 대기
             if i >= 100:
                 print("100번 호출 후 10초 대기합니다.")
-                await asyncio.sleep(10)  # 10초 대기
+                await asyncio.sleep(1)  # 10초 대기
                 i = 0  # 카운터 초기화
 
 

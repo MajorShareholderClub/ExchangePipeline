@@ -6,7 +6,7 @@ import logging
 import websockets
 import asyncio
 
-from typing import Any
+from dataclasses import dataclass
 from config.yml_param_load import RestMarketLoader
 
 from common.core.types import ExchangeData, CoinDataInfo
@@ -18,20 +18,23 @@ from pipeline.source.rest.async_api_client import CoinExchangeRestClient
 socket_protocol = websockets.WebSocketClientProtocol
 
 
+@dataclass
+class SchemaCreate:
+    market: str
+    time: int | float
+    symbol: str
+    api: CoinExchangeRestClient
+    data: tuple[str]
+
+
 # rest
-async def schema_create(
-    market: str,
-    time: int | float,
-    symbol: str,
-    api: Any,
-    data: tuple[str],
-):
+async def schema_create(schema: SchemaCreate):
     return CoinMarketData.from_api(
-        market=market,
-        coin_symbol=symbol,
-        time=time,
-        api=api,
-        data=data,
+        market=schema.market,
+        coin_symbol=schema.symbol,
+        time=schema.time,
+        api=schema.api,
+        data=schema.data,
     ).model_dump()
 
 
@@ -55,7 +58,6 @@ class CoinPresentPriceClient:
 
     async def _trans_schema(self, market: str, symbol: str) -> ExchangeData:
         """스키마 변환 본체"""
-        # try:
         market_info = self.market_env[market]
         market_data_architecture = await self._transform_and_request(
             market=f"{market}-{symbol.upper()}",
@@ -79,12 +81,11 @@ class BaseExchangeRestAPI(CoinPresentPriceClient):
         return await asyncio.gather(*tasks, return_exceptions=True)
 
     @abstractmethod
-    def create_schema(self, market_result: list[ExchangeData]) -> dict: ...
+    def create_schema(self, market_result: list[ExchangeData | bool]) -> dict: ...
 
     async def _log_market_schema(self, coin_symbol: str) -> None:
         """공통 로깅 함수"""
         market_result = await self.fetch_market_data(coin_symbol)
-        schema = self.create_schema(market_result)
+        schema: dict = self.create_schema(market_result)
         await self._logger.log_message(logging.INFO, message=schema)
-
         return schema
