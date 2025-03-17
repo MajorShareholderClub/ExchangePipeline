@@ -8,7 +8,7 @@ from asyncio.exceptions import CancelledError
 import websockets
 import asyncio
 from config.yml_param_load import ticker_json
-from mq.data_interaction import KafkaMessageSender
+from messaging.data_interaction import KafkaMessageSender
 from common.exception import SocketRetryOnFailure
 from common.utils.logger import AsyncLogger
 from common.utils.other_util import market_name_extract, get_topic_name

@@ -12,7 +12,7 @@ from config.yml_param_load import RestMarketLoader
 from common.core.types import ExchangeData, CoinDataInfo
 from common.core.data_format import CoinMarketData
 from common.utils.logger import AsyncLogger
-from pipeline.source.rest.async_api_client import CoinExchangeRestClient
+from adapters.base.rest.async_api_client import CoinExchangeRestClient
 
 
 socket_protocol = websockets.WebSocketClientProtocol
