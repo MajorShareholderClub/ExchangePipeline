@@ -128,7 +128,7 @@ class EventMetadata:
     source: str = None  # 이벤트 발생 소스 (예: 거래소 이름)
     timestamp: float = field(default_factory=time.time)  # 이벤트 발생 시간 (Unix 타임스탬프)
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))  # 이벤트 고유 식별자
-    extra: Dict[str, Any] = field(default_factory=dict)  # 추가 메타데이터
+    extra: dict[str, Any] = field(default_factory=dict)  # 추가 메타데이터
 
 
 # 이벤트 페이로드 타입 (데이터 + 메타데이터)

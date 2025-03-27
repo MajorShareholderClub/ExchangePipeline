@@ -2,7 +2,6 @@ from typing import TypedDict, NewType, TypeVar, Union
 from common.core.types import ExchangeResponseData
 
 
-korea_rest = dict
 """
 ----------------------
 |   거래소 dictionary  |

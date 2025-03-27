@@ -10,13 +10,13 @@ from adapters.base.event.types import (
     EventMetadata,
     EventPriority,
     EventBatchConfig,
+    AsyncException,
 )
 
 # 컴포넌트 임포트
 from adapters.base.event.event_process import (
     EventTypeRegistry,
     EventSubscriptionManager,
-    EventBatchProcessor,
 )
 
 
@@ -43,10 +43,6 @@ class EventBus:
         # 컴포넌트 초기화
         self.event_type_registry = EventTypeRegistry()
         self.subscription_manager = EventSubscriptionManager(self.event_type_registry)
-        self.batch_processor = EventBatchProcessor(batch_config)
-
-        # 이벤트 처리 콜백 설정
-        self.batch_processor.set_process_event_callback(self._process_event)
 
     async def subscribe(
         self, event_type: EventType | str, callback: CallbackFunction
@@ -84,7 +80,6 @@ class EventBus:
         event_type: EventType | str,
         data: Any = None,
         metadata: EventMetadata = None,
-        use_batch: bool = True,
     ) -> None:
         """이벤트 발행 및 모든 구독자에게 비동기 전파
 
@@ -127,13 +122,8 @@ class EventBus:
 
         payload = EventPayload(data=data, metadata=metadata)
 
-        # 배치 처리 사용 여부에 따라 처리 방식 결정
-        if use_batch:
-            # 배치 큐에 추가
-            self.batch_processor.add_to_batch_queue(event_key, payload)
-        else:
-            # 즉시 처리 (배치 처리 없이)
-            await self._process_event(event_key, payload)
+        # 즉시 처리 (배치 처리 없이)
+        await self._process_event(event_key, payload)
 
     async def _process_event(self, event_key: str, payload: EventPayload) -> None:
         """개별 이벤트 처리 및 구독자에게 전달
@@ -183,7 +173,7 @@ class EventBus:
         """
         self.logger.info("Starting EventBus")
         # 시스템 시작 이벤트 발행
-        await self.publish(EventType.SYSTEM_STARTUP, None, use_batch=False)
+        await self.publish(EventType.SYSTEM_STARTUP, None)
 
     async def stop(self) -> None:
         """이벤트 버스 정지
@@ -192,9 +182,6 @@ class EventBus:
         """
         self.logger.info("Stopping EventBus")
         # 시스템 종료 이벤트 발행
-        await self.publish(EventType.SYSTEM_SHUTDOWN, None, use_batch=False)
-
-        # 배치 처리 중단
-        await self.batch_processor.stop()
+        await self.publish(EventType.SYSTEM_SHUTDOWN, None)
 
         self.logger.info("EventBus stopped")

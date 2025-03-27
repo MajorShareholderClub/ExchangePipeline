@@ -1,0 +1,100 @@
+# 거래소 웹소켓 설정 파일
+# ticker 채널 설정 정보
+
+exchanges:
+  # 한국 거래소
+  upbit:
+    base_url: "wss://api.upbit.com/websocket/v1"
+    symbol_format: "KRW-{symbol}"
+    websocket_type: "ticket_based"  # 티켓 기반 방식
+    channels:
+      ticker:
+        type: "ticker"
+        params:
+          isOnlyRealtime: true
+          level: null
+  
+  bithumb:
+    base_url: "wss://pubwss.bithumb.com/pub/ws"  
+    symbol_format: "KRW-{symbol}"
+    websocket_type: "ticket_based"  # 티켓 기반 방식 (업비트와 같은 방식)
+    channels:
+      ticker:
+        type: "ticker"
+        params:
+          isOnlyRealtime: true
+          level: null
+  
+  coinone:
+    base_url: "wss://stream.coinone.co.kr"
+    symbol_format: "{symbol}"
+    websocket_type: "direct"
+    channels:
+      ticker:
+        request_type: "SUBSCRIBE"
+        channel: "TICKER"  # 대문자 사용
+        topic:
+          quote_currency: "KRW"
+          target_currency_format: "{symbol}"
+  
+  korbit:
+    base_url: "wss://ws.korbit.co.kr/v1/user/push"
+    symbol_format: "{symbol}_krw"  # 소문자 사용
+    websocket_type: "direct"
+    channels:
+      ticker:
+        method: "subscribe"
+        type: "ticker"
+  
+  # 글로벌 거래소
+  binance:
+    base_url: "wss://stream.binance.com:9443/ws"
+    symbol_format: "{symbol}usdt"  # 소문자 사용
+    websocket_type: "direct"
+    channels:
+      ticker:
+        method: "SUBSCRIBE"
+        params_format: "{symbol}usdt@ticker"
+  
+  kraken:
+    base_url: "wss://ws.kraken.com"
+    symbol_format: "{symbol}/USD"  # 대문자 사용
+    websocket_type: "direct"
+    channels:
+      ticker:
+        method: "subscribe"
+        channel: "ticker"
+        params:
+          event_trigger: "trades"
+          snapshot: false
+          req_id: 1234  # 고정값 또는 타임스탬프 사용 가능
+  
+  gateio:
+    base_url: "wss://api.gateio.ws/ws/v4/"
+    symbol_format: "{symbol}_USDT"  # 대문자 사용
+    websocket_type: "direct"
+    channels:
+      ticker:
+        channel: "spot.tickers"  # ticker 요청은 실제로 tickers 채널 사용
+        event: "subscribe"
+        payload_format: ["{symbol}_USDT"]
+  
+  bybit:
+    base_url: "wss://stream.bybit.com/v5/public"
+    symbol_format: "{symbol}USDT"  # 대문자 사용
+    websocket_type: "direct"
+    channels:
+      ticker:
+        op: "subscribe"
+        args_format: ["tickers.{symbol}USDT"]  # ticker 요청은 tickers 채널 사용
+  
+  okx:
+    base_url: "wss://ws.okx.com:8443/ws/v5/public"
+    symbol_format: "{symbol}-USDT"  # 대시 사용
+    websocket_type: "direct"
+    channels:
+      ticker:
+        op: "subscribe"
+        args:
+          channel: "ticker"
+          instId_format: "{symbol}-USDT"
