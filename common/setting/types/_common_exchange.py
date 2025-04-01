@@ -1,7 +1,6 @@
 from dataclasses import dataclass
-from typing import TypedDict, NewType, Generic, TypeVar, Union
+from typing import TypedDict, NewType, TypeVar, Generic, Union
 from decimal import Decimal
-
 
 T = TypeVar("T")  # 성공 타입
 E = TypeVar("E")  # 오류 타입
@@ -17,15 +16,12 @@ class Err(Generic[E]):
         self.error = error
 
 
-Result = Union[Ok[T], Err[E]]
-
-
 # request Type
 ExchangeResponseData = dict[str, str | int | float | dict[str, int | str]]
 ExchangeOrderingData = dict[str, int]
 ResponseData = ExchangeResponseData | ExchangeOrderingData
-
 UpbitumbOrderingResponseData = dict[str, int | list[dict[str, int]]]
+Result = Union[Ok[T], Err[E]]
 
 
 """
@@ -99,8 +95,7 @@ class TicketUUID(TypedDict):
 class CombinedRequest(TypedDict):
     type: str
     codes: list[str]
-    isOnlySnapshot: bool
-    level: int | None
+    is_only_realtime: bool
 
 
 # 코인원
@@ -170,9 +165,9 @@ class BybitSocketParameter(TypedDict):
     args: list[str]
 
 
-UpBithumbSocketParmater = list[TicketUUID | CombinedRequest]
+UpBithumbSocketParameter = list[TicketUUID | CombinedRequest]
 SubScribeFormat = (
-    UpBithumbSocketParmater
+    UpBithumbSocketParameter
     | CoinoneSocketParameter
     | KorbitSocketParameter
     | BinanceSocketParameter
@@ -182,38 +177,33 @@ SubScribeFormat = (
     | BybitSocketParameter
 )
 
-# ------------------------------------------------------------------
-# -----------------------------거래소 주소 매핑-------------------------
-# ------------------------------------------------------------------
 
-
-# 각 거래소에 대한 타입 정의
-class ResponseExchangeURL(TypedDict):
-    socket: str
-    rest: str
+# ------------------------------------------------------------------
+# -----------------------------거래소 주소 매핑----------------------------
+# ------------------------------------------------------------------
 
 
 # 각 지역에 대한 URL 구조 정의
-class RegionURLs(TypedDict):
-    upbit: ResponseExchangeURL
-    bithumb: ResponseExchangeURL
-    korbit: ResponseExchangeURL
-    coinone: ResponseExchangeURL
+class KoreaRegionURLs(TypedDict):
+    upbit: str
+    bithumb: str
+    korbit: str
+    coinone: str
 
 
 class AsiaRegionURLs(TypedDict):
-    okx: ResponseExchangeURL
-    gateio: ResponseExchangeURL
-    bybit: ResponseExchangeURL
+    okx: str
+    gateio: str
+    bybit: str
 
 
 class NERegionURLs(TypedDict):
-    binance: ResponseExchangeURL
-    kraken: ResponseExchangeURL
+    binance: str
+    kraken: str
 
 
 # 전체 URL 구조 정의
 class URLs(TypedDict):
-    korea: RegionURLs
+    korea: KoreaRegionURLs
     asia: AsiaRegionURLs
     ne: NERegionURLs

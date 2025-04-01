@@ -4,7 +4,7 @@ from __future__ import annotations
 from typing import Any
 from decimal import Decimal, ROUND_HALF_UP
 from pydantic import BaseModel, field_validator, Field, ValidationError
-from common.core.types import ExchangeResponseData
+from common.setting.types import ExchangeResponseData
 
 
 class PriceData(BaseModel):

@@ -104,7 +104,7 @@ class EventPriority(Enum):
 
 
 # 이벤트 배치 처리를 위한 설정 타입
-@dataclass
+@dataclass(frozen=True)
 class EventBatchConfig:
     """대량의 이벤트 처리 시 배치 처리를 위한 설정
 
@@ -117,7 +117,7 @@ class EventBatchConfig:
 
 
 # 이벤트 메타데이터 타입
-@dataclass
+@dataclass(frozen=True)
 class EventMetadata:
     """이벤트에 대한 추가 정보를 포함하는 메타데이터
 
@@ -132,7 +132,7 @@ class EventMetadata:
 
 
 # 이벤트 페이로드 타입 (데이터 + 메타데이터)
-@dataclass
+@dataclass(frozen=True)
 class EventPayload:
     """이벤트 데이터와 메타데이터를 포함하는 페이로드"""
 

@@ -1,4 +1,4 @@
-from mq.data_admin import new_topic_initialization, delete_all_topics
+from messaging.data_admin import new_topic_initialization, delete_all_topics
 from common.setting.properties import (
     KOREA_REAL_TOPIC_NAME,
     ASIA_REAL_TOPIC_NAME,
@@ -34,7 +34,9 @@ def data_sending_start() -> None:
         replication = [3] * len(topic)
 
         return new_topic_initialization(
-            topic=topic, partition=partition, replication_factor=replication
+            topic=topic,
+            partition=partition,
+            replication_factor=replication,
         )
     except Exception as error:
         print(f"Error creating topics: {error}")
