@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 from common.setting.properties import get_symbol_collect_url
-from common.setting.socket_parameter import create_socket_parameter
+from common.setting.parameter.socket_parameter import create_socket_parameter
 
 
 class ConnectionParams:
