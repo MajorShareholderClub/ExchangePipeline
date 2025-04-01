@@ -114,8 +114,8 @@ class ExchangeURLManager:
         Returns:
             dict[str, str]: 해당 지역의 거래소 URL 정보
         """
-        urls = self.get_exchange_urls(uri_type.upper())
-        return getattr(urls, region, {})
+        urls: URLs = self.get_exchange_urls(uri_type.upper())
+        return urls.get(region)
 
 
 # 싱글톤 인스턴스 생성
@@ -126,6 +126,10 @@ def get_symbol_collect_url(
     market: str, location: str, url_type: str
 ) -> Result[Ok[str], Err[str]]:
     return url_manager.get_symbol_collect_url(market, location, url_type)
+
+
+def get_all_region_urls(region: str, url_type: str) -> dict[str, str]:
+    return url_manager.get_region_urls(region, url_type.upper())
 
 
 def get_all_urls(url_type: str) -> URLs:
