@@ -158,6 +158,8 @@ class EventBus(IEventBus):
             # 콜백이 Future를 반환하면 완료될 때까지 대기
             if asyncio.isfuture(result):
                 await result
+            elif asyncio.iscoroutine(result):
+                await result
         except AsyncException as e:
             self.logger.error(f"Error occurred during event processing: {e}")
 

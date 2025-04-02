@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, TypeVar, Union, Any
+from typing import Callable, TypeVar, Union, Any, TypedDict
 from enum import Enum
 import asyncio
 from dataclasses import dataclass, field
@@ -33,6 +33,17 @@ AsyncException: tuple[type[Exception], ...] = (
     KeyError,  # 데이터 구조 키 접근 오류
     AttributeError,  # 객체 속성 접근 오류
 )
+
+
+class TickerPayload(TypedDict):
+    exchange: str
+    timestamp: float
+    data: Any
+
+
+class ConnectPayload(TypedDict):
+    exchange: str
+    status: str
 
 
 # fmt: off

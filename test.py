@@ -1,12 +1,10 @@
 import asyncio
-import json
-import websockets
-from typing import Any, TypedDict
 import logging
+from typing import Any
 
 # EDA 관련 임포트
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import EventType, EventMetadata
+from adapters.base.event.types import EventType
 from common.setting.parameter.connection_parameter import (
     bithumb_config,
     upbit_config,
@@ -18,141 +16,16 @@ from common.setting.parameter.connection_parameter import (
     binance_config,
     kraken_config,
 )
+from core.handlers.connections import handle_connection_event, handle_error
+from core.handlers.ticker import handle_ticker
+from core.exchange.connection_manager import ExchangeConnectionManager
 
-from common.exception.exceptions import handle_exchange_exceptions, ExchangeException
 
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("ticker_subscriber")
-
-
-class TickerPayload(TypedDict):
-    exchange: str
-    timestamp: float
-    data: Any
-
-
-class ConnectPayload(TypedDict):
-    exchange: str
-    status: str
-
-
-class TickerHandler:
-    """거래소 티커 데이터 핸들러"""
-
-    def __init__(self, event_bus: EventBus, exchange_name: str):
-        self.event_bus = event_bus
-        self.exchange_name = exchange_name
-        self.connected = False
-
-    @handle_exchange_exceptions()  # 데코레이터 적용
-    async def connect_and_subscribe(self, config: dict[str, Any]) -> None:
-        """웹소켓에 연결하고 티커 데이터를 구독합니다."""
-        url: str = config["url"]
-        socket_parameters: dict | list = config["parameters"]
-        timeout: int = config["timeout"]
-
-        if not socket_parameters:
-            logger.warning(f"{self.exchange_name}: 소켓 파라미터가 없습니다.")
-            return
-
-        # 연결 시작 이벤트 발행
-        await self.event_bus.publish(
-            EventType.EXCHANGE_CONNECT,
-            ConnectPayload(
-                exchange=self.exchange_name,
-                status="connecting",
-            ),
-            EventMetadata(source=self.exchange_name),
-        )
-        logger.info(f"{self.exchange_name}: 연결 시도 중... {url}")
-
-        async with websockets.connect(
-            url,
-            ping_interval=30,
-            ping_timeout=60,
-        ) as websocket:
-            # 연결 성공 처리
-            self.connected = True
-            logger.info(f"{self.exchange_name}: 연결 성공")
-
-            # 연결 성공 이벤트 발행
-            await self.event_bus.publish(
-                EventType.EXCHANGE_CONNECT,
-                ConnectPayload(
-                    exchange=self.exchange_name,
-                    status="connected",
-                ),
-                EventMetadata(source=self.exchange_name),
-            )
-
-            # 파라미터 전송
-            param_json = json.dumps(socket_parameters)
-            await websocket.send(param_json)
-            logger.info(f"{self.exchange_name}: 구독 파라미터 전송 완료")
-
-            # 메시지 수신 및 이벤트 발행
-            while True:
-                # 예외 처리 데코레이터를 사용하므로 try-except 블록 불필요
-                message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
-                await self._process_message(message)
-
-    @handle_exchange_exceptions()  # 데코레이터 적용
-    async def _process_message(self, message: Any) -> None:
-        """수신된 메시지 처리 및 이벤트 발행"""
-        # bytes 메시지 처리
-        if isinstance(message, bytes):
-            message = message.decode("utf-8")
-
-        # JSON 문자열 처리
-        if isinstance(message, str):
-            # JSONDecodeError는 데코레이터에서 처리됨
-            data = json.loads(message)
-
-            # Ticker 데이터 이벤트 발행
-            await self.event_bus.publish(
-                EventType.MARKET_TICKER,
-                TickerPayload(
-                    exchange=self.exchange_name,
-                    timestamp=asyncio.get_event_loop().time(),
-                    data=data,
-                ),
-                EventMetadata(source=self.exchange_name),
-            )
-        else:
-            # 지원하지 않는 타입일 경우 예외 발생
-            raise ExchangeException(
-                self.exchange_name, f"지원하지 않는 메시지 타입: {type(message)}"
-            )
-
-
-# 이벤트 핸들러 함수 (콜백)
-def handle_ticker(data: dict[str, Any]) -> None:
-    """티커 이벤트 처리 핸들러"""
-    exchange = data.get("exchange", "unknown")
-    ticker_data = data.get("data", {})
-
-    # 거래소별 다른 포맷의 데이터 처리
-    # 간단하게 로그만 출력하지만, 실제로는 통합된 포맷으로 변환하거나 후속 처리 가능
-    logger.info(
-        f"[{exchange}] 티커 수신: {json.dumps(ticker_data, ensure_ascii=False)[:100]}..."
-    )
-
-
-def handle_connection_event(data: dict[str, Any]) -> None:
-    """연결 이벤트 처리 핸들러"""
-    exchange = data.get("exchange", "unknown")
-    status = data.get("status", "unknown")
-    logger.info(f"[{exchange}] 연결 상태 변경: {status}")
-
-
-def handle_error(data: dict[str, Any]) -> None:
-    """오류 이벤트 처리 핸들러"""
-    exchange = data.get("exchange", "unknown")
-    error = data.get("error", "unknown")
-    logger.error(f"[{exchange}] 오류 발생: {error}")
 
 
 # fmt: off
@@ -169,28 +42,38 @@ async def run_ticker_subscribers() -> None:
         await event_bus.subscribe(EventType.EXCHANGE_DISCONNECT, handle_connection_event)
         await event_bus.subscribe(EventType.EXCHANGE_ERROR, handle_error)
 
-        # 초기 거래소 설정 (10개 중 일부)
-        exchanges = [
-            ("bithumb", bithumb_config.build()),
-            ("upbit", upbit_config.build()),
-            ("coinone", coinone_config.build()),
-            ("korbit", korbit_config.build()),
-            ("okx", okx_config.build()),
-            ("gateio", gateio_config.build()),
-            ("bybit", bybit_config.build()),
-            ("binance", binance_config.build()),
-            ("kraken", kraken_config.build()),
-        ]
-
-        # 각 거래소별 핸들러 생성 및 연결 시작
-        handlers = []
-        for exchange_name, config in exchanges:
-            handler = TickerHandler(event_bus, exchange_name)
-            logger.info(f"{exchange_name} 핸들러 초기화")
-
-            # 비동기 태스크로 연결 시작 (동시에 여러 거래소 연결)
-            task = asyncio.create_task(handler.connect_and_subscribe(config))
-            handlers.append((handler, task))
+        # 연결 관리자 초기화 (최대 5개 동시 연결)
+        connection_manager = ExchangeConnectionManager(event_bus, max_workers=5)
+        await connection_manager.start()
+        
+        # 거래소 설정 
+        exchange_configs = {
+            "bithumb": bithumb_config.build(),
+            "upbit": upbit_config.build(),
+            "coinone": coinone_config.build(),
+            "korbit": korbit_config.build(),
+            "okx": okx_config.build(),
+            "gateio": gateio_config.build(),
+            "bybit": bybit_config.build(),
+            "binance": binance_config.build(),
+            "kraken": kraken_config.build(),
+        }
+        
+        # 거래소별 우선순위 설정 (주요 거래소 먼저 연결)
+        priorities = {
+            "binance": 10,   # 최우선
+            "upbit": 20,    # 두번째 우선
+            "bithumb": 30,  # 세번째 우선
+            "coinone": 40,
+            "korbit": 50,
+            # 나머지는 기본 우선순위 100 적용
+        }
+        
+        # 연결 작업 추가
+        for exchange_name, config in exchange_configs.items():
+            priority = priorities.get(exchange_name, 100)
+            logger.info(f"{exchange_name} 핸들러 초기화 (우선순위: {priority})")
+            await connection_manager.add_exchange(exchange_name, config, priority)
 
         # 모든 태스크가 완료될 때까지 대기 (실제로는 무한히 실행되어야 함)
         # 테스트를 위해 5분 후 종료하도록 설정
