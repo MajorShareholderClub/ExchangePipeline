@@ -3,9 +3,10 @@ import logging
 from functools import lru_cache
 
 from adapters.base.event.types import EventType
+from adapters.base.interface.event_interfaces import IEventTypeRegistry
 
 
-class EventTypeRegistry:
+class EventTypeRegistry(IEventTypeRegistry):
     """이벤트 타입 변환 및 캐싱을 담당하는 클래스
 
     문자열과 Enum 이벤트 타입 간의 변환을 관리하고 캐싱을 통해 성능을 최적화함

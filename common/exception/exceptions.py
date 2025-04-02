@@ -5,8 +5,10 @@ import asyncio
 from typing import Any, Callable, TypeVar
 import json
 
+from attr import dataclass
+
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import EventType, EventMetadata, EventPriority
+from adapters.base.event.types import EventType, EventMetadata
 
 logger = logging.getLogger("exchange_exceptions")
 
@@ -15,16 +17,16 @@ T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
 
 
+@dataclass
 class ExchangeException(Exception):
     """거래소 관련 기본 예외 클래스"""
 
-    def __init__(
-        self, exchange_name: str, message: str, original_exception: Exception = None
-    ):
-        self.exchange_name = exchange_name
-        self.original_exception = original_exception
-        self.message = message
-        super().__init__(f"[{exchange_name}] {message}")
+    exchange_name: str
+    message: str
+    original_exception: Exception | None = None
+
+    def __post_init__(self) -> None:
+        super().__init__(f"[{self.exchange_name}] {self.message}")
 
     def to_dict(self) -> dict[str, Any]:
         """예외 정보를 이벤트 데이터로 변환"""
@@ -41,21 +43,12 @@ class ExchangeException(Exception):
         return result
 
 
+# fmt: off
 # 특화된 예외 클래스들
-class ConnectionException(ExchangeException):
-    pass
-
-
-class ConnectionTimeoutException(ConnectionException):
-    pass
-
-
-class MessageProcessingException(ExchangeException):
-    pass
-
-
-class JSONParsingException(MessageProcessingException):
-    pass
+class ConnectionException(ExchangeException): pass
+class ConnectionTimeoutException(ConnectionException): pass
+class MessageProcessingException(ExchangeException): pass
+class JSONParsingException(MessageProcessingException): pass
 
 
 # 예외 처리 데코레이터
@@ -120,8 +113,6 @@ def map_exception(
     mapping: dict[type[Exception], type[ExchangeException]],
 ) -> ExchangeException:
     """일반 예외를 ExchangeException으로 변환"""
-    exc_type = type(exc)
-
     for base_exc, exchange_exc in mapping.items():
         if isinstance(exc, base_exc):
             return exchange_exc(exchange_name, str(exc), exc)
@@ -142,10 +133,7 @@ def log_exception(exc: ExchangeException, level: int) -> None:
 async def publish_exception_event(event_bus: EventBus, exc: ExchangeException) -> None:
     """예외 이벤트 발행"""
     # 중요도 결정 (일부 예외 유형은 덜 중요할 수 있음)
-    is_critical = not isinstance(
-        exc, (JSONParsingException, ConnectionTimeoutException)
-    )
-    priority = EventPriority.HIGH if is_critical else EventPriority.MEDIUM
+    is_critical = not isinstance(exc, (JSONParsingException, ConnectionTimeoutException))
 
     # 이벤트 데이터 준비
     event_data = exc.to_dict()
@@ -155,5 +143,5 @@ async def publish_exception_event(event_bus: EventBus, exc: ExchangeException) -
     await event_bus.publish(
         EventType.EXCHANGE_ERROR,
         event_data,
-        EventMetadata(priority=priority, source=exc.exchange_name),
+        EventMetadata(source=exc.exchange_name, extra={"is_critical": is_critical}),
     )

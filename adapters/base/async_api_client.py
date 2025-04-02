@@ -1,34 +1,11 @@
 import aiohttp
-from abc import abstractmethod, ABC
+from abc import abstractmethod
 
 from common.setting.types import ExchangeResponseData
+from adapters.base.interface.rest_interfaces import AbstractAsyncRequestAcquisition
 
 JSON_HEADER = {"Accept": "application/json"}
 CONTENT_TYPE = "application/json"
-
-
-# fmt: off
-class AbstractAsyncRequestAcquisition(ABC):
-    """비동기 호출의 추상 클래스"""
-
-    def __init__(
-        self, 
-        url: str, 
-        params: dict[str, str] | None = None,
-        headers: dict[str, str] | None = None,
-    ) -> None:
-        self.url = url
-        self.params = params
-        self.headers = headers
-
-    @abstractmethod
-    async def async_response(self, session: aiohttp.ClientSession) -> ExchangeResponseData: 
-        raise NotImplementedError()
-    
-    @abstractmethod
-    async def json_async_source(self) -> ExchangeResponseData:
-        raise NotImplementedError()
-
 
 
 # fmt: off

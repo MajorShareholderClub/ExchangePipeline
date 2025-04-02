@@ -8,19 +8,19 @@ from adapters.base.event.types import (
     EventType,
     EventPayload,
     EventMetadata,
-    EventPriority,
-    EventBatchConfig,
     AsyncException,
+    EventBatchConfig,
 )
 
 # 컴포넌트 임포트
+from adapters.base.interface.event_interfaces import IEventBus
 from adapters.base.event.event_process import (
     EventTypeRegistry,
     EventSubscriptionManager,
 )
 
 
-class EventBus:
+class EventBus(IEventBus):
     """이벤트 기반 메시징 시스템
 
     이벤트 발행(publishing)과 구독(subscribing)을 관리하는 중앙 허브.
@@ -113,12 +113,7 @@ class EventBus:
             # 기본 메타데이터 생성
             evt_type = self.event_type_registry.get_event_type(event_key)
             # 시스템 이벤트는 높은 우선순위로 처리
-            priority = (
-                EventPriority.HIGH
-                if evt_type and evt_type.name.startswith("SYSTEM_")
-                else EventPriority.MEDIUM
-            )
-            metadata = EventMetadata(priority=priority, source="EventBus")
+            metadata = EventMetadata(source="EventBus", extra={"event_type": evt_type})
 
         payload = EventPayload(data=data, metadata=metadata)
 

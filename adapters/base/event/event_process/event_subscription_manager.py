@@ -6,9 +6,10 @@ from contextlib import asynccontextmanager
 
 from adapters.base.event.types import CallbackFunction, SubscribersMap, EventType
 from adapters.base.event.event_process.event_type_registry import EventTypeRegistry
+from adapters.base.interface.event_interfaces import ISubscriptionManager
 
 
-class EventSubscriptionManager:
+class EventSubscriptionManager(ISubscriptionManager):
     """이벤트 구독/구독취소 관리를 담당하는 클래스
 
     특정 이벤트 타입에 해당하는 콜백 함수를 등록하고 관리하는 기능 제공
@@ -62,7 +63,7 @@ class EventSubscriptionManager:
             self.logger.debug(f"New subscriber registered for event '{event_key}'")
 
     async def unsubscribe(
-        self, event_type: EventType, callback: CallbackFunction
+        self, event_type: EventType | str, callback: CallbackFunction
     ) -> None:
         """이벤트 타입에서 콜백 함수 등록 해제
 

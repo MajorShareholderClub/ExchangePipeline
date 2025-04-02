@@ -1,32 +1,42 @@
 import asyncio
 import json
 import websockets
-from typing import Any
+from typing import Any, TypedDict
 import logging
 
 # EDA 관련 임포트
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import EventType, EventMetadata, EventPriority
+from adapters.base.event.types import EventType, EventMetadata
 from common.setting.parameter.connection_parameter import (
     bithumb_config,
     upbit_config,
-    binance_config,
-    bybit_config,
     coinone_config,
+    korbit_config,
+    okx_config,
+    gateio_config,
+    bybit_config,
+    binance_config,
+    kraken_config,
 )
 
-from common.exception.exceptions import (
-    handle_exchange_exceptions,
-    ExchangeException,
-    ConnectionTimeoutException,
-    JSONParsingException,
-)
+from common.exception.exceptions import handle_exchange_exceptions, ExchangeException
 
 # 로깅 설정
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger("ticker_subscriber")
+
+
+class TickerPayload(TypedDict):
+    exchange: str
+    timestamp: float
+    data: Any
+
+
+class ConnectPayload(TypedDict):
+    exchange: str
+    status: str
 
 
 class TickerHandler:
@@ -51,10 +61,12 @@ class TickerHandler:
         # 연결 시작 이벤트 발행
         await self.event_bus.publish(
             EventType.EXCHANGE_CONNECT,
-            {"exchange": self.exchange_name, "status": "connecting"},
-            EventMetadata(priority=EventPriority.HIGH, source=self.exchange_name),
+            ConnectPayload(
+                exchange=self.exchange_name,
+                status="connecting",
+            ),
+            EventMetadata(source=self.exchange_name),
         )
-
         logger.info(f"{self.exchange_name}: 연결 시도 중... {url}")
 
         async with websockets.connect(
@@ -69,8 +81,11 @@ class TickerHandler:
             # 연결 성공 이벤트 발행
             await self.event_bus.publish(
                 EventType.EXCHANGE_CONNECT,
-                {"exchange": self.exchange_name, "status": "connected"},
-                EventMetadata(priority=EventPriority.MEDIUM, source=self.exchange_name),
+                ConnectPayload(
+                    exchange=self.exchange_name,
+                    status="connected",
+                ),
+                EventMetadata(source=self.exchange_name),
             )
 
             # 파라미터 전송
@@ -99,11 +114,11 @@ class TickerHandler:
             # Ticker 데이터 이벤트 발행
             await self.event_bus.publish(
                 EventType.MARKET_TICKER,
-                {
-                    "exchange": self.exchange_name,
-                    "timestamp": asyncio.get_event_loop().time(),
-                    "data": data,
-                },
+                TickerPayload(
+                    exchange=self.exchange_name,
+                    timestamp=asyncio.get_event_loop().time(),
+                    data=data,
+                ),
                 EventMetadata(source=self.exchange_name),
             )
         else:
@@ -121,7 +136,9 @@ def handle_ticker(data: dict[str, Any]) -> None:
 
     # 거래소별 다른 포맷의 데이터 처리
     # 간단하게 로그만 출력하지만, 실제로는 통합된 포맷으로 변환하거나 후속 처리 가능
-    logger.info(f"[{exchange}] 티커 수신: {json.dumps(ticker_data)[:100]}...")
+    logger.info(
+        f"[{exchange}] 티커 수신: {json.dumps(ticker_data, ensure_ascii=False)[:100]}..."
+    )
 
 
 def handle_connection_event(data: dict[str, Any]) -> None:
@@ -138,6 +155,7 @@ def handle_error(data: dict[str, Any]) -> None:
     logger.error(f"[{exchange}] 오류 발생: {error}")
 
 
+# fmt: off
 async def run_ticker_subscribers() -> None:
     """티커 구독 실행 함수"""
     # 이벤트 버스 초기화
@@ -148,19 +166,20 @@ async def run_ticker_subscribers() -> None:
         # 이벤트 핸들러 등록
         await event_bus.subscribe(EventType.MARKET_TICKER, handle_ticker)
         await event_bus.subscribe(EventType.EXCHANGE_CONNECT, handle_connection_event)
-        await event_bus.subscribe(
-            EventType.EXCHANGE_DISCONNECT, handle_connection_event
-        )
+        await event_bus.subscribe(EventType.EXCHANGE_DISCONNECT, handle_connection_event)
         await event_bus.subscribe(EventType.EXCHANGE_ERROR, handle_error)
 
         # 초기 거래소 설정 (10개 중 일부)
         exchanges = [
             ("bithumb", bithumb_config.build()),
             ("upbit", upbit_config.build()),
-            ("binance", binance_config.build()),
-            ("bybit", bybit_config.build()),
             ("coinone", coinone_config.build()),
-            # 나머지 거래소도 추가 가능
+            ("korbit", korbit_config.build()),
+            ("okx", okx_config.build()),
+            ("gateio", gateio_config.build()),
+            ("bybit", bybit_config.build()),
+            ("binance", binance_config.build()),
+            ("kraken", kraken_config.build()),
         ]
 
         # 각 거래소별 핸들러 생성 및 연결 시작

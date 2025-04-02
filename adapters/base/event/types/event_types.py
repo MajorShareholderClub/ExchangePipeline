@@ -90,30 +90,12 @@ class EventType(Enum):
         """EventType을 문자열로 변환"""
         return self.value
 
-
-# 이벤트 우선순위 정의
-class EventPriority(Enum):
-    """이벤트 처리 우선순위
-
-    처리 지연이 발생할 경우 우선순위에 따라 이벤트 처리 순서 결정
-    """
-
-    HIGH = 0  # 최우선 처리 (예: 시스템 오류, 주요 알림)
-    MEDIUM = 5  # 표준 우선순위 (예: 일반 시장 데이터)
-    LOW = 10  # 낮은 우선순위 (예: 로깅, 통계 데이터)
-
-
-# 이벤트 배치 처리를 위한 설정 타입
 @dataclass(frozen=True)
 class EventBatchConfig:
-    """대량의 이벤트 처리 시 배치 처리를 위한 설정
+    """이벤트 배치 처리를 위한 설정 클래스"""
 
-    40개 이상의 거래소에서 동시에 이벤트가 발생할 경우 부하를 관리하기 위한 설정
-    """
-
-    batch_size: int = 100  # 한 번에 처리할 최대 이벤트 수
-    flush_interval: float = 0.1  # 배치 처리 실행 주기 (초 단위)
-    max_queue_size: int = 10000  # 최대 큐 크기 (메모리 사용량 제한)
+    max_events: int = 100  # 배치 처리 최대 이벤트 수
+    timeout: float = 10.0  # 배치 처리 타임아웃 (초)
 
 
 # 이벤트 메타데이터 타입
@@ -121,10 +103,9 @@ class EventBatchConfig:
 class EventMetadata:
     """이벤트에 대한 추가 정보를 포함하는 메타데이터
 
-    이벤트 식별, 추적, 우선순위 관리 등에 활용
+    이벤트 식별, 추적, 관리 등에 활용
     """
 
-    priority: EventPriority = EventPriority.MEDIUM  # 이벤트 처리 우선순위
     source: str = None  # 이벤트 발생 소스 (예: 거래소 이름)
     timestamp: float = field(default_factory=time.time)  # 이벤트 발생 시간 (Unix 타임스탬프)
     event_id: str = field(default_factory=lambda: str(uuid.uuid4()))  # 이벤트 고유 식별자

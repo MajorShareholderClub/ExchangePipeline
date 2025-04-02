@@ -67,7 +67,7 @@ def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter
             event_trigger="trades",
             snapshot=False
         ),
-        req_id=UUID
+        req_id=1234
     )
 
 def gateio_socket_parameter(symbol: str, req_type: str) -> GateioSocketParameter:
