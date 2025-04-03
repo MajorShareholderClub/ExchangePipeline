@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from typing import override
 
 from adapters.base.event.types import AsyncException
@@ -25,10 +24,10 @@ class RetryConnectionDecorator(ConnectionDecorator):
 
     def __init__(
         self,
+        exchange_name: str,
         connection_manager: WorldWebSocket,
         max_retries: int = 3,
         retry_delay: int = 5,
-        exchange_name: str = "unknown",
     ) -> None:
         super().__init__(connection_manager)
         self.max_retries = max_retries
@@ -36,7 +35,7 @@ class RetryConnectionDecorator(ConnectionDecorator):
         self.exchange_name = exchange_name
 
         # 로깅을 위한 컨텍스트 설정
-        connection_logger.set_context(exchange=exchange_name)
+        connection_logger.set_context(exchange=self.exchange_name)
 
     @override
     async def connect_and_subscribe(self, url: str) -> None:

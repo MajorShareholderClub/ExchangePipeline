@@ -1,20 +1,21 @@
 # exchanges/exceptions.py 파일
 from functools import wraps
-import logging
-import asyncio
 from typing import Any, Callable, TypeVar
 import json
+import logging
+import asyncio
 
 from attr import dataclass
 
 from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types import EventType, EventMetadata
 
-logger = logging.getLogger("exchange_exceptions")
+from common.logger import PipelineLogger
 
 # 제네릭 타입 정의
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
+logger = PipelineLogger.get_logger("exchange_exceptions", "exceptions")
 
 
 @dataclass
@@ -123,7 +124,6 @@ def map_exception(
 
 def log_exception(exc: ExchangeException, level: int) -> None:
     """예외 로깅"""
-    logger.log(level, str(exc))
     if exc.original_exception and level <= logging.ERROR:
         logger.debug(
             f"원인 예외: {exc.original_exception}", exc_info=exc.original_exception

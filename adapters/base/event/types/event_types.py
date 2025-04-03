@@ -72,14 +72,6 @@ class EventType(Enum):
     MARKET_ORDERBOOK = "market.orderbook"  # 호가창 이벤트
     MARKET_TRADE = "market.trade"  # 체결 이벤트
 
-    # 주문 관련 이벤트
-    ORDER_CREATED = "order.created"  # 주문 생성 이벤트
-    ORDER_FILLED = "order.filled"  # 주문 체결 이벤트
-    ORDER_CANCELED = "order.canceled"  # 주문 취소 이벤트
-    ORDER_REJECTED = "order.rejected"  # 주문 거부 이벤트
-
-    # 기타 사용자 정의 이벤트는 필요에 따라 추가
-
     @classmethod
     def from_string(cls, event_name: str) -> EventType | None:
         """문자열로부터 EventType을 찾아 반환
