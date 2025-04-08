@@ -67,6 +67,6 @@ def get_all_exchanges() -> dict[str, dict[str, WorldWebSocket]]:
     }
 
 
-def get_exchange(exchange_name: str) -> WorldWebSocket | None:
+def get_exchange(exchange_name: str) -> dict[str, WorldWebSocket] | None:
     """특정 거래소의 연결 정보를 반환하는 함수"""
     return get_all_exchanges().get(exchange_name)

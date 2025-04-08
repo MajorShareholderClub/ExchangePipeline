@@ -52,6 +52,7 @@ class ConnectionRequestPayload(TypedDict):
 
     exchange_name: str
     parameter_info: dict
+    socket_instance: Any
     retry_count: int
 
 
@@ -65,13 +66,13 @@ class ConnectionClosePayload(TypedDict):
 class ConnectionSuccessPayload(TypedDict):
     """연결 성공 이벤트"""
 
-    exchange: str
+    exchange_name: str
 
 
 class ConnectionFailurePayload(TypedDict):
     """연결 실패 이벤트"""
 
-    exchange: str
+    exchange_name: str
     error: str
     retry_count: int
 
@@ -79,7 +80,7 @@ class ConnectionFailurePayload(TypedDict):
 class ConnectionRetryPayload(TypedDict):
     """연결 재시도 이벤트"""
 
-    exchange: str
+    exchange_name: str
     attempt: int
     error: str
     max_retries: int
@@ -88,7 +89,7 @@ class ConnectionRetryPayload(TypedDict):
 class ConnectionMaxRetryPayload(TypedDict):
     """최대 재시도 횟수 초과 이벤트"""
 
-    exchange: str
+    exchange_name: str
     max_retries: int
     error: str
 

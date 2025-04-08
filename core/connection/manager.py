@@ -54,12 +54,12 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
                 exchanges=", ".join(exchange_names),
             )
 
-        # 각 거래소에 대해 연결 요청 이벤트 발행
-        for exchange_name in exchange_names:
+        # 각 거래소에 대한 연결 요청을 병렬로 처리하기 위한 함수
+        async def request_connection(exchange_name):
             socket_parameter = get_exchange(exchange_name)
             if not socket_parameter:
                 manager_logger.error(f"지원하지 않는 거래소: {exchange_name}")
-                continue
+                return
 
             # 연결 요청 이벤트 발행
             await event_bus.publish(
@@ -67,9 +67,16 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
                 ConnectionRequestPayload(
                     exchange_name=exchange_name,
                     parameter_info=socket_parameter["parameter_info"],
+                    socket_instance=socket_parameter["socket"],
+                    retry_count=0,  # 초기값 0으로 설정
                 ),
                 EventMetadata(source=f"{exchange_name}_connection_manager"),
             )
+            manager_logger.info(f"{exchange_name} 거래소 연결 요청 완료")
+
+        # 모든 거래소 연결 요청을 동시에 처리
+        tasks = [request_connection(exchange) for exchange in exchange_names]
+        await asyncio.gather(*tasks)
 
         # 이벤트 루프 유지
         manager_logger.info("모든 거래소 연결 요청 완료, 이벤트 루프 유지 중...")

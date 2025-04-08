@@ -3,6 +3,7 @@ import json
 from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
+from adapters.base.event.event_bus import EventBus
 
 logger = logging.getLogger("websocket_handler")
 
@@ -10,8 +11,8 @@ logger = logging.getLogger("websocket_handler")
 class BinanceWebsocketHandler(BaseAsiaEuropeHandler):
     """바이낸스 거래소 웹소켓 핸들러"""
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
+        super().__init__(event_bus, exchange_name)
         self.heartbeat_interval = 30  # 30초마다 핑 체크
 
     @override

@@ -1,15 +1,9 @@
 import asyncio
-import logging
 
 # 연결 관리 임포트
 from core.connection import run_all_exchanges
 from common.logger import PipelineLogger
 
-# 로깅 설정
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
-)
-logger = logging.getLogger("ticker_subscriber")
 
 # 메인 애플리케이션 로거
 main_logger = PipelineLogger.get_logger("pipeline", "main")

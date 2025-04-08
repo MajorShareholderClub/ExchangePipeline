@@ -40,36 +40,43 @@ class PipelineLogger:
     파이프라인 아키텍처에 최적화된 로깅 시스템
     비동기 처리, 컴포넌트별 로깅, 성능 모니터링 기능 제공
     """
-    
+
     _instances: dict[str, PipelineLogger] = {}
     _default_level = logging.INFO
-    
+
     @classmethod
     def get_logger(cls, name: str, component: str = None, **kwargs) -> PipelineLogger:
         """
         로거 인스턴스를 반환하는 팩토리 메서드 (싱글톤 패턴 적용)
-        
+
         Args:
             name: 로거 이름
             component: 컴포넌트 이름 (예: 'exchange', 'event_bus', 'connection')
             **kwargs: 추가 설정
-            
+
         Returns:
             PipelineLogger: 로거 인스턴스
         """
         key = f"{name}.{component if component else 'root'}"
-        
+
         if key not in cls._instances:
             cls._instances[key] = cls(name, component, **kwargs)
-            
+
         return cls._instances[key]
 
-    def __init__(self, name: str, component: str = None, level: int = None, 
-                 log_to_file: bool = True, log_to_console: bool = True,
-                 log_dir: str = "logs", rotation: str = "midnight"):
+    def __init__(
+        self,
+        name: str,
+        component: str = None,
+        level: int = None,
+        log_to_file: bool = True,
+        log_to_console: bool = True,
+        log_dir: str = "logs",
+        rotation: str = "midnight",
+    ):
         """
         로거 초기화
-        
+
         Args:
             name: 로거 이름
             component: 컴포넌트 이름
@@ -86,61 +93,65 @@ class PipelineLogger:
         self.log_to_console = log_to_console
         self.log_dir = log_dir
         self.rotation = rotation
-        
+
         # 로깅 큐 및 컨텍스트 초기화
         self.log_queue: queue.Queue = queue.Queue(1000)  # 최대 1000개 메시지 버퍼링
         self.context: dict[str, Any] = {}
-        
+
         # 로거 및 핸들러 설정
         self._setup_logger()
-        
+
         # 비동기 이벤트 루프 참조 (필요시 설정)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
-    
+
     def _setup_logger(self) -> None:
         """
         로거, 핸들러, 포맷터 설정
         """
-        self.logger_name = f"{self.name}.{self.component}" if self.component else self.name
+        self.logger_name = (
+            f"{self.name}.{self.component}" if self.component else self.name
+        )
         self.logger = logging.getLogger(self.logger_name)
         self.logger.setLevel(self.level)
-        
+
         # 기존 핸들러 제거
         if self.logger.hasHandlers():
             self.logger.handlers.clear()
-        
+
         # 포맷터 설정
         self.formatter = logging.Formatter(
             "%(asctime)s - %(name)s - %(levelname)s - [%(component)s] [%(exchange)s] - %(message)s"
         )
-        
+
         # 핸들러 설정
         handlers = []
-        
+
         if self.log_to_console:
             console = logging.StreamHandler(sys.stdout)
             console.setFormatter(self.formatter)
             handlers.append(console)
-        
+
         if self.log_to_file:
             log_filename = self._get_log_filename()
             ensure_file_exists(log_filename)
-            
+
             file_handler = TimedRotatingFileHandler(
                 filename=log_filename,
                 when=self.rotation,
-                backupCount=7  # 7일치 로그 유지
+                backupCount=7,  # 7일치 로그 유지
             )
             file_handler.setFormatter(self.formatter)
             handlers.append(file_handler)
-        
+
         # 큐 핸들러 및 리스너 설정
         self.queue_handler = QueueHandler(self.log_queue)
         self.logger.addHandler(self.queue_handler)
-        
-        self.listener = QueueListener(self.log_queue, *handlers, respect_handler_level=True)
+
+        self.listener = QueueListener(
+            self.log_queue, *handlers, respect_handler_level=True
+        )
         self.listener.start()
-    
+
     def _get_log_filename(self) -> str:
         """
         로그 파일 이름 생성
@@ -148,34 +159,34 @@ class PipelineLogger:
         today = datetime.now().strftime("%Y-%m-%d")
         component_part = f"{self.component}/" if self.component else ""
         return f"{self.log_dir}/{component_part}{self.name}_{today}.log"
-    
+
     def set_context(self, **kwargs) -> None:
         """
         로깅 컨텍스트 설정
         """
         self.context.update(kwargs)
-    
+
     def clear_context(self) -> None:
         """
         로깅 컨텍스트 초기화
         """
         self.context.clear()
-    
+
     def _process_message(self, level: int, msg: str, extra: dict = None) -> None:
         """
         메시지 처리 및 로깅
         """
         log_extra = {"component": self.component or "main", "exchange": "global"}
-        
+
         # 컨텍스트 및 추가 정보 병합
         if self.context:
             log_extra.update(self.context)
-        
+
         if extra:
             log_extra.update(extra)
-        
+
         self.logger.log(level, msg, extra=log_extra)
-    
+
     async def alog(self, level: int, msg: str, **kwargs) -> None:
         """
         비동기적으로 로그 메시지 기록
@@ -186,47 +197,47 @@ class PipelineLogger:
             except RuntimeError:
                 self._loop = asyncio.new_event_loop()
                 asyncio.set_event_loop(self._loop)
-        
+
         await self._loop.run_in_executor(
             None, self._process_message, level, msg, kwargs
         )
-    
+
     def debug(self, msg: str, **kwargs) -> None:
         self._process_message(logging.DEBUG, msg, kwargs)
-    
+
     def info(self, msg: str, **kwargs) -> None:
         self._process_message(logging.INFO, msg, kwargs)
-    
+
     def warning(self, msg: str, **kwargs) -> None:
         self._process_message(logging.WARNING, msg, kwargs)
-    
+
     def error(self, msg: str, **kwargs) -> None:
         self._process_message(logging.ERROR, msg, kwargs)
-    
+
     def critical(self, msg: str, **kwargs) -> None:
         self._process_message(logging.CRITICAL, msg, kwargs)
-    
+
     async def adebug(self, msg: str, **kwargs) -> None:
         await self.alog(logging.DEBUG, msg, **kwargs)
-    
+
     async def ainfo(self, msg: str, **kwargs) -> None:
         await self.alog(logging.INFO, msg, **kwargs)
-    
+
     async def awarning(self, msg: str, **kwargs) -> None:
         await self.alog(logging.WARNING, msg, **kwargs)
-    
+
     async def aerror(self, msg: str, **kwargs) -> None:
         await self.alog(logging.ERROR, msg, **kwargs)
-    
+
     async def acritical(self, msg: str, **kwargs) -> None:
         await self.alog(logging.CRITICAL, msg, **kwargs)
-    
+
     def close(self) -> None:
         """
         리소스 정리
         """
         self.listener.stop()
-    
+
     def __del__(self) -> None:
         try:
             self.close()

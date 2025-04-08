@@ -9,6 +9,7 @@ from adapters.base.event.types.event_types import (
     ConnectionClosePayload,
     EventMetadata,
 )
+from adapters.exchange import WorldWebSocket
 from common.logger import PipelineLogger
 from common.registry import get_exchange
 from core.connection.retry import ConnectionRetryService
@@ -38,20 +39,12 @@ async def register_connection_handlers(event_bus: EventBus) -> None:
     async def request_wrapper(data: Any) -> None:
         await handle_connection_request(event_bus, data)
 
-    async def success_wrapper(data: Any) -> None:
-        await handle_connection_success(event_bus, data)
-
     async def close_wrapper(data: Any) -> None:
         await handle_connection_close(event_bus, data)
 
-    async def max_retry_wrapper(data: Any) -> None:
-        await handle_connection_max_retry(event_bus, data)
-
     # 이벤트 핸들러 등록
     await event_bus.subscribe(EventType.CONNECTION_REQUEST, request_wrapper)
-    await event_bus.subscribe(EventType.CONNECTION_SUCCESS, success_wrapper)
     await event_bus.subscribe(EventType.CONNECTION_CLOSE, close_wrapper)
-    await event_bus.subscribe(EventType.CONNECTION_MAX_RETRY, max_retry_wrapper)
 
     connection_logger.info("연결 관련 이벤트 핸들러 등록 완료")
 
@@ -70,6 +63,9 @@ async def handle_connection_request(
     """
     exchange_name = data.get("exchange_name")
     parameter_info = data.get("parameter_info")
+    socket_instance: WorldWebSocket = data.get("socket_instance")(
+        event_bus, exchange_name
+    )
     retry_count = data.get("retry_count", 0)
 
     connection_logger.set_context(exchange=exchange_name)
@@ -91,6 +87,8 @@ async def handle_connection_request(
         # 성공적인 연결 시
         # TODO: 실제 WebSocket 연결 구현
         connection_success = True
+
+        await socket_instance.connect_and_subscribe(config=parameter_info)
 
         if connection_success:
             # 연결 성공 이벤트 발행
@@ -125,26 +123,6 @@ async def handle_connection_request(
         )
 
 
-async def handle_connection_success(
-    event_bus: EventBus, data: ConnectionSuccessPayload
-) -> None:
-    """연결 성공 이벤트 핸들러
-
-    Args:
-        event_bus: 이벤트 버스 인스턴스
-        data: 연결 성공 페이로드
-
-    Returns:
-        None
-    """
-    exchange = data.get("exchange")
-    connection_logger.set_context(exchange=exchange)
-    connection_logger.info(f"거래소 연결 성공: {exchange}")
-
-    # 여기서 추가적인 구독 설정이나 초기화 작업을 수행할 수 있음
-    # 예: 특정 심볼에 대한 구독 설정
-
-
 async def handle_connection_close(
     event_bus: EventBus, data: ConnectionClosePayload
 ) -> None:
@@ -174,28 +152,3 @@ async def handle_connection_close(
             ),
             EventMetadata(source=f"{exchange_name}_connection_handler"),
         )
-
-
-async def handle_connection_max_retry(event_bus: EventBus, data: Any) -> None:
-    """최대 재시도 횟수 초과 이벤트 핸들러
-
-    Args:
-        event_bus: 이벤트 버스 인스턴스
-        data: 최대 재시도 횟수 초과 페이로드
-
-    Returns:
-        None
-    """
-    exchange = data.get("exchange")
-    max_retries = data.get("max_retries")
-    error = data.get("error")
-
-    connection_logger.set_context(exchange=exchange)
-    connection_logger.error(
-        f"최대 재시도 횟수 초과 ({max_retries}회): {error}",
-        exchange=exchange,
-        max_retries=max_retries,
-        error=error,
-    )
-
-    # 알림 또는 모니터링 시스템에 장애 보고 등의 추가 작업 수행 가능

@@ -50,10 +50,10 @@ class ConnectionRetryService:
         Args:
             data: 재시도 페이로드
         """
-        exchange_name = data.exchange
-        attempt = data.attempt
-        error = data.error
-        max_retries = data.max_retries or self.max_retries
+        exchange_name = data.get("exchange_name")
+        attempt = data.get("attempt")
+        error = data.get("error")
+        max_retries = data.get("max_retries") or self.max_retries
         retry_delay = self.retry_delay
 
         connection_logger.set_context(exchange=exchange_name)
@@ -75,7 +75,7 @@ class ConnectionRetryService:
             await self.event_bus.publish(
                 EventType.CONNECTION_MAX_RETRY,
                 ConnectionMaxRetryPayload(
-                    exchange=exchange_name,
+                    exchange_name=exchange_name,
                     max_retries=max_retries,
                     error=error,
                 ),
@@ -99,9 +99,9 @@ class ConnectionRetryService:
         Args:
             data: 연결 실패 페이로드
         """
-        exchange_name = data.exchange
-        error = data.error
-        retry_count = data.retry_count
+        exchange_name = data.get("exchange_name")
+        error = data.get("error")
+        retry_count = data.get("retry_count")
 
         connection_logger.set_context(exchange=exchange_name)
         connection_logger.error(
@@ -115,7 +115,7 @@ class ConnectionRetryService:
         await self.event_bus.publish(
             EventType.CONNECTION_RETRY,
             ConnectionRetryPayload(
-                exchange=exchange_name,
+                exchange_name=exchange_name,
                 attempt=retry_count + 1,
                 error=error,
                 max_retries=self.max_retries,

@@ -3,9 +3,10 @@ from typing import Any, override
 import logging
 from core.pipeline.source import BaseWebsocketHandler
 from adapters.base.event.types import AsyncException
+from adapters.base.event.event_bus import EventBus
 from abc import ABC, abstractmethod
 
-logger = logging.getLogger("websocket_handler")
+logger = logging.getLogger("websocket_handler_testting")
 
 
 class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
@@ -14,8 +15,8 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
     공통 메시지 루프 및 핑-퐁 메커니즘을 제공하여 코드 중복을 최소화합니다.
     """
 
-    def __init__(self):
-        super().__init__()
+    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
+        super().__init__(event_bus, exchange_name)
         self.last_heartbeat_time = 0  # 최근 하트비트 시간
         self.heartbeat_interval = 30  # 기본 30초 간격
 

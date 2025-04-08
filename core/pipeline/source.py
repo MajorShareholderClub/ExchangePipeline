@@ -6,13 +6,27 @@ from abc import ABC, abstractmethod
 from common.exceptions import handle_exchange_exceptions
 from core.pipeline.processor import TickerHandler
 from adapters.base.event.types import EventType, EventMetadata, ConnectPayload
+from adapters.base.event.event_bus import EventBus
+
 import logging
 
 logger = logging.getLogger("websocket_handler")
 
+# 단일 출력용 로거 설정 - 중복 방지를 위한 별도 로거
+single_logger = logging.getLogger("single_output")
+_handler = logging.StreamHandler()
+_formatter = logging.Formatter("%(asctime)s - INFO - %(message)s")
+_handler.setFormatter(_formatter)
+single_logger.addHandler(_handler)
+single_logger.setLevel(logging.INFO)
+single_logger.propagate = False  # 다른 로거로 전파 방지
+
 
 class BaseWebsocketHandler(TickerHandler, ABC):
     """웹소켓 핸들러 추상 기본 클래스"""
+
+    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
+        super().__init__(event_bus, exchange_name)
 
     async def _parse_message(self, message: Any) -> Any:
         """특화 메시지 파싱"""
@@ -70,7 +84,8 @@ class BaseWebsocketHandler(TickerHandler, ABC):
                 socket_parameters
             )
             await websocket.send(subscription_message)
-            logger.info(f"{self.exchange_name}: 구독 파라미터 전송 완료")
+            # 별도 로거를 사용하여 로그 중복 출력을 방지합니다.
+            single_logger.info(f"{self.exchange_name}: 구독 파라미터 전송 완료")
 
             # 메시지 수신 및 처리 루프 - 거래소별 구현으로 위임
             await self._handle_message_loop(websocket, timeout)
