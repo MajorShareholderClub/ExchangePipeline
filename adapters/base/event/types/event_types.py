@@ -35,7 +35,7 @@ AsyncException: tuple[type[Exception], ...] = (
 )
 
 
-class TickerPayload(TypedDict):
+class DataPayload(TypedDict):
     exchange: str
     timestamp: float
     data: Any
@@ -44,6 +44,53 @@ class TickerPayload(TypedDict):
 class ConnectPayload(TypedDict):
     exchange: str
     status: str
+
+
+# 연결 관리 관련 이벤트 페이로드
+class ConnectionRequestPayload(TypedDict):
+    """연결 요청 이벤트"""
+
+    exchange_name: str
+    parameter_info: dict
+    retry_count: int
+
+
+class ConnectionClosePayload(TypedDict):
+    """연결 종료 이벤트"""
+
+    exchange_name: str
+    reason: str
+
+
+class ConnectionSuccessPayload(TypedDict):
+    """연결 성공 이벤트"""
+
+    exchange: str
+
+
+class ConnectionFailurePayload(TypedDict):
+    """연결 실패 이벤트"""
+
+    exchange: str
+    error: str
+    retry_count: int
+
+
+class ConnectionRetryPayload(TypedDict):
+    """연결 재시도 이벤트"""
+
+    exchange: str
+    attempt: int
+    error: str
+    max_retries: int
+
+
+class ConnectionMaxRetryPayload(TypedDict):
+    """최대 재시도 횟수 초과 이벤트"""
+
+    exchange: str
+    max_retries: int
+    error: str
 
 
 # fmt: off
@@ -66,6 +113,14 @@ class EventType(Enum):
     EXCHANGE_CONNECT = "exchange.connect"  # 거래소 연결 성공 이벤트
     EXCHANGE_DISCONNECT = "exchange.disconnect"  # 거래소 연결 종료 이벤트
     EXCHANGE_ERROR = "exchange.error"  # 거래소 연결 오류 이벤트
+    
+    # 연결 관리 관련 이벤트
+    CONNECTION_REQUEST = "connection.request"  # 연결 요청 이벤트
+    CONNECTION_SUCCESS = "connection.success"  # 연결 성공 이벤트
+    CONNECTION_FAILURE = "connection.failure"  # 연결 실패 이벤트
+    CONNECTION_RETRY = "connection.retry"  # 연결 재시도 이벤트
+    CONNECTION_MAX_RETRY = "connection.max_retry"  # 최대 재시도 횟수 초과 이벤트
+    CONNECTION_CLOSE = "connection.close"  # 연결 종료 이벤트
 
     # 시장 데이터 이벤트
     MARKET_TICKER = "market.ticker"  # 현재가 이벤트

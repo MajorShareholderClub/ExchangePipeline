@@ -19,9 +19,9 @@ class AbstractAsyncRequestAcquisition(ABC):
         self.headers = headers
 
     @abstractmethod
-    async def async_response(self, session: aiohttp.ClientSession) -> ExchangeResponseData: 
+    async def async_get_response(self, session: aiohttp.ClientSession) -> ExchangeResponseData: 
         raise NotImplementedError()
     
     @abstractmethod
-    async def json_async_source(self, session: aiohttp.ClientSession) -> ExchangeResponseData:
+    async def json_session_async_source(self) -> ExchangeResponseData:
         raise NotImplementedError()

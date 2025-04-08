@@ -1,5 +1,6 @@
 import aiohttp
 from abc import abstractmethod
+from typing import override
 
 from common.setting.types import ExchangeResponseData
 from adapters.base.interface.rest_interfaces import AbstractAsyncRequestAcquisition
@@ -12,12 +13,14 @@ CONTENT_TYPE = "application/json"
 class AsyncRequestAcquisition(AbstractAsyncRequestAcquisition):
     """비동기 HTML 처리 클래스"""
 
+    @override
     async def async_get_response(self, session: aiohttp.ClientSession) -> ExchangeResponseData:
         async with session.get(url=self.url, params=self.params, headers=self.headers) as response:
             data = await response.json(content_type=CONTENT_TYPE)
             response.raise_for_status()
             return data
 
+    @override
     async def json_session_async_source(self) -> ExchangeResponseData:
         """호출 시작점"""
         async with aiohttp.ClientSession() as session:

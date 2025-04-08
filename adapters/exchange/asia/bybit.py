@@ -1,58 +1,91 @@
 import asyncio
 import json
-from typing import Any
+from typing import Any, override
 import logging
-from core.pipeline.source import BaseWebsocketHandler
+from adapters.exchange.base_handler import BaseAsiaEuropeHandler
+from adapters.base.event.types import AsyncException
 
 logger = logging.getLogger("websocket_handler")
 
 
-class BybitWebsocketHandler(BaseWebsocketHandler):
+class BybitWebsocketHandler(BaseAsiaEuropeHandler):
     """바이비트 거래소 웹소켓 핸들러"""
 
+    def __init__(self):
+        super().__init__()
+        self.heartbeat_interval = 30  # 30초마다 핑 체크
+
+    @override
+    def _is_heartbeat(self, message: Any) -> bool:
+        """바이비트 핑 메시지 확인
+
+        Args:
+            message: 검사할 메시지
+
+        Returns:
+            핑 메시지 여부
+        """
+        if isinstance(message, str):
+            json_msg = json.loads(message)
+            return "op" in json_msg and json_msg["op"] == "ping"
+        return False
+
+    @override
+    async def _handle_heartbeat(self, websocket, message: Any) -> None:
+        """바이비트 핑 응답 처리
+
+        Args:
+            websocket: 웹소켓 객체
+            message: 핑 메시지
+        """
+        try:
+            json_msg = json.loads(message) if isinstance(message, str) else message
+            time = int(asyncio.get_event_loop().time() * 1000)
+            pong_message = json.dumps(
+                {
+                    "op": "pong",
+                    "ts": json_msg.get("ts", time),
+                }
+            )
+            await websocket.send(pong_message)
+            logger.debug(f"{self.exchange_name}: 핑-퐁 메시지 교환")
+            self.last_heartbeat_time = asyncio.get_event_loop().time()
+        except AsyncException as e:
+            logger.warning(f"{self.exchange_name}: 핑 응답 처리 중 오류 - {str(e)}")
+
+    @override
+    async def _send_heartbeat(self, websocket) -> None:
+        """바이비트 하트비트 전송
+
+        Args:
+            websocket: 웹소켓 객체
+        """
+        time = int(asyncio.get_event_loop().time() * 1000)
+        await websocket.send(
+            json.dumps(
+                {
+                    "op": "ping",
+                    "ts": time,
+                }
+            )
+        )
+        logger.debug(f"{self.exchange_name}: 하트비트 전송")
+
+    @override
     async def _parse_message(self, message: Any) -> Any:
-        """바이비트 특화 메시지 파싱"""
-        if isinstance(message, bytes):
-            message = message.decode('utf-8')
-            
-        # 바이비트는 특정 타입의 메시지를 필터링
-        json_msg = json.loads(message) if isinstance(message, str) else message
-        if "op" in json_msg and json_msg["op"] == "ping":
-            return None  # 핑 메시지는 처리하지 않음
-            
+        """바이비트 특화 메시지 파싱
+
+        Args:
+            message: 파싱할 메시지
+
+        Returns:
+            파싱된 메시지 또는 None
+        """
+        try:
+            json_msg = json.loads(message) if isinstance(message, str) else message
+            if "op" in json_msg and json_msg["op"] == "ping":
+                return None  # 핑 메시지는 처리하지 않음
+        except AsyncException as e:
+            logger.warning(f"{self.exchange_name}: JSON 파싱 오류 - {str(e)}")
+
         return message
-
-    async def _prepare_subscription_message(self, params: dict[str, Any]) -> str:
-        """바이비트 구독 메시지 준비"""
-        return json.dumps(params)
-
-    async def _handle_message_loop(self, websocket, timeout: int) -> None:
-        """바이비트 메시지 수신 및 처리 루프"""
-        # 바이비트는 주기적인 핑-퐁 필요
-        last_pong_time = asyncio.get_event_loop().time()
-        
-        while True:
-            try:
-                message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
-                
-                # JSON 파싱
-                json_msg = json.loads(message) if isinstance(message, str) else message
-                
-                # 핑 메시지 처리
-                if isinstance(json_msg, dict) and "op" in json_msg and json_msg["op"] == "ping":
-                    pong_message = json.dumps({"op": "pong", "ts": json_msg.get("ts", int(asyncio.get_event_loop().time() * 1000))})
-                    await websocket.send(pong_message)
-                    logger.debug(f"{self.exchange_name}: 핑-퐁 메시지 교환")
-                    last_pong_time = asyncio.get_event_loop().time()
-                    continue
-                
-                parsed_message = await self._parse_message(message)
-                if parsed_message:  # None이면 처리 무시
-                    await self._process_message(parsed_message)
-                    
-            except asyncio.TimeoutError:
-                # 일정 시간 이상 메시지 없으면 연결 상태 확인
-                if asyncio.get_event_loop().time() - last_pong_time > 25:
-                    # 25초 이상 퐁 메시지 없으면 하트비트 전송
-                    await websocket.send(json.dumps({"op": "ping", "ts": int(asyncio.get_event_loop().time() * 1000)}))
-                    logger.debug(f"{self.exchange_name}: 하트비트 전송")

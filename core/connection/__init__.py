@@ -1,9 +1,9 @@
-from .decorator import ConnectionDecorator, RetryConnectionDecorator
-from .manager import connect_exchange, run_all_exchanges
+from .retry import ConnectionRetryService
+from .manager import run_all_exchanges, get_exchange, get_all_exchanges
 
 __all__ = [
-    "ConnectionDecorator",
-    "RetryConnectionDecorator",
-    "connect_exchange",
-    "run_all_exchanges"
+    "ConnectionRetryService",
+    "run_all_exchanges",
+    "get_exchange",
+    "get_all_exchanges",
 ]

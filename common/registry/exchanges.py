@@ -29,39 +29,39 @@ def get_all_exchanges() -> dict[str, dict[str, WorldWebSocket]]:
     """모든 거래소 정보를 반환하는 함수"""
     return {
         "upbit": {
-            "url": upbit_config.build(),
+            "parameter_info": upbit_config.build(),
             "socket": UpbitWebsocketHandler,
         },
         "korbit": {
-            "url": korbit_config.build(),
+            "parameter_info": korbit_config.build(),
             "socket": KorbitWebsocketHandler,
         },
         "bithumb": {
-            "url": bithumb_config.build(),
+            "parameter_info": bithumb_config.build(),
             "socket": BithumbWebsocketHandler,
         },
         "coinone": {
-            "url": coinone_config.build(),
+            "parameter_info": coinone_config.build(),
             "socket": CoinoneWebsocketHandler,
         },
         "binance": {
-            "url": binance_config.build(),
+            "parameter_info": binance_config.build(),
             "socket": BinanceWebsocketHandler,
         },
         "bybit": {
-            "url": bybit_config.build(),
+            "parameter_info": bybit_config.build(),
             "socket": BybitWebsocketHandler,
         },
         "okx": {
-            "url": okx_config.build(),
+            "parameter_info": okx_config.build(),
             "socket": OkxWebsocketHandler,
         },
         "gateio": {
-            "url": gateio_config.build(),
+            "parameter_info": gateio_config.build(),
             "socket": GateioWebsocketHandler,
         },
         "kraken": {
-            "url": kraken_config.build(),
+            "parameter_info": kraken_config.build(),
             "socket": KrakenWebsocketHandler,
         },
     }

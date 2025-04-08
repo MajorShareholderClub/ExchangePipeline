@@ -44,3 +44,16 @@ def data_sending_start() -> None:
 
 if __name__ == "__main__":
     data_sending_start()
+
+
+{
+    'url': {
+            'url': 'wss://ws-api.bithumb.com/websocket/v1', 
+            'parameters': [
+                {'ticket': 'a33dae00-63b7-4473-a9df-af2bed9b00b6'}, 
+                {'type': 'ticker', 'codes': ['KRW-BTC'], 'is_only_realtime': True}
+            ], 
+            'timeout': 30
+        }, 
+    'socket': <class 'adapters.exchange.korea.BithumbWebsocketHandler'>
+}

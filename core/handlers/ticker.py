@@ -1,9 +1,8 @@
-# 티커 핸들러
 import json
-import logging
 from typing import Any
+from common.logger import PipelineLogger
 
-logger = logging.getLogger("ticker_handler")
+logger = PipelineLogger.get_logger("websocket_handler", "handler")
 
 
 async def handle_ticker(data: dict[str, Any]) -> None:
