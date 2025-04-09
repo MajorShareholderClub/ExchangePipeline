@@ -73,7 +73,7 @@ def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter
 def gateio_socket_parameter(symbol: str, req_type: str) -> GateioSocketParameter:
     return GateioSocketParameter(
         time=int(time.time()),
-        channel=f"spot.{req_type}",
+        channel=f"spot.{req_type}s",
         event="subscribe",
         payload=[f"{symbol.upper()}_USDT"]
     )
@@ -82,13 +82,13 @@ def bybit_socket_parameter(symbol: str, req_type: str) -> BybitSocketParameter:
     return BybitSocketParameter(
         req_id=UUID,
         op="subscribe",
-        args=[f"{req_type}.{symbol.upper()}USDT"]
+        args=[f"{req_type}s.{symbol.upper()}USDT"]
     )
 
 def okx_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
     return OKXSocketParameter(
         op="subscribe",
-        args=[OKXArgsSocketParameter(channel=req_type, instId=f"{symbol}-USDT")],
+        args=[OKXArgsSocketParameter(channel=f"{req_type}s", instId=f"{symbol.upper()}-USDT")],
     )
 
 

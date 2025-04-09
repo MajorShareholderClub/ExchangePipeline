@@ -82,11 +82,8 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
         Returns:
             파싱된 메시지 또는 None
         """
-        try:
-            json_msg = json.loads(message) if isinstance(message, str) else message
-            if "op" in json_msg and json_msg["op"] == "ping":
-                return None  # 핑 메시지는 처리하지 않음
-        except AsyncException as e:
-            logger.warning(f"{self.exchange_name}: JSON 파싱 오류 - {str(e)}")
+        json_msg = json.loads(message) if isinstance(message, str) else message
+        if "op" in json_msg and json_msg["op"] == "ping":
+            return None  # 핑 메시지는 처리하지 않음
 
         return message
