@@ -2,7 +2,7 @@ import asyncio
 from typing import Any, override
 import logging
 from core.pipeline.source import BaseWebsocketHandler
-from adapters.base.event.types import AsyncException
+from common.exceptions import AsyncException
 from adapters.base.event.event_bus import EventBus
 from abc import ABC, abstractmethod
 

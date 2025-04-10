@@ -24,16 +24,6 @@ CallbackFunction = Callable[[T], Union[None, asyncio.Future[None]]]
 SubscribersList = list[CallbackFunction]
 SubscribersMap = dict[str, SubscribersList]
 
-# 예상되는 비동기 예외 타입
-AsyncException: tuple[type[Exception], ...] = (
-    asyncio.CancelledError,  # 태스크 취소시 발생
-    asyncio.TimeoutError,  # 작업 타임아웃시 발생
-    ValueError,  # 데이터 값 관련 오류
-    TypeError,  # 데이터 타입 관련 오류
-    KeyError,  # 데이터 구조 키 접근 오류
-    AttributeError,  # 객체 속성 접근 오류
-)
-
 
 class DataPayload(TypedDict):
     exchange: str

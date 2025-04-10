@@ -1,5 +1,5 @@
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import EventType, AsyncException
+from adapters.base.event.types import EventType
 from adapters.base.event.types.event_types import (
     ConnectionRequestPayload,
     ConnectionSuccessPayload,
@@ -7,7 +7,9 @@ from adapters.base.event.types.event_types import (
     ConnectionClosePayload,
     EventMetadata,
 )
+
 from adapters.exchange import WorldWebSocket
+from common.exceptions import AsyncException
 from common.logger import PipelineLogger
 from common.registry import get_exchange
 from core.connection.retry import ConnectionRetryService

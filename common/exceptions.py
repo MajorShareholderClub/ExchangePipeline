@@ -1,11 +1,11 @@
-# exchanges/exceptions.py 파일
+# common/exceptions.py 파일
 from functools import wraps
 from typing import Any, Callable, TypeVar
 import json
 import logging
 import asyncio
-
-from attr import dataclass
+from kafka.errors import NoBrokersAvailable, KafkaConnectionError, KafkaProtocolError
+from dataclasses import dataclass
 
 from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types import EventType, EventMetadata
@@ -16,6 +16,22 @@ from common.logger import PipelineLogger
 T = TypeVar("T")
 F = TypeVar("F", bound=Callable[..., Any])
 logger = PipelineLogger.get_logger("exchange_exceptions", "exceptions")
+
+# 예상되는 비동기 예외 타입
+AsyncException: tuple[type[Exception], ...] = (
+    asyncio.CancelledError,  # 태스크 취소시 발생
+    asyncio.TimeoutError,  # 작업 타임아웃시 발생
+    ValueError,  # 데이터 값 관련 오류
+    TypeError,  # 데이터 타입 관련 오류
+    KeyError,  # 데이터 구조 키 접근 오류
+    AttributeError,  # 객체 속성 접근 오류
+)
+KafkaException: tuple[type[Exception], ...] = (
+    NoBrokersAvailable,  # Kafka broker 연결 실패
+    KafkaConnectionError,  # Kafka 연결 오류
+    KafkaProtocolError,  # Kafka 프로토콜 오류
+    KafkaConnectionError,  # Kafka 연결 오류
+)
 
 
 @dataclass
@@ -44,12 +60,22 @@ class ExchangeException(Exception):
         return result
 
 
-# fmt: off
+# fmt: on
 # 특화된 예외 클래스들
-class ConnectionException(ExchangeException): pass
-class ConnectionTimeoutException(ConnectionException): pass
-class MessageProcessingException(ExchangeException): pass
-class JSONParsingException(MessageProcessingException): pass
+class ConnectionException(ExchangeException):
+    pass
+
+
+class ConnectionTimeoutException(ConnectionException):
+    pass
+
+
+class MessageProcessingException(ExchangeException):
+    pass
+
+
+class JSONParsingException(MessageProcessingException):
+    pass
 
 
 # 예외 처리 데코레이터
@@ -133,7 +159,9 @@ def log_exception(exc: ExchangeException, level: int) -> None:
 async def publish_exception_event(event_bus: EventBus, exc: ExchangeException) -> None:
     """예외 이벤트 발행"""
     # 중요도 결정 (일부 예외 유형은 덜 중요할 수 있음)
-    is_critical = not isinstance(exc, (JSONParsingException, ConnectionTimeoutException))
+    is_critical = not isinstance(
+        exc, (JSONParsingException, ConnectionTimeoutException)
+    )
 
     # 이벤트 데이터 준비
     event_data = exc.to_dict()

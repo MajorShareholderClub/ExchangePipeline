@@ -4,7 +4,7 @@ from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import AsyncException
+from common.exceptions import AsyncException
 
 logger = logging.getLogger("websocket_handler")
 

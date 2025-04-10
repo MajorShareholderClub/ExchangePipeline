@@ -1,11 +1,12 @@
 import asyncio
 
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import AsyncException, EventType
+from adapters.base.event.types import EventType
 from adapters.base.event.types.event_types import (
     ConnectionRequestPayload,
     EventMetadata,
 )
+from common.exceptions import AsyncException
 from common.logger import PipelineLogger
 from common.registry import get_exchange, get_all_exchanges
 from core.handlers.ticker import handle_ticker

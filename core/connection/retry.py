@@ -13,7 +13,7 @@ from adapters.base.event.types.event_types import (
 from common.logger import PipelineLogger
 
 # 파이프라인 로거 설정
-connection_logger = PipelineLogger.get_logger("connection", "decorator")
+connection_logger = PipelineLogger.get_logger("connection", "retryconnection")
 
 
 @dataclass
