@@ -1,5 +1,3 @@
-from typing import Any
-
 from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types import EventType, AsyncException
 from adapters.base.event.types.event_types import (
@@ -13,42 +11,64 @@ from adapters.exchange import WorldWebSocket
 from common.logger import PipelineLogger
 from common.registry import get_exchange
 from core.connection.retry import ConnectionRetryService
-
+from dataclasses import dataclass
 
 # 파이프라인 로거 설정
 connection_logger = PipelineLogger.get_logger("connection", "handler")
 
 
-async def register_connection_handlers(event_bus: EventBus) -> None:
-    """연결 관련 이벤트 핸들러 등록
+@dataclass
+class EventPublisher:
+    event_bus: EventBus
 
-    Args:
-        event_bus: 이벤트 버스 인스턴스
+    async def connection_publish(self, exchange_name: str) -> None:
+        await self.event_bus.publish(
+            EventType.CONNECTION_SUCCESS,
+            ConnectionSuccessPayload(exchange=exchange_name),
+            EventMetadata(source=f"{exchange_name}_connection_handler"),
+        )
 
-    Returns:
-        None
-    """
-    connection_logger.info("연결 관련 이벤트 핸들러 등록 시작")
+    async def connection_failure_publish(self, exchange_name: str) -> None:
+        await self.event_bus.publish(
+            EventType.CONNECTION_FAILURE,
+            ConnectionFailurePayload(exchange=exchange_name),
+            EventMetadata(source=f"{exchange_name}_connection_handler"),
+        )
 
-    # 연결 재시도 서비스 초기화
-    retry_service = ConnectionRetryService(
-        event_bus=event_bus, max_retries=3, retry_delay=5
-    )
+
+# fmt: off
+@dataclass
+class ConnectionHandlerRegistrar:
+    event_bus: EventBus
+    retry_service: ConnectionRetryService
 
     # 각 이벤트 타입에 대한 핸들러 등록
-    async def request_wrapper(data: Any) -> None:
-        await handle_connection_request(event_bus, data)
+    async def request_wrapper(self, data: ConnectionRequestPayload) -> None:
+        """연결 요청 이벤트 핸들러
+        Args:
+            data: ConnectionRequestPayload
+        """
+        await handle_connection_request(self.event_bus, data)
 
-    async def close_wrapper(data: Any) -> None:
-        await handle_connection_close(event_bus, data)
+    async def close_wrapper(self, data: ConnectionClosePayload) -> None:
+        """연결 종료 이벤트 핸들러
+        Args:
+            data: ConnectionClosePayload
+        """
+        await handle_connection_close(self.event_bus, data)
 
-    # 이벤트 핸들러 등록
-    await event_bus.subscribe(EventType.CONNECTION_REQUEST, request_wrapper)
-    await event_bus.subscribe(EventType.CONNECTION_CLOSE, close_wrapper)
+    async def register_handlers(self) -> None:
+        """연결 관련 이벤트 핸들러 등록"""
+        connection_logger.info("연결 관련 이벤트 핸들러 등록 시작")
 
-    connection_logger.info("연결 관련 이벤트 핸들러 등록 완료")
+        # 이벤트 핸들러 등록
+        await self.event_bus.subscribe(EventType.CONNECTION_REQUEST, self.request_wrapper)
+        await self.event_bus.subscribe(EventType.CONNECTION_CLOSE, self.close_wrapper)
+
+        connection_logger.info("연결 관련 이벤트 핸들러 등록 완료")
 
 
+# fmt: on
 async def handle_connection_request(
     event_bus: EventBus, data: ConnectionRequestPayload
 ) -> None:
@@ -57,16 +77,12 @@ async def handle_connection_request(
     Args:
         event_bus: 이벤트 버스 인스턴스
         data: 연결 요청 페이로드
-
-    Returns:
-        None
     """
-    exchange_name = data.get("exchange_name")
-    parameter_info = data.get("parameter_info")
-    socket_instance: WorldWebSocket = data.get("socket_instance")(
-        event_bus, exchange_name
-    )
-    retry_count = data.get("retry_count", 0)
+    exchange_name: str = data.get("exchange_name")
+    parameter_info: dict = data.get("parameter_info")
+    sinstance: WorldWebSocket = data.get("socket_instance")(event_bus, exchange_name)
+
+    event_publisher = EventPublisher(event_bus=event_bus)
 
     connection_logger.set_context(exchange=exchange_name)
     connection_logger.info(
@@ -81,48 +97,24 @@ async def handle_connection_request(
         return
 
     try:
-        # WebSocket 연결 시작 (이 부분은 실제 연결 로직을 구현해야 함)
-        # 여기서는 예시로 이벤트를 발행하는 것만 구현
+        connection = await sinstance.connect_and_subscribe(config=parameter_info)
 
-        # 성공적인 연결 시
-        # TODO: 실제 WebSocket 연결 구현
-        connection_success = True
-
-        await socket_instance.connect_and_subscribe(config=parameter_info)
-
-        if connection_success:
+        if connection:
             # 연결 성공 이벤트 발행
-            await event_bus.publish(
-                EventType.CONNECTION_SUCCESS,
-                ConnectionSuccessPayload(exchange=exchange_name),
-                EventMetadata(source=f"{exchange_name}_connection_handler"),
-            )
+            await event_publisher.connection_publish(exchange_name=exchange_name)
         else:
             # 연결 실패 이벤트 발행
-            await event_bus.publish(
-                EventType.CONNECTION_FAILURE,
-                ConnectionFailurePayload(
-                    exchange=exchange_name,
-                    error=f"{exchange_name}Connection failed",
-                    retry_count=retry_count,
-                ),
-                EventMetadata(source=f"{exchange_name}_connection_handler"),
+            await event_publisher.connection_failure_publish(
+                exchange_name=exchange_name
             )
 
     except AsyncException as e:
         # 예외 발생 시 연결 실패 이벤트 발행
         connection_logger.error(f"연결 중 예외 발생: {str(e)}", exchange=exchange_name)
-        await event_bus.publish(
-            EventType.CONNECTION_FAILURE,
-            ConnectionFailurePayload(
-                exchange=exchange_name,
-                error=str(e),
-                retry_count=retry_count,
-            ),
-            EventMetadata(source=f"{exchange_name}_connection_handler"),
-        )
+        await event_publisher.connection_failure_publish(exchange_name=exchange_name)
 
 
+# fmt: on
 async def handle_connection_close(
     event_bus: EventBus, data: ConnectionClosePayload
 ) -> None:
@@ -130,25 +122,15 @@ async def handle_connection_close(
 
     Args:
         event_bus: 이벤트 버스 인스턴스
-        data: 연결 종료 페이로드
-
-    Returns:
-        None
+        data: ConnectionClosePayload
     """
-    exchange_name = data.get("exchange_name")
-    reason = data.get("reason")
+    exchange_name: str = data.get("exchange_name")
+    reason: str = data.get("reason")
 
     connection_logger.set_context(exchange=exchange_name)
     connection_logger.info(f"거래소 연결 종료: {exchange_name}, 이유: {reason}")
+    event_publisher = EventPublisher(event_bus=event_bus)
 
     # 비정상적인 종료인 경우 재연결 시도 이벤트 발행
     if reason not in ["user_request", "normal_close", "shutdown"]:
-        await event_bus.publish(
-            EventType.CONNECTION_FAILURE,
-            ConnectionFailurePayload(
-                exchange=exchange_name,
-                error=f"Abnormal closure: {reason}",
-                retry_count=0,
-            ),
-            EventMetadata(source=f"{exchange_name}_connection_handler"),
-        )
+        await event_publisher.connection_failure_publish(exchange_name=exchange_name)

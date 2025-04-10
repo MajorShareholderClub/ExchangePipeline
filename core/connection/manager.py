@@ -9,7 +9,8 @@ from adapters.base.event.types.event_types import (
 from common.logger import PipelineLogger
 from common.registry import get_exchange, get_all_exchanges
 from core.handlers.ticker import handle_ticker
-from core.handlers.connection_handler import register_connection_handlers
+from core.handlers.connection_handler import ConnectionHandlerRegistrar
+from core.connection.retry import ConnectionRetryService
 
 # 파이프라인 로거 설정
 manager_logger = PipelineLogger.get_logger("connection", "manager")
@@ -23,7 +24,9 @@ async def setup_event_handlers(event_bus: EventBus) -> None:
     await event_bus.subscribe(EventType.MARKET_TICKER, handle_ticker)
 
     # 새로운 연결 관련 핸들러 등록
-    await register_connection_handlers(event_bus)
+    await ConnectionHandlerRegistrar(
+        event_bus, ConnectionRetryService(event_bus)
+    ).register_handlers()
 
     manager_logger.info("이벤트 구독 완료")
 
