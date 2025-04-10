@@ -26,7 +26,8 @@ async def setup_event_handlers(event_bus: EventBus) -> None:
 
     # 새로운 연결 관련 핸들러 등록
     await ConnectionHandlerRegistrar(
-        event_bus, ConnectionRetryService(event_bus)
+        event_bus,
+        ConnectionRetryService(event_bus),
     ).register_handlers()
 
     manager_logger.info("이벤트 구독 완료")

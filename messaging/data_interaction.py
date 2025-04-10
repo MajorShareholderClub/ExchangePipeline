@@ -60,7 +60,7 @@ class KafkaMessageSender:
         self.logger = PipelineLogger.get_logger("kafka", "sender")
 
     # fmt: off
-    async def start_producer(self, topic: str, message: dict) -> None:
+    async def start_producer(self) -> None:
         """Producer 시작 및 재사용"""
         if not self.producer_started:
             config = KafkaConfig(
@@ -93,7 +93,7 @@ class KafkaMessageSender:
 
 
     async def produce_sending(self, message: dict, topic: str, key: bytes) -> None:
-        await self.start_producer(topic, message)
+        await self.start_producer()
 
         try:
             # 로그는 실제 전송할 메시지와는 별도로 기록

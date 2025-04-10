@@ -1,6 +1,6 @@
-from kafka.partitioner.default import DefaultPartitioner, murmur2
+from aiokafka.partitioner import DefaultPartitioner, murmur2
 
-from typing import Optional, TypedDict
+from typing import TypedDict
 import random
 
 
@@ -32,11 +32,14 @@ class CoinHashingCustomPartitional(DefaultPartitioner):
 
     @classmethod
     def __call__(
-        cls, key: Optional[str], all_partitions: list[int], available: list[int]
+        cls,
+        key: str | None,
+        all_partitions: list[int],
+        available: list[int],
     ) -> int:
         """
         Args:
-            key (Optional[str]): 파티션에 사용할 키 (가상화폐 이름 등)
+            key (str | None): 파티션에 사용할 키 (가상화폐 이름 등)
             all_partitions (List[int]): 모든 파티션 ID 리스트
             available (List[int]): 사용 가능한 파티션 ID 리스트
 
@@ -87,9 +90,11 @@ class CoinSocketDataCustomPartition(DefaultPartitioner):
     )
 
     @classmethod
-    def __call__(cls, key: str, all_partitions: list[int], available: list[int]) -> int:
+    def __call__(
+        cls, key: str | None, all_partitions: list[int], available: list[int]
+    ) -> int:
         try:
-            decoded_key = key.decode() if isinstance(key, bytes) else key
+            decoded_key: str | None = key.decode() if isinstance(key, bytes) else key
             ex_keys = decoded_key.split(":")
             exchange = ex_keys[0].strip('"').lower()
             data_type = ex_keys[1].strip('"').lower().split("-")[0]

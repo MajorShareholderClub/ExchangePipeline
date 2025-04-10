@@ -7,7 +7,6 @@ import asyncio
 from kafka.errors import NoBrokersAvailable, KafkaConnectionError, KafkaProtocolError
 from dataclasses import dataclass
 
-from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types import EventType, EventMetadata
 
 from common.logger import PipelineLogger
@@ -156,7 +155,7 @@ def log_exception(exc: ExchangeException, level: int) -> None:
         )
 
 
-async def publish_exception_event(event_bus: EventBus, exc: ExchangeException) -> None:
+async def publish_exception_event(event_bus, exc: ExchangeException) -> None:
     """예외 이벤트 발행"""
     # 중요도 결정 (일부 예외 유형은 덜 중요할 수 있음)
     is_critical = not isinstance(
