@@ -5,7 +5,6 @@ import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.exchange.utils import update_dict
 from adapters.base.event.event_bus import EventBus
-from common.setting.config.yml_config import get_ticker_format
 
 logger = logging.getLogger("websocket_handler")
 
@@ -70,6 +69,5 @@ class KrakenWebsocketHandler(BaseAsiaEuropeHandler):
         if json_msg.get("method") == "subscribe":
             return None  # 구독 메시지는 처리하지 않음
 
-        ticker_format: list[str] = get_ticker_format(self.exchange_name)
         message: dict = update_dict(json_msg, "data")
-        return {field: message.get(field, None) for field in ticker_format}
+        return message

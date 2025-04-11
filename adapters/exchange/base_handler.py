@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import json
 from abc import ABC, abstractmethod
 from typing import Any, override
 
@@ -9,7 +10,7 @@ from common.setting.config.yml_config import get_ticker_format
 from core.pipeline.source import BaseWebsocketHandler
 
 logger = logging.getLogger("websocket_handler_testting")
-KoreaResponseData = dict[str, int | float]
+TickerResponseData = dict[str, int | float]
 
 
 class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
@@ -22,6 +23,11 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
         super().__init__(event_bus, exchange_name)
         self.last_heartbeat_time = 0  # 최근 하트비트 시간
         self.heartbeat_interval = 30  # 기본 30초 간격
+
+    @abstractmethod
+    async def _parse_message(self, message: Any) -> TickerResponseData:
+        """특화 메시지 파싱"""
+        raise NotImplementedError()
 
     @abstractmethod
     def _is_heartbeat(self, message: Any) -> bool:
@@ -60,6 +66,14 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
         """
         raise NotImplementedError()
 
+    async def _preprocess_message(self, message: dict) -> TickerResponseData:
+        """메시지 처리"""
+        ticker_format: list[str] = get_ticker_format(self.exchange_name)
+        data: TickerResponseData = {
+            field: message.get(field, None) for field in ticker_format
+        }
+        return data
+
     @override
     async def _handle_message_loop(self, websocket, timeout: int) -> None:
         """메시지 수신 및 처리 공통 루프
@@ -82,9 +96,9 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
 
                 # 3. 메시지 파싱
                 parsed_message = await self._parse_message(message)
-                if parsed_message:  # None이면 처리 무시
-                    # 4. 메시지 처리
-                    await self._process_message(parsed_message)
+                if parsed_message:
+                    cleaned_message = await self._preprocess_message(parsed_message)
+                    await self._process_message(cleaned_message)
 
             except AsyncException:
                 # 타임아웃 발생 - 하트비트 필요 확인
@@ -101,7 +115,7 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
 
     async def process_ticker_message(
         self, message: dict, ticker_format: list[str]
-    ) -> KoreaResponseData:
+    ) -> TickerResponseData:
         """
         티커 메시지 처리 함수.
 
@@ -114,7 +128,7 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
             ticker_format: 추출할 필드 목록 (예: ["timestamp", "open", "close", "volume"])
 
         Returns:
-            dict[str, int | float]: ticker_format에 해당하는 필드만 포함한 결과 dict
+            TickerResponseData: ticker_format에 해당하는 필드만 포함한 결과 dict
         """
         if isinstance(message, dict):
             coinone_type: str = message.get("response_type", "")
@@ -132,18 +146,14 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
             for field in ticker_format
         }
 
-    async def _preprocess_message(self, message: Any, ticker_format: list[str]) -> Any:
-        """특화 메시지 처리"""
-        return await self.process_ticker_message(message, ticker_format)
-
     @override
     async def _handle_message_loop(self, websocket, timeout: int) -> None:
         """메시지 수신 및 처리 루프"""
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
             ticker_format: list[str] | None = get_ticker_format(self.exchange_name)
-            parsed_message = await self._parse_message(message)
+            parsed_message: dict = json.loads(message)
 
-            p_data = await self._preprocess_message(parsed_message, ticker_format)
+            p_data = await self.process_ticker_message(parsed_message, ticker_format)
             if p_data:
                 await self._process_message(p_data)

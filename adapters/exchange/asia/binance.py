@@ -4,7 +4,6 @@ from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.base.event.event_bus import EventBus
-from common.setting.config.yml_config import get_ticker_format
 
 logger = logging.getLogger("websocket_handler")
 
@@ -71,7 +70,4 @@ class BinanceWebsocketHandler(BaseAsiaEuropeHandler):
                 return None  # 무시
 
         message = json.loads(message)
-        ticker_format: list[str] = get_ticker_format(self.exchange_name)
-
-        data: dict = {field: message.get(field, None) for field in ticker_format}
-        return data
+        return message

@@ -28,12 +28,6 @@ class BaseWebsocketHandler(TickerHandler, ABC):
     def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
         super().__init__(event_bus, exchange_name)
 
-    async def _parse_message(self, message: Any) -> Any:
-        """특화 메시지 파싱"""
-        if isinstance(message, bytes):
-            message = message.decode("utf-8")
-        return json.loads(message)
-
     async def _event_publish(self, status: str) -> None:
         """연결 상태 이벤트를 발행합니다"""
         await self.event_bus.publish(

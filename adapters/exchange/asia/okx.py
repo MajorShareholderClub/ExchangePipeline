@@ -2,7 +2,6 @@ import asyncio
 import json
 from typing import Any, override
 import logging
-from common.setting.config.yml_config import get_ticker_format
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.base.event.event_bus import EventBus
 from adapters.exchange.utils import update_dict
@@ -71,7 +70,5 @@ class OkxWebsocketHandler(BaseAsiaEuropeHandler):
         if json_msg.get("event") == "subscribe":
             return None  # 구독 메시지는 티커 처리하지 않음
 
-        ticker_format: list[str] = get_ticker_format(self.exchange_name)
-
         message: dict = update_dict(json_msg, "data")
-        return {field: message.get(field, None) for field in ticker_format}
+        return message

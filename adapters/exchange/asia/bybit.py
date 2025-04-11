@@ -6,7 +6,6 @@ from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.exchange.utils import update_dict
 from adapters.base.event.event_bus import EventBus
 from common.exceptions import AsyncException
-from common.setting.config.yml_config import get_ticker_format
 
 logger = logging.getLogger("websocket_handler")
 
@@ -75,7 +74,7 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
         logger.debug(f"{self.exchange_name}: 하트비트 전송")
 
     @override
-    async def _parse_message(self, message: Any) -> Any:
+    async def _parse_message(self, message: dict) -> dict:
         """바이비트 특화 메시지 파싱
 
         Args:
@@ -94,7 +93,5 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
             if json_msg.get("op") == "subscribe":
                 return None  # 구독 메시지는 처리하지 않음
 
-        ticker_format: list[str] = get_ticker_format(self.exchange_name)
-
         message: dict = update_dict(json_msg, "data")
-        return {field: message.get(field, None) for field in ticker_format}
+        return message

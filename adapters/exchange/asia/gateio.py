@@ -59,7 +59,7 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         logger.debug(f"{self.exchange_name}: 하트비트 전송")
 
     @override
-    async def _parse_message(self, message: Any) -> Any:
+    async def _parse_message(self, message: Any) -> dict:
         """Gate.io 특화 메시지 파싱"""
         if isinstance(message, bytes):
             message = message.decode("utf-8")
@@ -81,7 +81,7 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
             return None
 
         ticker_format: list[str] = get_ticker_format(self.exchange_name)
-        message: dict = update_dict(json_msg, "result")
+        message: dict = update_dict(json_msg)
         return {field: message.get(field, None) for field in ticker_format}
 
     @override
