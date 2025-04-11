@@ -116,6 +116,11 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
         Returns:
             dict[str, int | float]: ticker_format에 해당하는 필드만 포함한 결과 dict
         """
+        if isinstance(message, dict):
+            coinone_type: str = message.get("response_type", "")
+            if coinone_type in ["CONNECTED", "SUBSCRIBED"]:
+                return None
+
         data_sub: dict = message.get("data", {})  # "data"가 없다면 빈 dict 사용
 
         return {

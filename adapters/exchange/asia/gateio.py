@@ -3,8 +3,10 @@ import json
 from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
+from adapters.exchange.utils import update_dict
 from adapters.base.event.event_bus import EventBus
 from common.exceptions import AsyncException
+from common.setting.config.yml_config import get_ticker_format
 
 logger = logging.getLogger("websocket_handler")
 
@@ -42,7 +44,7 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
             message: 하트비트 메시지
         """
         # Gate.io는 핑에 대한 특별한 응답이 필요 없음
-        self.last_heartbeat_time = asyncio.get_event_loop().time()
+        pass
 
     @override
     async def _send_heartbeat(self, websocket) -> None:
@@ -63,23 +65,24 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
             message = message.decode("utf-8")
 
         # Gate.io는 필터링이 필요한 메시지 처리
-        try:
-            json_msg = json.loads(message)
-            # 시스템 메시지 처리 (예: 인증, 결과 메시지 등)
-            if "id" in json_msg and "error" in json_msg:
-                if json_msg["error"] is None:
-                    return None  # 성공 응답은 무시
-                logger.error(f"Gate.io API 오류: {json_msg['error']}")
-                return None
+        json_msg: dict = json.loads(message)
+        # 시스템 메시지 처리 (예: 인증, 결과 메시지 등)
+        if "id" in json_msg and "error" in json_msg:
+            if json_msg["error"] is None:
+                return None  # 성공 응답은 무시
+            logger.error(f"Gate.io API 오류: {json_msg['error']}")
+            return None
 
-            # 핑 응답 필터링
-            if "method" in json_msg and json_msg["method"] == "ping":
-                return None
+        # 핑 응답 필터링
+        if "method" in json_msg and json_msg["method"] == "ping":
+            return None
 
-            return message
-        except json.JSONDecodeError:
-            # JSON이 아닌 메시지는 그대로 반환
-            return message
+        if json_msg.get("event") == "subscribe":
+            return None
+
+        ticker_format: list[str] = get_ticker_format(self.exchange_name)
+        message: dict = update_dict(json_msg, "result")
+        return {field: message.get(field, None) for field in ticker_format}
 
     @override
     async def _handle_message_loop(self, websocket, timeout: int) -> None:
@@ -96,11 +99,6 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
                 if current_time - self.last_heartbeat_time > self.heartbeat_interval:
                     await self._send_heartbeat(websocket)
                     self.last_heartbeat_time = current_time
-
-                # 하트비트 메시지 처리
-                if self._is_heartbeat(message):
-                    await self._handle_heartbeat(websocket, message)
-                    continue
 
                 # 응답 처리
                 parsed_message = await self._parse_message(message)

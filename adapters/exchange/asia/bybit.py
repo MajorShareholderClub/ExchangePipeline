@@ -3,8 +3,10 @@ import json
 from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
+from adapters.exchange.utils import update_dict
 from adapters.base.event.event_bus import EventBus
 from common.exceptions import AsyncException
+from common.setting.config.yml_config import get_ticker_format
 
 logger = logging.getLogger("websocket_handler")
 
@@ -82,8 +84,17 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
         Returns:
             파싱된 메시지 또는 None
         """
-        json_msg = json.loads(message) if isinstance(message, str) else message
-        if "op" in json_msg and json_msg["op"] == "ping":
-            return None  # 핑 메시지는 처리하지 않음
 
-        return message
+        if isinstance(message, str):
+            json_msg: dict = json.loads(message)
+
+            if "op" in json_msg and json_msg["op"] == "ping":
+                return None  # 핑 메시지는 처리하지 않음
+
+            if json_msg.get("op") == "subscribe":
+                return None  # 구독 메시지는 처리하지 않음
+
+        ticker_format: list[str] = get_ticker_format(self.exchange_name)
+
+        message: dict = update_dict(json_msg, "data")
+        return {field: message.get(field, None) for field in ticker_format}

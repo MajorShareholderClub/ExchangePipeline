@@ -3,8 +3,9 @@ import json
 from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
+from adapters.exchange.utils import update_dict
 from adapters.base.event.event_bus import EventBus
-from adapters.base.event.types import EventType
+from common.setting.config.yml_config import get_ticker_format
 
 logger = logging.getLogger("websocket_handler")
 
@@ -63,37 +64,12 @@ class KrakenWebsocketHandler(BaseAsiaEuropeHandler):
         if "ping" in message or "heartbeat" in message:
             return None  # 핑/하트비트 메시지는 처리하지 않음
 
-        return message
+        json_msg: dict = json.loads(message)
+        if json_msg.get("channel") == "status":
+            return None  # 상태 메시지는 처리하지 않음
+        if json_msg.get("method") == "subscribe":
+            return None  # 구독 메시지는 처리하지 않음
 
-    @override
-    def _identify_message_type(self, message: Any) -> str:
-        """메시지 타입 식별
-
-        메시지 내용에 따라 티커 또는 오더북 타입을 식별
-
-        Args:
-            message: 분류할 메시지
-
-        Returns:
-            메시지 타입(EventType.MARKET_TICKER 또는 EventType.MARKET_ORDERBOOK)
-        """
-        try:
-            # 이 부분은 크라켄 응답 형식에 따라 파싱하여 타입 결정
-            if isinstance(message, str):
-                data = json.loads(message)
-
-                # 크라켄 응답 중 티커 관련 응답 확인
-                if isinstance(data, list) and len(data) > 1:
-                    channel_name = data[2] if len(data) > 2 else ""
-
-                    if "book" in channel_name:
-                        return EventType.MARKET_ORDERBOOK
-                    else:
-                        return EventType.MARKET_TICKER
-
-            # 기본 값은 티커
-            return EventType.MARKET_TICKER
-
-        except Exception as e:
-            logger.warning(f"{self.exchange_name}: 메시지 타입 식별 오류 - {str(e)}")
-            return EventType.MARKET_TICKER  # 기본값
+        ticker_format: list[str] = get_ticker_format(self.exchange_name)
+        message: dict = update_dict(json_msg, "data")
+        return {field: message.get(field, None) for field in ticker_format}
