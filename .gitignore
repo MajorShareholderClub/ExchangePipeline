@@ -173,3 +173,4 @@ mq/kafka-docker/.kafkalogging
 mq/kafka-docker/visualization
 mq/kafka-docker/init.sql
 mq/kafka-docker/minio-data
+logs/

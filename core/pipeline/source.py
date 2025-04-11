@@ -32,7 +32,7 @@ class BaseWebsocketHandler(TickerHandler, ABC):
         """특화 메시지 파싱"""
         if isinstance(message, bytes):
             message = message.decode("utf-8")
-        return message
+        return json.loads(message)
 
     async def _event_publish(self, status: str) -> None:
         """연결 상태 이벤트를 발행합니다"""

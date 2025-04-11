@@ -1,12 +1,15 @@
 import asyncio
-from typing import Any, override
 import logging
-from core.pipeline.source import BaseWebsocketHandler
-from common.exceptions import AsyncException
-from adapters.base.event.event_bus import EventBus
 from abc import ABC, abstractmethod
+from typing import Any, override
+
+from adapters.base.event.event_bus import EventBus
+from common.exceptions import AsyncException
+from common.setting.config.yml_config import get_ticker_format
+from core.pipeline.source import BaseWebsocketHandler
 
 logger = logging.getLogger("websocket_handler_testting")
+KoreaResponseData = dict[str, int | float]
 
 
 class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
@@ -93,14 +96,49 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
                     self.last_heartbeat_time = current_time
 
 
-class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
+class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
     """한국 거래소 웹소켓 핸들러"""
+
+    async def process_ticker_message(
+        self, message: dict, ticker_format: list[str]
+    ) -> KoreaResponseData:
+        """
+        티커 메시지 처리 함수.
+
+        전제:
+        - 일부 필드는 message 최상위에 존재하고,
+        - 나머지는 message["data"] 내부에 존재합니다.
+
+        Args:
+            message: 티커 메시지 (예: {"timestamp": ..., "data": {...}})
+            ticker_format: 추출할 필드 목록 (예: ["timestamp", "open", "close", "volume"])
+
+        Returns:
+            dict[str, int | float]: ticker_format에 해당하는 필드만 포함한 결과 dict
+        """
+        data_sub: dict = message.get("data", {})  # "data"가 없다면 빈 dict 사용
+
+        return {
+            field: (
+                message.get(field, None)
+                if field in message
+                else data_sub.get(field, None)
+            )
+            for field in ticker_format
+        }
+
+    async def _preprocess_message(self, message: Any, ticker_format: list[str]) -> Any:
+        """특화 메시지 처리"""
+        return await self.process_ticker_message(message, ticker_format)
 
     @override
     async def _handle_message_loop(self, websocket, timeout: int) -> None:
         """메시지 수신 및 처리 루프"""
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
+            ticker_format: list[str] | None = get_ticker_format(self.exchange_name)
             parsed_message = await self._parse_message(message)
-            if parsed_message:
-                await self._process_message(parsed_message)
+
+            p_data = await self._preprocess_message(parsed_message, ticker_format)
+            if p_data:
+                await self._process_message(p_data)

@@ -18,25 +18,17 @@ class BaseMessageHandler:
     @handle_exchange_exceptions()  # 데코레이터 적용
     async def _process_message(self, message: Any) -> None:
         """수신된 메시지 처리 및 이벤트 발행"""
-        # bytes 메시지 처리
-        if isinstance(message, bytes):
-            message = message.decode("utf-8")
 
-        # JSON 문자열 처리
-        if isinstance(message, str):
-            # JSONDecodeError는 데코레이터에서 처리됨
-            data = json.loads(message)
-
-            # 데이터 이벤트 발행
-            await self.event_bus.publish(
-                self.event_type,  # 각 핸들러의 이벤트 타입 사용
-                DataPayload(
-                    exchange=self.exchange_name,
-                    timestamp=asyncio.get_event_loop().time(),
-                    data=data,
-                ),
-                EventMetadata(source=self.exchange_name),
-            )
+        # 데이터 이벤트 발행
+        await self.event_bus.publish(
+            self.event_type,  # 각 핸들러의 이벤트 타입 사용
+            DataPayload(
+                exchange=self.exchange_name,
+                timestamp=asyncio.get_event_loop().time(),
+                data=message,
+            ),
+            EventMetadata(source=self.exchange_name),
+        )
 
 
 class TickerHandler(BaseMessageHandler):
