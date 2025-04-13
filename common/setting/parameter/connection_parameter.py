@@ -65,105 +65,41 @@ class ConnectionParams:
         return parameter
 
 
-# 업비트 설정
-upbit_config = (
-    ConnectionParams()
-    .region("korea")
-    .exchange("upbit")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
+def create_connection_params(
+    region: str,
+    exchange: str,
+    symbol: str,
+    timeout: int = 30,
+    req_type: str = "ticker",
+    stream_type: str = "socket",
+) -> ConnectionParams:
+    """ConnectionParams를 생성하는 데 필요한 파라미터를 구성"""
+    return (
+        ConnectionParams()
+        .region(region)
+        .exchange(exchange)
+        .request_type(req_type)
+        .stream_type(stream_type)
+        .symbol(symbol)
+        .timeout(timeout)
+    )
 
-# 빗썸 설정
-bithumb_config = (
-    ConnectionParams()
-    .region("korea")
-    .exchange("bithumb")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
 
-# 코빗 설정
-korbit_config = (
-    ConnectionParams()
-    .region("korea")
-    .exchange("korbit")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
-
-# 코인원 설정
-coinone_config = (
-    ConnectionParams()
-    .region("korea")
-    .exchange("coinone")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
+# fmt: off
+# ---- 한국 거래소 파라미터 설정 ------
+# 업비트, 빗썸, 코빗, 코인원
+upbit_config = create_connection_params(region="korea", exchange="upbit", symbol="btc")
+bithumb_config = create_connection_params(region="korea", exchange="bithumb", symbol="btc")
+korbit_config = create_connection_params(region="korea", exchange="korbit", symbol="btc")
+coinone_config = create_connection_params(region="korea", exchange="coinone", symbol="btc")
 
 # ---- 아시아 거래소 파라미터 설정 ------
-
-# OKX 설정
-okx_config = (
-    ConnectionParams()
-    .region("asia")
-    .exchange("okx")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
-
-# Gateio 설정
-gateio_config = (
-    ConnectionParams()
-    .region("asia")
-    .exchange("gateio")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
-
-# Bybit 설정
-bybit_config = (
-    ConnectionParams()
-    .region("asia")
-    .exchange("bybit")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
+# OKX, Gateio, Bybit
+okx_config = create_connection_params(region="asia", exchange="okx", symbol="btc")
+gateio_config = create_connection_params(region="asia", exchange="gateio", symbol="btc")
+bybit_config = create_connection_params(region="asia", exchange="bybit", symbol="btc")
 
 # ---- 북미/유럽 거래소 파라미터 설정 ------
-
-# Binance 설정
-binance_config = (
-    ConnectionParams()
-    .region("ne")
-    .exchange("binance")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
-
-# Kraken 설정
-kraken_config = (
-    ConnectionParams()
-    .region("ne")
-    .exchange("kraken")
-    .request_type("ticker")
-    .stream_type("socket")
-    .symbol("btc")
-    .timeout(30)
-)
+# Binance, Kraken
+binance_config = create_connection_params(region="ne", exchange="binance", symbol="btc")
+kraken_config = create_connection_params(region="ne", exchange="kraken", symbol="btc")

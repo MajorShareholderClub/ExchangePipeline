@@ -19,7 +19,7 @@ from dataclasses import dataclass
 connection_logger = PipelineLogger.get_logger("connection", "handler")
 
 
-@dataclass
+@dataclass(frozen=True)
 class EventPublisher:
     event_bus: EventBus
 
@@ -39,7 +39,7 @@ class EventPublisher:
 
 
 # fmt: off
-@dataclass
+@dataclass(frozen=True)
 class ConnectionHandlerRegistrar:
     event_bus: EventBus
     retry_service: ConnectionRetryService
