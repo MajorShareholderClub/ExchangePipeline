@@ -12,6 +12,7 @@ from common.exceptions import AsyncException
 from common.setting.config.yml_config import ticker_config
 from core.pipeline.source import BaseWebsocketHandler
 
+
 logger = logging.getLogger("websocket_handler_testting")
 TickerResponseData = dict[str, int | float]
 
@@ -153,7 +154,7 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
         """메시지 수신 및 처리 루프"""
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
-            ticker_format: list[str] | None = get_ticker_format(self.exchange_name)
+            ticker_format: list[str] | None = ticker_config(self.exchange_name)
             parsed_message: dict = json.loads(message)
 
             p_data = await self.process_ticker_message(parsed_message, ticker_format)

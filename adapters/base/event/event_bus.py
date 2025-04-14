@@ -118,7 +118,7 @@ class EventBus(IEventBus):
             elif asyncio.iscoroutine(result):
                 await result
         except AsyncException as e:
-            self.logger.error(f"Error occurred during event processing: {e}")
+            self.logger.error(f"Error occurred during event processing: {e}, {data}")
 
     async def start(self) -> None:
         """이벤트 버스 시작 시스템 시작 이벤트 발행"""
