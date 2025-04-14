@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, override
 
 from adapters.base.event.event_bus import EventBus
+from adapters.exchange.utils import update_dict
 from common.exceptions import AsyncException
 from common.setting.config.yml_config import get_ticker_format
 from core.pipeline.source import BaseWebsocketHandler
@@ -135,16 +136,12 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
             if coinone_type in ["CONNECTED", "SUBSCRIBED"]:
                 return None
 
-        data_sub: dict = message.get("data", {})  # "data"가 없다면 빈 dict 사용
+        # data_sub에 dictionary가 있으면 update_dict를 사용하여 병합, 그렇지 않으면 원본 메시지 사용
+        data_sub: dict | None = message.get("data", None)
+        if data_sub and isinstance(data_sub, dict):
+            message: dict = update_dict(message, "data")
 
-        return {
-            field: (
-                message.get(field, None)
-                if field in message
-                else data_sub.get(field, None)
-            )
-            for field in ticker_format
-        }
+        return {field: message.get(field, None) for field in ticker_format}
 
     @override
     async def _handle_message_loop(self, websocket, timeout: int) -> None:

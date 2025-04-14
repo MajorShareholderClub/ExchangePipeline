@@ -8,14 +8,10 @@
 │   ├── 🐳 fluentd-cluster.yml        # Fluentd 클러스터 설정 파일
 │   ├── 📂 jmx_exporter            # JMX Exporter 관련 설정
 │   │   ├── 🐳 jmx_prometheus_javaagent-1.0.1.jar # JMX Exporter JAR 파일
-│   │   └── 🐳 kafka-broker.yml      # Kafka 브로커 설정 파일
+│   │   └── 🐳 kafka-broker.yml      # 카프카 broker JVM 설정값들 
 │   ├── 🐳 kafka-compose.yml        # Kafka 컴포즈 설정 파일
 │   ├── 📂 kui                     # KUI 관련 설정
 │   │   └── 🐳 config.yml          # KUI 설정 파일
-│   ├── 📂 mq                      # Kafka Docker 구성 관련 디렉토리
-│   │   └── 📂 kafka-docker        # Kafka Docker 관련 추가 설정
-│   │       └── 📂 kui             # KUI 관련 추가 설정
-│   │           └── 🐳 config.yml  # KUI 추가 설정 파일
 │   └── 📂 visualization           # 데이터 시각화 관련 파일
 │       ├── 📂 grafana            # Grafana 설정 파일
 │       └── 📂 prometheus         # Prometheus 관련 설정

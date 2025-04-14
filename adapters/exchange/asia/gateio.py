@@ -81,7 +81,7 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
             return None
 
         ticker_format: list[str] = get_ticker_format(self.exchange_name)
-        message: dict = update_dict(json_msg)
+        message: dict = update_dict(json_msg, "result")
         return {field: message.get(field, None) for field in ticker_format}
 
     @override
