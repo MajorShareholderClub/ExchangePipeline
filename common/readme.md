@@ -28,7 +28,6 @@ common/
 ## 주요 구성 요소
 
 ### 1. 데이터 관리
-- **data_format.py**: 다양한 거래소 데이터 표준화
 - **registry/exchanges.py**: 거래소 메타데이터 관리
 
 ### 2. 설정 및 파라미터
