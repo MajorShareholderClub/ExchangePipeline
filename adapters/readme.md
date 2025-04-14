@@ -11,7 +11,8 @@ adapters/
     ├── asia/             # 아시아 거래소
     │   ├── binance.py
     │   ├── bybit.py
-    │   └── okx.py
+    │   ├── okx.py
+    │   └── gateio.py
     ├── korea/            # 국내 거래소
     │   ├── upbit.py
     │   ├── bithumb.py
@@ -52,6 +53,7 @@ adapters/
 | 코인원    | CoinoneWebsocketHandler  | 커스텀   |
 | gateio  | GateioWebsocketHandler   | 20초     |
 | 바이비트  | BybitWebsocketHandler  | 30초     |
+| OKX     | OkxWebsocketHandler    | 30초     |
 
 ## 🔌 이벤트 버스 연동
 ```python
