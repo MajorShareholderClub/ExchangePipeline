@@ -1,8 +1,10 @@
 import asyncio
 import logging
 import json
+from websockets import connect
 from abc import ABC, abstractmethod
 from typing import Any, override
+
 
 from adapters.base.event.event_bus import EventBus
 from adapters.exchange.utils import update_dict
@@ -45,7 +47,7 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def _handle_heartbeat(self, websocket, message: Any) -> None:
+    async def _handle_heartbeat(self, websocket: connect, message: Any) -> None:
         """하트비트 메시지 처리
 
         각 거래소별로 오버라이드해야 함
@@ -57,7 +59,7 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    async def _send_heartbeat(self, websocket) -> None:
+    async def _send_heartbeat(self, websocket: connect) -> None:
         """하트비트 메시지 전송
 
         각 거래소별로 오버라이드해야 함
@@ -76,14 +78,14 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
         return data
 
     @override
-    async def _handle_message_loop(self, websocket, timeout: int) -> None:
+    async def _handle_message_loop(self, websocket: connect, timeout: int) -> None:
         """메시지 수신 및 처리 공통 루프
 
         Args:
             websocket: 웹소켓 객체
             timeout: 타임아웃 시간(초)
         """
-        self.last_heartbeat_time = asyncio.get_event_loop().time()  # 초기화
+        self.last_heartbeat_time: float = asyncio.get_event_loop().time()  # 초기화
 
         while True:
             try:
@@ -144,7 +146,7 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
         return {field: message.get(field, None) for field in ticker_format}
 
     @override
-    async def _handle_message_loop(self, websocket, timeout: int) -> None:
+    async def _handle_message_loop(self, websocket: connect, timeout: int) -> None:
         """메시지 수신 및 처리 루프"""
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
