@@ -3,7 +3,6 @@
 ## 디렉토리 구조
 ```
 common/
-├── data_format.py        # 데이터 변환 및 표준화
 ├── exceptions.py         # 맞춤형 예외 처리
 ├── logger.py             # 로깅 시스템
 │
