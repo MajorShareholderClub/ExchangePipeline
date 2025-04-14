@@ -9,7 +9,7 @@ from typing import Any, override
 from adapters.base.event.event_bus import EventBus
 from adapters.exchange.utils import update_dict
 from common.exceptions import AsyncException
-from common.setting.config.yml_config import get_ticker_format
+from common.setting.config.yml_config import ticker_config
 from core.pipeline.source import BaseWebsocketHandler
 
 logger = logging.getLogger("websocket_handler_testting")
@@ -71,7 +71,7 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
 
     async def _preprocess_message(self, message: dict) -> TickerResponseData:
         """메시지 처리"""
-        ticker_format: list[str] = get_ticker_format(self.exchange_name)
+        ticker_format: list[str] = ticker_config(self.exchange_name)
         data: TickerResponseData = {
             field: message.get(field, None) for field in ticker_format
         }

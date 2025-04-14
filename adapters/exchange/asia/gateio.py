@@ -6,7 +6,7 @@ from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.exchange.utils import update_dict
 from adapters.base.event.event_bus import EventBus
 from common.exceptions import AsyncException
-from common.setting.config.yml_config import get_ticker_format
+from common.setting.config.yml_config import ticker_config
 
 logger = logging.getLogger("websocket_handler")
 
@@ -80,7 +80,7 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         if json_msg.get("event") == "subscribe":
             return None
 
-        ticker_format: list[str] = get_ticker_format(self.exchange_name)
+        ticker_format: list[str] = ticker_config(self.exchange_name)
         message: dict = update_dict(json_msg, "result")
         return {field: message.get(field, None) for field in ticker_format}
 

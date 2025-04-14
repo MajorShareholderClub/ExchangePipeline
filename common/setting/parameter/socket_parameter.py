@@ -3,12 +3,7 @@ import uuid
 from pathlib import Path
 
 from typing import Any, Callable, TypedDict
-from common.setting.config.yml_config import load_templates_from_yaml
-
-
-yml_path: str = str(
-    Path(__file__).parent.parent / "config" / "_socket_all_parameter.yml"
-)
+from common.setting.config.yml_config import template_config
 
 
 class MappingDict(TypedDict):
@@ -34,7 +29,6 @@ class SocketParameterBuilder:
         exchange: str,
         symbols: list[str] | str,
         req_type: str,
-        yml_path: str = yml_path,
         cl: bool = True,
     ) -> None:
         """
@@ -50,7 +44,7 @@ class SocketParameterBuilder:
         self.symbols = symbols if isinstance(symbols, list) else [symbols]
         self.req_type = req_type.upper() if cl else req_type.lower()
         self.cl = cl
-        self.templates = load_templates_from_yaml(yml_path)
+        self.templates = template_config()
 
         if self.exchange not in self.templates:
             raise KeyError(f"등록되지 않은 거래소입니다: {exchange}")
@@ -128,11 +122,10 @@ def create_socket_parameter_from_yaml(
     symbols: list[str] | str,
     req_type: str,
     cl: bool = True,
-    yml_path: str = yml_path,
 ) -> dict:
     """
     지정한 거래소, 다중 코인(symbol 리스트) 및 요청 타입(req_type)에 대해 YAML 템플릿을 기반으로
     소켓 파라미터를 생성합니다.
     """
-    builder = SocketParameterBuilder(exchange, symbols, req_type, yml_path, cl)
+    builder = SocketParameterBuilder(exchange, symbols, req_type, cl)
     return builder.build()
