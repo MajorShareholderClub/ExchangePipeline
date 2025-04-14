@@ -105,8 +105,11 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
 
             except AsyncException:
                 # 타임아웃 발생 - 하트비트 필요 확인
-                current_time = asyncio.get_event_loop().time()
-                if current_time - self.last_heartbeat_time > self.heartbeat_interval:
+                current_time: float = asyncio.get_event_loop().time()
+                condition: bool = (
+                    current_time - self.last_heartbeat_time > self.heartbeat_interval
+                )
+                if condition:
                     # 설정된 시간 이상 하트비트 없으면 발송
                     await self._send_heartbeat(websocket)
                     logger.debug(f"{self.exchange_name}: 하트비트 전송")

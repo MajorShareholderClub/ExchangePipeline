@@ -108,7 +108,7 @@ class CoinoneTopicParameter(TypedDict):
 class CoinoneSocketParameter(TypedDict):
     request_type: str
     channel: str
-    data: CoinoneTopicParameter
+    topic: CoinoneTopicParameter
 
 
 # 코빗
@@ -166,16 +166,6 @@ class BybitSocketParameter(TypedDict):
 
 
 UpBithumbSocketParameter = list[TicketUUID | CombinedRequest]
-SubScribeFormat = (
-    UpBithumbSocketParameter
-    | CoinoneSocketParameter
-    | KorbitSocketParameter
-    | BinanceSocketParameter
-    | KrakenSocketParameter
-    | GateioSocketParameter
-    | OKXSocketParameter
-    | BybitSocketParameter
-)
 
 
 # ------------------------------------------------------------------

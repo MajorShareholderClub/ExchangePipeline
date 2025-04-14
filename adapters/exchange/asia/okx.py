@@ -6,6 +6,7 @@ from adapters.exchange.base_handler import BaseAsiaEuropeHandler
 from adapters.base.event.event_bus import EventBus
 from adapters.exchange.utils import update_dict
 
+
 logger = logging.getLogger("websocket_handler")
 
 
@@ -17,7 +18,7 @@ class OkxWebsocketHandler(BaseAsiaEuropeHandler):
         self.heartbeat_interval = 25  # 25초마다 핑 체크
 
     @override
-    def _is_heartbeat(self, message: Any) -> bool:
+    def _is_heartbeat(self, message: str) -> bool:
         """OKX 핑 메시지 확인
 
         Args:
@@ -29,7 +30,7 @@ class OkxWebsocketHandler(BaseAsiaEuropeHandler):
         return "ping" in message
 
     @override
-    async def _handle_heartbeat(self, websocket, message: Any) -> None:
+    async def _handle_heartbeat(self, websocket, message: str) -> None:
         """OKX 핑 응답 처리
 
         Args:
@@ -53,7 +54,7 @@ class OkxWebsocketHandler(BaseAsiaEuropeHandler):
         pass
 
     @override
-    async def _parse_message(self, message: Any) -> Any:
+    async def _parse_message(self, message: str) -> Any:
         """OKX 특화 메시지 파싱
 
         Args:

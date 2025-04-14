@@ -1,0 +1,62 @@
+# socket_templates.yml
+
+upbit:
+  - ticket: "{uuid}"
+  - type: "{req_type}"
+    codes: "{symbol_code_list}"     
+    is_only_realtime: true
+
+bithumb:
+  - ticket: "{uuid}"
+  - type: "{req_type}"
+    codes: "{symbol_code_list}"
+    is_only_realtime: true
+  
+# 코빗 (목록 타입)
+korbit:
+  - method: "subscribe"
+    type: "{req_type}"
+    symbols: "{symbol_list}"         
+
+
+# 코인원: TypedDict에 따르면 "data" 키로 구성 (코드에서는 topic이라도 타입 정의와 맞춤)
+coinone:
+  request_type: "SUBSCRIBE"
+  channel: "{req_type}"
+  topic:
+    quote_currency: "KRW"
+    target_currency: "{symbol_upper}"
+
+# 바이낸스
+binance:
+  id: "{uuid}"
+  method: "SUBSCRIBE"
+  params: "{binance_params}"
+
+# 크라켄
+kraken:
+  method: "subscribe"
+  params:
+    channel: "{req_type}"
+    symbol: "{kraken_symbols}"
+    event_trigger: "trades"
+    snapshot: false
+    req_id: 1234
+
+# 게이티오
+gateio:
+  time: "{time}"
+  channel: "spot.{req_type}s"
+  event: "subscribe"
+  payload: "{gateio_payload}"
+
+# 바이빗
+bybit:
+  req_id: "{uuid}"
+  op: "subscribe"
+  args: "{bybit_args}"
+
+# OKX
+okx:
+  op: "subscribe"
+  args: "{okx_args}"

@@ -1,150 +1,136 @@
 import time
-from typing import Callable, Any
-
 import uuid
-from common.setting.types import (
-    UpBithumbSocketParameter,
-    TicketUUID,
-    CombinedRequest,
-    CoinoneSocketParameter,
-    CoinoneTopicParameter,
-    KorbitSocketParameter,
-)
-from common.setting.types import (
-    BinanceSocketParameter,
-    KrakenSocketParameter,
-    KrakenParameter,
-    GateioSocketParameter,
-    OKXArgsSocketParameter,
-    OKXSocketParameter,
-    BybitSocketParameter,
-)
+from typing import Any, Callable, TypedDict
 
-UUID = str(uuid.uuid4())
+from pathlib import Path
+from common.setting.config.yml_config import load_templates_from_yaml
+
 
 # fmt: off
-def upbithumb_socket_parameter(symbol: str, req_type: str) -> UpBithumbSocketParameter:
-    return [
-        TicketUUID(ticket=UUID),
-        CombinedRequest(
-            type=req_type,
-            codes=[f"KRW-{symbol.upper()}"],
-            is_only_realtime=True,
-        )
-    ]
-
-def coinone_socket_parameter(symbol: str, req_type: str) -> CoinoneSocketParameter:
-    return CoinoneSocketParameter(
-        request_type="SUBSCRIBE",
-        channel=req_type.upper(),
-        topic=CoinoneTopicParameter(
-            quote_currency="KRW", target_currency=f"{symbol.upper()}"
-        ),
-    )
-
-def korbit_socket_parameter(symbol: str, req_type: str) -> list[KorbitSocketParameter]:
-    return [
-        KorbitSocketParameter(
-            method="subscribe",
-            type=req_type,
-            symbols=[f"{symbol.lower()}_krw"]
-        )
-    ]
-
-def binance_socket_paramater(symbol: str, req_type: str) -> BinanceSocketParameter:
-    return BinanceSocketParameter(
-        id=UUID,
-        method=f"SUBSCRIBE",
-        params=[f"{symbol.lower()}usdt@{req_type}"],
-    )
-
-def kraken_socket_parameter(symbol: str, req_type: str) -> KrakenSocketParameter:
-    return KrakenSocketParameter(
-        method="subscribe",
-        params=KrakenParameter(
-            channel=f"{req_type}", 
-            symbol=[f"{symbol.upper()}/USD"],
-            event_trigger="trades",
-            snapshot=False
-        ),
-        req_id=1234
-    )
-
-def gateio_socket_parameter(symbol: str, req_type: str) -> GateioSocketParameter:
-    return GateioSocketParameter(
-        time=int(time.time()),
-        channel=f"spot.{req_type}s",
-        event="subscribe",
-        payload=[f"{symbol.upper()}_USDT"]
-    )
-
-def bybit_socket_parameter(symbol: str, req_type: str) -> BybitSocketParameter:
-    return BybitSocketParameter(
-        req_id=UUID,
-        op="subscribe",
-        args=[f"{req_type}s.{symbol.upper()}USDT"]
-    )
-
-def okx_socket_parameter(symbol: str, req_type: str) -> OKXSocketParameter:
-    return OKXSocketParameter(
-        op="subscribe",
-        args=[OKXArgsSocketParameter(channel=f"{req_type}s", instId=f"{symbol.upper()}-USDT")],
-    )
+yml_path: str = str(Path(__file__).parent.parent / "config" / "_socket_all_parameter.yml")
 
 
-
-# 소켓 파라미터 함수 맵
-# 거래소 이름을 키로 해당 거래소의 소켓 파라미터 생성 함수를 가져올 수 있음
-SOCKET_PARAMETER_FUNCTIONS = {
-    # 한국 지역 거래소
-    "upbit": upbithumb_socket_parameter,
-    "bithumb": upbithumb_socket_parameter,  
-    "korbit": korbit_socket_parameter,
-    "coinone": coinone_socket_parameter,
-    
-    # 아시아 지역 거래소
-    "okx": okx_socket_parameter,
-    "gateio": gateio_socket_parameter,
-    "bybit": bybit_socket_parameter,
-    
-    # 유럽/미국 지역 거래소
-    "binance": binance_socket_paramater,
-    "kraken": kraken_socket_parameter,
-}
+class MappingDict(TypedDict):
+    uuid: str
+    req_type: str
+    time: int
+    symbol_upper: str
+    symbol_lower: str
+    symbol_code_list: list[str]
+    symbol_list: list[str]
+    binance_params: list[str]
+    kraken_symbols: list[str]
+    gateio_payload: list[str]
+    bybit_args: list[str]
+    okx_args: list[dict[str, str]]
 
 
+class SocketParameterBuilder:
+    """소켓 파라미터를 생성하는 클래스"""
 
-# 소켓 파라미터 생성 함수
-def create_socket_parameter(exchange_name: str, symbol: str, req_type: str) -> Any:
-
-    """특정 거래소의 소켓 파라미터를 생성합니다.
-    
-    Args:
-        exchange_name (str): 거래소 이름
-        symbol (str): 코인 심볼
-        req_type (str): 요청 타입
-        
-    Returns:
-        Any: 거래소에 맞는 소켓 파라미터
-    """
-    
-    # 소켓 파라미터 생성 함수 조회 함수
-    def get_socket_parameter_function(exchange_name: str) -> Callable:
-        """특정 거래소의 소켓 파라미터 생성 함수를 반환합니다.
-        
-        Args:
-            exchange_name (str): 거래소 이름
-            
-        Returns:
-            callable: 소켓 파라미터 생성 함수
-            
-        Raises:
-            KeyError: 등록되지 않은 거래소일 경우
+    def __init__(
+        self,
+        exchange: str,
+        symbols: list[str] | str,
+        req_type: str,
+        yml_path: str = yml_path,
+        cl: bool = True,
+    ) -> None:
         """
-        try:
-            return SOCKET_PARAMETER_FUNCTIONS[exchange_name.lower()]
-        except KeyError:
-            raise KeyError(f"등록되지 않은 거래소입니다: {exchange_name}")
-        
-    parameter_function = get_socket_parameter_function(exchange_name)
-    return parameter_function(symbol, req_type)
+        소켓 파라미터 빌더 초기화
+
+        Args:
+            exchange: 거래소 이름
+            symbols: 코인 심볼 리스트 또는 단일 심볼
+            req_type: 요청 타입
+            cl: 대소문자 구분 플래그
+        """
+        self.exchange = exchange.lower()
+        self.symbols = symbols if isinstance(symbols, list) else [symbols]
+        self.req_type = req_type.upper() if cl else req_type.lower()
+        self.cl = cl
+        self.templates = load_templates_from_yaml(yml_path)
+
+        if self.exchange not in self.templates:
+            raise KeyError(f"등록되지 않은 거래소입니다: {exchange}")
+
+    def map_symbols(self, formatter: Callable[[str], str]) -> list[str]:
+        """심볼 리스트를 받아 formatter 함수에 따라 변환한 새 리스트를 반환합니다."""
+        return [formatter(s) for s in self.symbols]
+
+    def build_mapping(self) -> MappingDict:
+        """매핑 딕셔너리 생성"""
+        return MappingDict(
+            uuid=str(uuid.uuid4()),
+            req_type=self.req_type,
+            time=int(time.time()),
+            # 첫번째 코인 관련 정보 (필요시)
+            symbol_upper=self.symbols[0].upper(),
+            symbol_lower=self.symbols[0].lower(),
+            # 각 거래소별 다중 코인 처리를 위한 리스트 치환
+            symbol_code_list=self.map_symbols(lambda s: f"KRW-{s.upper()}"),
+            symbol_list=self.map_symbols(lambda s: f"{s.lower()}_krw"),
+            binance_params=self.map_symbols(
+                lambda s: f"{s.lower()}usdt@{self.req_type}"
+            ),
+            kraken_symbols=self.map_symbols(lambda s: f"{s.upper()}/USD"),
+            gateio_payload=self.map_symbols(lambda s: f"{s.upper()}_USDT"),
+            bybit_args=self.map_symbols(lambda s: f"{self.req_type}s.{s.upper()}USDT"),
+            okx_args=self.map_symbols(
+                lambda s: {
+                    "channel": f"{self.req_type}s",
+                    "instId": f"{s.upper()}-USDT",
+                }
+            ),
+        )
+
+    def substitute_placeholders(self, value: Any, mapping: dict[str, Any]) -> Any:
+        """
+        재귀적으로 value 내부의 문자열 내 플레이스홀더를 mapping의 값으로 치환.
+        - 문자열: .format(**mapping) 사용
+        - 딕셔너리: 하위 값에 대해 재귀 호출
+        - 리스트: 각 요소에 대해 재귀 호출
+        - 그 외: 그대로 반환
+        """
+        match value:
+            case str():
+                if (
+                    value.startswith("{")
+                    and value.endswith("}")
+                    and value.count("{") == 1
+                ):
+                    key = value[1:-1]
+                    if key in mapping:
+                        return mapping[key]
+                return value.format(**mapping)
+            case dict():
+                return {
+                    k: self.substitute_placeholders(v, mapping)
+                    for k, v in value.items()
+                }
+            case list():
+                return [self.substitute_placeholders(item, mapping) for item in value]
+            case _:
+                return value
+
+    def build(self) -> dict:
+        """소켓 파라미터 생성"""
+        mapping = self.build_mapping()
+        template = self.templates[self.exchange]
+        return self.substitute_placeholders(template, mapping)
+
+
+
+def create_socket_parameter_from_yaml(
+    exchange: str,
+    symbols: list[str] | str,
+    req_type: str,
+    cl: bool = True,
+    yml_path: str = yml_path,
+) -> dict:
+    """
+    지정한 거래소, 다중 코인(symbol 리스트) 및 요청 타입(req_type)에 대해 YAML 템플릿을 기반으로
+    소켓 파라미터를 생성합니다.
+    """
+    builder = SocketParameterBuilder(exchange, symbols, req_type, yml_path, cl)
+    return builder.build()
