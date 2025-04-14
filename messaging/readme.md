@@ -21,4 +21,3 @@
 │       └── 📂 prometheus         # Prometheus 관련 설정
 │           └── 📂 config          # Prometheus 설정 디렉토리
 │               └── 🐳 prometheus.yml  # Prometheus 설정 파일
-``````
