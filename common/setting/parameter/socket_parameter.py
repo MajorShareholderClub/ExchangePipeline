@@ -1,13 +1,14 @@
 import time
 import uuid
-from typing import Any, Callable, TypedDict
-
 from pathlib import Path
+
+from typing import Any, Callable, TypedDict
 from common.setting.config.yml_config import load_templates_from_yaml
 
 
-# fmt: off
-yml_path: str = str(Path(__file__).parent.parent / "config" / "_socket_all_parameter.yml")
+yml_path: str = str(
+    Path(__file__).parent.parent / "config" / "_socket_all_parameter.yml"
+)
 
 
 class MappingDict(TypedDict):
@@ -84,7 +85,9 @@ class SocketParameterBuilder:
             ),
         )
 
-    def substitute_placeholders(self, value: Any, mapping: dict[str, Any]) -> Any:
+    def substitute_placeholders(
+        self, value: Any, mapping: dict[str, Any]
+    ) -> str | dict | list:
         """
         재귀적으로 value 내부의 문자열 내 플레이스홀더를 mapping의 값으로 치환.
         - 문자열: .format(**mapping) 사용
@@ -115,10 +118,9 @@ class SocketParameterBuilder:
 
     def build(self) -> dict:
         """소켓 파라미터 생성"""
-        mapping = self.build_mapping()
+        mapping: MappingDict = self.build_mapping()
         template = self.templates[self.exchange]
         return self.substitute_placeholders(template, mapping)
-
 
 
 def create_socket_parameter_from_yaml(
