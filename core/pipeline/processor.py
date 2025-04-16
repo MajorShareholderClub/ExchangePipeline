@@ -13,6 +13,7 @@ class BaseMessageHandler:
 
     event_bus: EventBus
     exchange_name: str
+    response_type: str
     event_type: EventType  # 이벤트 타입을 속성으로 추가
 
     @handle_exchange_exceptions()  # 데코레이터 적용
@@ -24,6 +25,7 @@ class BaseMessageHandler:
             self.event_type,  # 각 핸들러의 이벤트 타입 사용
             DataPayload(
                 exchange=self.exchange_name,
+                response_type=self.response_type,
                 timestamp=asyncio.get_event_loop().time(),
                 data=message,
             ),
@@ -39,6 +41,7 @@ class TickerHandler(BaseMessageHandler):
             event_bus=event_bus,
             exchange_name=exchange_name,
             event_type=EventType.MARKET_TICKER,
+            response_type="ticker",
         )
 
 
@@ -50,4 +53,5 @@ class OrderbookHandler(BaseMessageHandler):
             event_bus=event_bus,
             exchange_name=exchange_name,
             event_type=EventType.MARKET_ORDERBOOK,
+            response_type="orderbook",
         )

@@ -101,7 +101,9 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
                 # 3. 메시지 파싱
                 parsed_message = await self._parse_message(message)
                 if parsed_message:
-                    cleaned_message = await self._preprocess_message(parsed_message)
+                    cleaned_message: TickerResponseData = (
+                        await self._preprocess_message(parsed_message)
+                    )
                     await self._process_message(cleaned_message)
 
             except AsyncException:
@@ -157,6 +159,8 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
             ticker_format: list[str] | None = ticker_config(self.exchange_name)
             parsed_message: dict = json.loads(message)
 
-            p_data = await self.process_ticker_message(parsed_message, ticker_format)
+            p_data: TickerResponseData = await self.process_ticker_message(
+                parsed_message, ticker_format
+            )
             if p_data:
                 await self._process_message(p_data)

@@ -1,132 +1,78 @@
-from aiokafka.partitioner import DefaultPartitioner, murmur2
-
-from typing import TypedDict
 import random
+from aiokafka.partitioner import DefaultPartitioner, murmur2
+from common.logger import PipelineLogger
+
+# 로거 설정 - 운영 환경에서는 별도 설정 파일이나 centralized logging 사용 권장
+logger = PipelineLogger.get_logger("kafka", "partitional")
 
 
-class ExchangeMapping(TypedDict):
-    ticker: int
-    orderbook: int
+class CompositeKeyHashPartitioner(DefaultPartitioner):
+    """
+    복합 키 기반 해시 파티셔너
 
+    기대하는 키 포맷: "exchange:datatype:symbol"
+     - exchange: 거래소 이름 (예: upbit, binance 등)
+     - datatype: 데이터 타입 (예: ticker, orderbook 등)
+     - symbol: 코인/거래쌍 (예: BTC-KRW, ETH-USDT 등)
 
-class KoreaPartitionMapping(TypedDict):
-    upbit: ExchangeMapping
-    bithumb: ExchangeMapping
-    coinone: ExchangeMapping
-    korbit: ExchangeMapping
+    위 포맷에 따라, 키를 정규화한 후 합쳐 composite key를 만들고,
+    murmur2 해시 함수를 통해 모든 파티션에 균등하게 분산시키도록 합니다.
 
-
-class AsiaPartitionMapping(TypedDict):
-    okx: ExchangeMapping
-    bybit: ExchangeMapping
-    gateio: ExchangeMapping
-
-
-class NEPartitionMapping(TypedDict):
-    binance: ExchangeMapping
-    kraken: ExchangeMapping
-
-
-class CoinHashingCustomPartitional(DefaultPartitioner):
-    """가상화폐 특정 파티션"""
+    거래소가 삭제되더라도 기존 파티션에 새 키들이 들어오면 재분배되므로,
+    파티션 자체에 대한 별도 관리(생성/삭제)가 필요없어집니다.
+    """
 
     @classmethod
-    def __call__(
-        cls,
-        key: str | None,
-        all_partitions: list[int],
-        available: list[int],
-    ) -> int:
+    def _decode_key(cls, key: str | None) -> str:
+        """키가 bytes일 경우 디코딩하고, None이면 예외 발생."""
+        if key is None:
+            raise ValueError("유효한 키가 필요합니다 (키가 None 입니다).")
+        return key.decode("utf-8") if isinstance(key, bytes) else key
+
+    @classmethod
+    def _parse_key(cls, key_str: str) -> tuple[str, str, str]:
         """
-        Args:
-            key (str | None): 파티션에 사용할 키 (가상화폐 이름 등)
-            all_partitions (List[int]): 모든 파티션 ID 리스트
-            available (List[int]): 사용 가능한 파티션 ID 리스트
-
-        Returns:
-            int: 선택된 파티션 ID
+        키 문자열을 ':'를 기준으로 분리하여, (exchange, datatype, symbol)을 반환합니다.
+        최소한 'exchange:datatype' 형식이어야 하며, symbol은 선택적으로 포함됩니다.
         """
-        try:
-            if key is not None:
-                if isinstance(key, str):
-                    key = key.encode("utf-8")  # 문자열을 bytes로 변환
-                # 키 해싱 하여 파티션 선택
-                hashed_key: int = murmur2(key)
-                hashed_key &= 0x7FFFFFF
-
-                # hash(key) % 파티션 개수
-                partition_idx: int = hashed_key % len(all_partitions)
-                print(f"{key} --> {partition_idx}")
-                return all_partitions[partition_idx]  # 해싱된 값이 따라서 파티션 적재
-
-            return super().__call__(
-                key=key, all_partitions=all_partitions, available=available
+        parts = [p.strip().strip('"') for p in key_str.split(":")]
+        if len(parts) < 2:
+            raise ValueError(
+                f"키 형식 오류: '{key_str}'. 최소 'exchange:datatype' 형식을 필요로 합니다."
             )
-        except Exception as e:
-            print(f"파티션 오류 {key}: {e}")
-            return random.choice(all_partitions)
+        exchange = parts[0].lower()
+        datatype = parts[1].lower()
+        symbol = parts[2].lower() if len(parts) > 2 else ""
+        return exchange, datatype, symbol
 
-
-class CoinSocketDataCustomPartition(DefaultPartitioner):
-    # 한국 거래소 파티션 매핑
-    KOREA_PARTITION_MAPPING = KoreaPartitionMapping(
-        upbit=ExchangeMapping(ticker=0, orderbook=0),
-        bithumb=ExchangeMapping(ticker=1, orderbook=1),
-        coinone=ExchangeMapping(ticker=2, orderbook=2),
-        korbit=ExchangeMapping(ticker=3, orderbook=3),
-    )
-
-    # ASIA 거래소의 파티션 매핑
-    ASIA_PARTITION_MAPPING = AsiaPartitionMapping(
-        okx=ExchangeMapping(ticker=0, orderbook=0),
-        bybit=ExchangeMapping(ticker=1, orderbook=1),
-        gateio=ExchangeMapping(ticker=2, orderbook=2),
-    )
-
-    # NE 거래소의 파티션 매핑
-    NE_PARTITION_MAPPING = NEPartitionMapping(
-        binance=ExchangeMapping(ticker=0, orderbook=0),
-        kraken=ExchangeMapping(ticker=1, orderbook=1),
-    )
+    @classmethod
+    def _construct_composite_key(cls, exchange: str, datatype: str, symbol: str) -> str:
+        """복합 키 구성. symbol이 있으면 포함, 없으면 exchange:datatype 형태로 만듭니다."""
+        return f"{exchange}:{datatype}:{symbol}" if symbol else f"{exchange}:{datatype}"
 
     @classmethod
     def __call__(
         cls, key: str | None, all_partitions: list[int], available: list[int]
     ) -> int:
         try:
-            decoded_key: str | None = key.decode() if isinstance(key, bytes) else key
-            ex_keys = decoded_key.split(":")
-            exchange = ex_keys[0].strip('"').lower()
-            data_type = ex_keys[1].strip('"').lower().split("-")[0]
+            # 1) 키 디코딩 및 정규화
+            key_str = cls._decode_key(key)
+            normalized_key = key_str.lower().strip()
+            # 2) 키 파싱: exchange, datatype, symbol (symbol은 선택사항)
+            exchange, datatype, symbol = cls._parse_key(normalized_key)
+            composite_key = cls._construct_composite_key(exchange, datatype, symbol)
 
-            match exchange:
-                case exchange if exchange in cls.KOREA_PARTITION_MAPPING:
-                    partition_mapping = cls.KOREA_PARTITION_MAPPING[exchange]
+            # 3) murmur2 해시 함수 적용
+            hash_value = (
+                murmur2(composite_key.encode("utf-8")) & 0x7FFFFFFF
+            )  # 31비트 마스크
+            partition_idx = hash_value % len(all_partitions)
 
-                case exchange if exchange in cls.NE_PARTITION_MAPPING:
-                    partition_mapping = cls.NE_PARTITION_MAPPING[exchange]
-
-                case exchange if exchange in cls.ASIA_PARTITION_MAPPING:
-                    partition_mapping = cls.ASIA_PARTITION_MAPPING[exchange]
-
-                case _:
-                    raise ValueError(f"Unknown exchange: {exchange}")
-
-            match data_type:
-                case "ticker" | "orderbook":
-                    partition = partition_mapping[data_type]
-                case _:
-                    raise ValueError(f"Unknown data type: {data_type}")
-
-            if partition in available:
-                return partition
-            else:
-                # 해당 파티션이 사용 불가능할 경우 fallback
-                return available[0]
-
-        except (ValueError, IndexError) as e:
-            print(f"파티션 오류 {key}: {e}")
-            return random.choice(all_partitions)
+            logger.info(
+                f"키 '{normalized_key}' -> 복합 키 '{composite_key}' | 해시 값 {hash_value} -> "
+                f"파티션 인덱스: {partition_idx}"
+            )
+            return all_partitions[partition_idx]
         except Exception as e:
-            print(f"예외 발생 {key}: {e}")
+            logger.error(f"Partitioning error with key '{key}': {e}", exc_info=True)
             return random.choice(all_partitions)

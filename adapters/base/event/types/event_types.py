@@ -27,6 +27,7 @@ SubscribersMap = dict[str, SubscribersList]
 
 class DataPayload(TypedDict):
     exchange: str
+    response_type: str
     timestamp: float
     data: Any
 

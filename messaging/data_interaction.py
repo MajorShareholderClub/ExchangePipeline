@@ -1,15 +1,15 @@
 import json
+import asyncio
 from pathlib import Path
 from typing import Any, TypedDict, Callable
+from datetime import datetime
+from dataclasses import dataclass
 
 from decimal import Decimal
 from aiokafka import AIOKafkaProducer
 from common.exceptions import KafkaException
-from kafka.partitioner.default import DefaultPartitioner
-from messaging.data_partitional import (
-    CoinHashingCustomPartitional,
-    CoinSocketDataCustomPartition,
-)
+from messaging.data_partitional import CompositeKeyHashPartitioner
+
 from common.logger import PipelineLogger
 from common.setting.properties import (
     BOOTSTRAP_SERVER,
@@ -28,15 +28,11 @@ def default(obj: Any):
 
 
 class KafkaConfig(TypedDict):
-    bootstrap_servers: str
-    security_protocol: str
-    max_batch_size: int
-    max_request_size: int
-    partitioner: (
-        DefaultPartitioner
-        | CoinHashingCustomPartitional
-        | CoinSocketDataCustomPartition
-    )
+    bootstrap_servers: str = BOOTSTRAP_SERVER
+    security_protocol: str = SECURITY_PROTOCOL
+    max_batch_size: int = MAX_BATCH_SIZE
+    max_request_size: int = MAX_REQUEST_SIZE
+    partitioner: CompositeKeyHashPartitioner
     acks: str | int
     value_serializer: Callable[[Any], bytes]
     key_serializer: Callable[[Any], bytes]
@@ -44,24 +40,35 @@ class KafkaConfig(TypedDict):
     retry_backoff_ms: int
 
 
+@dataclass
 class KafkaMessageSender:
     """
     KafkaMessageSender
     - 카프카 전송 로직
-    - 전송 실패 시 메시지를 임시 저장하고, 나중에 재전송
     """
 
-    def __init__(
-        self, partition_pol: Callable = CoinSocketDataCustomPartition()
-    ) -> None:
-        self.producer: AIOKafkaProducer | None = None  # Producer를 클래스 속성으로 저장
-        self.producer_started = False
-        self.partition_pol = partition_pol
-        self.logger = PipelineLogger.get_logger("kafka", "sender")
+    producer: AIOKafkaProducer | None = None
+    producer_started: bool = False
+    partition_pol: CompositeKeyHashPartitioner = CompositeKeyHashPartitioner()
+    logger: PipelineLogger = PipelineLogger.get_logger("kafka", "sender")
+
+    # 실행할 비동기 함수, 예: self.producer.start 또는 self.producer.stop
+    async def _execute_with_logging(
+        self, action: Callable, success: str, failure: str
+    ) -> bool:
+        """지정된 action을 실행하며 로깅을 처리하는 헬퍼 비동기 메서드"""
+        try:
+            await action()
+            await self.logger.ainfo(msg=f"{datetime.now()} - {success}")
+            return True
+        except KafkaException as e:
+            await self.logger.ainfo(msg=f"{datetime.now()} - {failure}: {e}")
+            return False
 
     # fmt: off
     async def start_producer(self) -> None:
         """Producer 시작 및 재사용"""
+        serializer: Callable[[Any], bytes] = lambda value: json.dumps(value, default=default).encode("utf-8")
         if not self.producer_started:
             config = KafkaConfig(
                 bootstrap_servers=BOOTSTRAP_SERVER,
@@ -70,40 +77,46 @@ class KafkaMessageSender:
                 max_request_size=int(MAX_REQUEST_SIZE),
                 partitioner=self.partition_pol,
                 acks=ACKS,
-                value_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
-                key_serializer=lambda value: json.dumps(value, default=default).encode("utf-8"),
+                value_serializer=serializer,
+                key_serializer=serializer,
                 enable_idempotence=True,
                 retry_backoff_ms=100,
             )
             self.producer = AIOKafkaProducer(**config)
-            try:
-                await self.producer.start()
-                self.producer_started = True
-            except KafkaException as e:
-                await self.logger.ainfo(message=f"Producer 시작 실패: {e} ")
-                
+        # 헬퍼 메서드를 통해 시작 시도
+        result = await self._execute_with_logging(
+            action=self.producer.start,
+            success="Kafka Producer 시작 성공",
+            failure="Producer 시작 실패",
+        )
+        if result:
+            self.producer_started = True
+
     async def stop_producer(self) -> None:
         """Producer 종료"""
         if self.producer_started and self.producer is not None:
-            try:
-                await self.producer.stop()
-                self.producer_started = False
-            except KafkaException as e:
-                await self.logger.ainfo(message=f"Producer 종료 실패: {e}")
-
-
-    async def produce_sending(self, message: dict, topic: str, key: bytes) -> None:
-        await self.start_producer()
-
-        try:
-            # 로그는 실제 전송할 메시지와는 별도로 기록
-            size: int = len(json.dumps(message, default=default).encode("utf-8"))
-            log_message = f"Message to: {topic} --> size: {size} bytes"
-            await self.logger.ainfo(message=log_message)
-
-            # 실제 메시지 전송
-            await self.producer.send_and_wait(
-                topic=topic, value=message, key=key
+            result = await self._execute_with_logging(
+                action=self.producer.stop,
+                success="Kafka Producer 종료 성공",
+                failure="Producer 종료 실패",
             )
-        finally:
-            await self.stop_producer()
+            if result:
+                self.producer_started = False
+
+    async def produce_sending(
+        self, message: dict, topic: str, key: bytes, retries: int = 3
+    ) -> None:
+        await self.start_producer()
+        attempt = 1
+        while attempt <= retries:
+            try:
+                size: int = len(json.dumps(message, default=default).encode("utf-8"))
+                log_message: str = f"{datetime.now()}-Message to: {topic} --> size: {size} bytes, attempt {attempt}"
+                await self.logger.ainfo(msg=log_message)
+                await self.producer.send_and_wait(topic=topic, value=message, key=key)
+                await self.logger.ainfo(msg=f"{datetime.now()}-Message 전송 성공 on attempt {attempt}")
+            except KafkaException as e:
+                await self.logger.ainfo(msg=f"{datetime.now()}-Message 전송 실패 on attempt {attempt}: {e}")
+                attempt += 1
+                await asyncio.sleep(attempt)
+        raise KafkaException(f"{datetime.now()}-메시지를 {retries}회 시도 후에도 전송하지 못했습니다.")

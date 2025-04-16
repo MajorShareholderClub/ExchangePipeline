@@ -1,6 +1,7 @@
 # ticker 
 okx:
   parameter:
+    - instId
     - ts
     - open24h
     - last
@@ -11,6 +12,7 @@ okx:
 
 gateio:
   parameter:
+    - currency_pair
     - time_ms
     - last
     - last
@@ -22,6 +24,7 @@ gateio:
 
 bybit:
   parameter:
+    - symbol
     - ts
     - lastPrice
     - lastPrice
@@ -35,6 +38,7 @@ bybit:
 
 upbit:
   parameter:
+    - code
     - timestamp
     - opening_price
     - trade_price
@@ -47,6 +51,7 @@ upbit:
 
 bithumb:
   parameter:
+    - code
     - timestamp
     - opening_price
     - trade_price
@@ -60,6 +65,7 @@ bithumb:
 
 coinone:
   parameter:
+    - target_currency
     - timestamp
     - first
     - last
@@ -70,6 +76,7 @@ coinone:
 
 korbit:
   parameter:
+    - symbol
     - timestamp
     - open
     - close   
@@ -83,6 +90,7 @@ korbit:
 
 binance:
   parameter:
+    - s
     - E
     - o
     - c
@@ -95,6 +103,7 @@ binance:
 
 kraken:
   parameter:
+    - symbol
     - last
     - ask
     - high
