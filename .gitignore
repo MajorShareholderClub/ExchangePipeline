@@ -169,8 +169,8 @@ kafka-docker/kafka/
 kafka-docker/zookeeper/
 
 
+messaging/kafka-docker/vsualization
 messaging/kafka-docker/.kafkalogging
-messaging/kafka-docker/visualization
 messaging/kafka-docker/init.sql
 messaging/kafka-docker/minio-data
 logs/
