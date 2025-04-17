@@ -6,20 +6,34 @@ from adapters.base.event.types.event_types import (
     ConnectionFailurePayload,
     ConnectionClosePayload,
     EventMetadata,
+    DataPayload,
+    BatchPayload,
 )
-
+import json
 from adapters.exchange import WorldWebSocket
 from common.exceptions import AsyncException
 from common.logger import PipelineLogger
 from common.registry import get_exchange
 from core.connection.retry import ConnectionRetryService
 from dataclasses import dataclass
+from collections import defaultdict
+from messaging.data_interaction import KafkaMessageSender
+import time
+import asyncio
+
 
 # 파이프라인 로거 설정
 connection_logger = PipelineLogger.get_logger("connection", "handler")
+t_data = defaultdict(list)
+last_flush_time = defaultdict(lambda: time.time())
+sender = KafkaMessageSender()
+
+BATCH_SIZE = 50
+BATCH_INTERVAL = 10
+MAX_RETRY_COUNT = 3
 
 
-@dataclass(frozen=True)
+@dataclass
 class EventPublisher:
     event_bus: EventBus
 
@@ -39,7 +53,7 @@ class EventPublisher:
 
 
 # fmt: off
-@dataclass(frozen=True)
+@dataclass
 class ConnectionHandlerRegistrar:
     event_bus: EventBus
     retry_service: ConnectionRetryService
@@ -59,15 +73,52 @@ class ConnectionHandlerRegistrar:
         """
         await handle_connection_close(self.event_bus, data)
 
+    async def ticker_wrapper(self, data: DataPayload) -> None:
+        """마켓 티커 이벤트 핸들러
+        Args:
+            data: DataPayload
+        """
+        await handle_ticker(data)
+
+
     async def register_handlers(self) -> None:
         """연결 관련 이벤트 핸들러 등록"""
-        connection_logger.info("연결 관련 이벤트 핸들러 등록 시작")
+        await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 시작")
 
         # 이벤트 핸들러 등록
         await self.event_bus.subscribe(EventType.CONNECTION_REQUEST, self.request_wrapper)
         await self.event_bus.subscribe(EventType.CONNECTION_CLOSE, self.close_wrapper)
+        await self.event_bus.subscribe(EventType.MARKET_TICKER, self.ticker_wrapper)
 
-        connection_logger.info("연결 관련 이벤트 핸들러 등록 완료")
+        await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 완료")
+
+
+
+async def handle_ticker(data: DataPayload) -> None:    
+    exchange: str = data.get("exchange", "unknown")
+    response_type: str = data.get("response_type", "unknown")
+    ticker_data: dict = data.get("data", {})
+
+    symbol = list(ticker_data.keys())[0]
+    key = f"{exchange}:{response_type}:{ticker_data[symbol]}"
+    t_data[key].append(json.dumps(ticker_data))
+    elapsed: float = time.time() - last_flush_time[key]
+
+    if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
+        # 데이터 복사만 하고 아직 비우지 않음
+        batch = t_data[key].copy()
+        current_time = time.time()
+        
+        message = {"exchange": exchange, "time": current_time, "data": batch}
+        await connection_logger.ainfo(f"배치 처리 시작: {exchange}, 건수: {len(batch)}, key: {key}")
+        
+        # Kafka로 메시지 전송
+        await sender.produce_sending(message=message, topic="ticker", key=key)
+        
+        # 전송 성공 후 데이터 비우기 및 시간 초기화
+        t_data[key].clear()
+        last_flush_time[key] = time.time()
+        await connection_logger.ainfo(f"[FLUSHED] key={key}, 건수: {len(batch)}, new_last_flush_time={last_flush_time[key]}")
 
 
 # fmt: on
@@ -87,7 +138,7 @@ async def handle_connection_request(
     event_publisher = EventPublisher(event_bus=event_bus)
 
     connection_logger.set_context(exchange=exchange_name)
-    connection_logger.info(
+    await connection_logger.ainfo(
         f"거래소 연결 요청: {exchange_name}, Parameter: {parameter_info}"
     )
 
@@ -95,7 +146,7 @@ async def handle_connection_request(
     exchange_info = get_exchange(exchange_name)
 
     if not exchange_info:
-        connection_logger.error(f"지원하지 않는 거래소: {exchange_name}")
+        await connection_logger.aerror(f"지원하지 않는 거래소: {exchange_name}")
         return
 
     try:
@@ -112,7 +163,9 @@ async def handle_connection_request(
 
     except AsyncException as e:
         # 예외 발생 시 연결 실패 이벤트 발행
-        connection_logger.error(f"연결 중 예외 발생: {str(e)}", exchange=exchange_name)
+        await connection_logger.aerror(
+            f"연결 중 예외 발생: {str(e)}", exchange=exchange_name
+        )
         await event_publisher.connection_failure_publish(exchange_name=exchange_name)
 
 
@@ -130,7 +183,7 @@ async def handle_connection_close(
     reason: str = data.get("reason")
 
     connection_logger.set_context(exchange=exchange_name)
-    connection_logger.info(f"거래소 연결 종료: {exchange_name}, 이유: {reason}")
+    await connection_logger.ainfo(f"거래소 연결 종료: {exchange_name}, 이유: {reason}")
     event_publisher = EventPublisher(event_bus=event_bus)
 
     # 비정상적인 종료인 경우 재연결 시도 이벤트 발행

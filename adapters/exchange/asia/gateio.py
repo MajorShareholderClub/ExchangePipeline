@@ -1,5 +1,6 @@
 import asyncio
 import json
+import time
 from typing import Any, override
 import logging
 from adapters.exchange.base_handler import BaseAsiaEuropeHandler
@@ -53,8 +54,10 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         Args:
             websocket: 웹소켓 객체
         """
-        time = int(asyncio.get_event_loop().time() * 1000)
-        ping_message = json.dumps({"method": "ping", "params": [], "id": time})
+        current_time = int(time.time())  # 초 단위 시간
+        ping_message = json.dumps(
+            {"time": current_time, "channel": "spot.ping", "event": ""}
+        )
         await websocket.send(ping_message)
         logger.debug(f"{self.exchange_name}: 하트비트 전송")
 
@@ -66,15 +69,14 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
 
         # Gate.io는 필터링이 필요한 메시지 처리
         json_msg: dict = json.loads(message)
-        # 시스템 메시지 처리 (예: 인증, 결과 메시지 등)
-        if "id" in json_msg and "error" in json_msg:
-            if json_msg["error"] is None:
-                return None  # 성공 응답은 무시
+
+        # 시스템/에러 메시지 처리
+        if "error" in json_msg and json_msg["error"] is not None:
             logger.error(f"Gate.io API 오류: {json_msg['error']}")
             return None
 
-        # 핑 응답 필터링
-        if "method" in json_msg and json_msg["method"] == "ping":
+        # 핑 응답
+        if "channel" in json_msg and json_msg["channel"] == "spot.ping":
             return None
 
         if json_msg.get("event") == "subscribe":

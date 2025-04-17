@@ -1,7 +1,6 @@
 from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types import EventType, EventMetadata, DataPayload
 from common.exceptions import handle_exchange_exceptions
-import json
 import asyncio
 from typing import Any
 from dataclasses import dataclass
@@ -16,7 +15,7 @@ class BaseMessageHandler:
     response_type: str
     event_type: EventType  # 이벤트 타입을 속성으로 추가
 
-    @handle_exchange_exceptions()  # 데코레이터 적용
+    @handle_exchange_exceptions()
     async def _process_message(self, message: Any) -> None:
         """수신된 메시지 처리 및 이벤트 발행"""
 

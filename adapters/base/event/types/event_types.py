@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Callable, TypeVar, Union, Any, TypedDict
+from collections import defaultdict
 from enum import Enum
 import asyncio
 from dataclasses import dataclass, field
@@ -23,6 +24,10 @@ CallbackFunction = Callable[[T], Union[None, asyncio.Future[None]]]
 # 구독자 목록 타입 <-- 이벤트 타입별 구독자 맵 타입
 SubscribersList = list[CallbackFunction]
 SubscribersMap = dict[str, SubscribersList]
+
+
+class BatchPayload(TypedDict):
+    data: defaultdict(list)
 
 
 class DataPayload(TypedDict):
@@ -118,6 +123,9 @@ class EventType(Enum):
     MARKET_TICKER = "market.ticker"  # 현재가 이벤트
     MARKET_ORDERBOOK = "market.orderbook"  # 호가창 이벤트
     MARKET_TRADE = "market.trade"  # 체결 이벤트
+    
+    # 배치 데이터 이벤트
+    MARKET_BATCH = "market.batch"  # 배치 이벤트
 
     @classmethod
     def from_string(cls, event_name: str) -> EventType | None:
