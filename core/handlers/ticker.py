@@ -14,5 +14,8 @@ async def handle_ticker(data: dict[str, Any]) -> None:
 
     key = f"{exchange}::{response_type}-{ticker_data[symbol]}"
 
-    sender = KafkaMessageSender()
-    await sender.produce_sending(message=ticker_data, topic="ticker", key=key)
+    await KafkaMessageSender().produce_sending(
+        message=ticker_data,
+        topic="ticker",
+        key=key,
+    )

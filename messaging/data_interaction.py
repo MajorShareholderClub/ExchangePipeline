@@ -20,11 +20,11 @@ from common.setting.properties import (
 )
 
 present_path = Path(__file__).parent
+Serializer = Callable[[Any], bytes]
 
-
-def default(obj: Any):
-    if isinstance(obj, Decimal):
-        return str(obj)
+# decimal string converting
+dsc: Serializer = lambda obj: str(obj) if isinstance(obj, Decimal) else obj
+serializer: bytes = lambda value: json.dumps(value, default=dsc).encode("utf-8")
 
 
 class KafkaConfig(TypedDict):
@@ -34,8 +34,8 @@ class KafkaConfig(TypedDict):
     max_request_size: int = MAX_REQUEST_SIZE
     partitioner: CompositeKeyHashPartitioner
     acks: str | int
-    value_serializer: Callable[[Any], bytes]
-    key_serializer: Callable[[Any], bytes]
+    value_serializer: bytes
+    key_serializer: bytes
     enable_idempotence: bool
     retry_backoff_ms: int
 
@@ -68,7 +68,6 @@ class KafkaMessageSender:
     # fmt: off
     async def start_producer(self) -> None:
         """Producer 시작 및 재사용"""
-        serializer: Callable[[Any], bytes] = lambda value: json.dumps(value, default=default).encode("utf-8")
         if not self.producer_started:
             config = KafkaConfig(
                 bootstrap_servers=BOOTSTRAP_SERVER,
@@ -110,7 +109,7 @@ class KafkaMessageSender:
         attempt = 1
         while attempt <= retries:
             try:
-                size: int = len(json.dumps(message, default=default).encode("utf-8"))
+                size: int = len(json.dumps(message, default=dsc).encode("utf-8"))
                 log_message: str = f"{datetime.now()}-Message to: {topic} --> size: {size} bytes, attempt {attempt}"
                 await self.logger.ainfo(msg=log_message)
                 await self.producer.send_and_wait(topic=topic, value=message, key=key)

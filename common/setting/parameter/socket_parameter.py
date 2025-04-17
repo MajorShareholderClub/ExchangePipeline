@@ -21,7 +21,7 @@ class MappingDict(TypedDict):
 
 
 class SocketParameterBuilder:
-    """소켓 파라미터를 생성하는 클래스"""
+    """소켓 파라미터를 생성하는 빌더 클래스"""
 
     def __init__(
         self,
