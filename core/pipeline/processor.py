@@ -28,7 +28,7 @@ class BaseMessageHandler:
                 timestamp=asyncio.get_event_loop().time(),
                 data=message,
             ),
-            EventMetadata(source=self.exchange_name),
+            EventMetadata(source=f"{self.exchange_name}_{self.response_type}"),
         )
 
 

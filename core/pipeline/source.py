@@ -36,7 +36,7 @@ class BaseWebsocketHandler(TickerHandler, ABC):
                 exchange=self.exchange_name,
                 status=status,
             ),
-            EventMetadata(source=self.exchange_name),
+            EventMetadata(source=f"{self.exchange_name}_{self.response_type}"),
         )
 
     async def _sending_socket_parameter(self, params: dict[str, Any]) -> str:

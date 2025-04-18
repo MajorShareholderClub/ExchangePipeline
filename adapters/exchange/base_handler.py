@@ -15,6 +15,7 @@ from core.pipeline.source import BaseWebsocketHandler
 
 logger = logging.getLogger("websocket_handler_testting")
 TickerResponseData = dict[str, int | float]
+OrderbookReponseData = dict[str, list[str, int]]
 
 
 class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
@@ -119,12 +120,10 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
                     self.last_heartbeat_time = current_time
 
 
-class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
+class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
     """한국 거래소 웹소켓 핸들러"""
 
-    async def process_ticker_message(
-        self, message: dict, ticker_format: list[str]
-    ) -> TickerResponseData:
+    async def process_ticker_message(self, message: dict) -> TickerResponseData:
         """
         티커 메시지 처리 함수.
 
@@ -149,18 +148,19 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
         if data_sub and isinstance(data_sub, dict):
             message: dict = update_dict(message, "data")
 
+        ticker_format: list[str] | None = ticker_config(self.exchange_name)
         return {field: message.get(field, None) for field in ticker_format}
+
+    async def process_orderbook_message(self, message: dict) -> OrderbookReponseData:
+        pass
 
     @override
     async def _handle_message_loop(self, websocket: connect, timeout: int) -> None:
-        """메시지 수신 및 처리 루프"""
+        """메시지 수신 및 처리 루프 (티커)"""
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
-            ticker_format: list[str] | None = ticker_config(self.exchange_name)
             parsed_message: dict = json.loads(message)
+            data: TickerResponseData = await self.process_ticker_message(parsed_message)
 
-            p_data: TickerResponseData = await self.process_ticker_message(
-                parsed_message, ticker_format
-            )
-            if p_data:
-                await self._process_message(p_data)
+            if data:
+                await self._process_message(data)

@@ -90,21 +90,31 @@ def create_connection_params(
     )
 
 
-# fmt: off
-# ---- 한국 거래소 파라미터 설정 ------
-# 업비트, 빗썸, 코빗, 코인원
-upbit_config = create_connection_params(cl=False, region="korea", exchange="upbit", symbol=["btc"])
-bithumb_config = create_connection_params(cl=False, region="korea", exchange="bithumb", symbol=["btc"])
-korbit_config = create_connection_params(cl=False, region="korea", exchange="korbit", symbol=["btc"])
-coinone_config = create_connection_params(cl=True, region="korea", exchange="coinone", symbol=["btc"])
+def get_exchange_config(exchange_name: str, request_type: str) -> ConnectionParams:
+    """거래소 이름과 요청 타입을 받아 적절한 config를 반환"""
 
-# ---- 아시아 거래소 파라미터 설정 ------
-# OKX, Gateio, Bybit
-okx_config = create_connection_params(cl=False, region="asia", exchange="okx", symbol=["btc"])
-gateio_config = create_connection_params(cl=False, region="asia", exchange="gateio", symbol=["btc"])
-bybit_config = create_connection_params(cl=False, region="asia", exchange="bybit", symbol=["btc"])
+    # 거래소별 기본 설정
+    exchange_settings = {
+        "upbit": {"cl": False, "region": "korea", "exchange": "upbit"},
+        "bithumb": {"cl": False, "region": "korea", "exchange": "bithumb"},
+        "korbit": {"cl": False, "region": "korea", "exchange": "korbit"},
+        "coinone": {"cl": True, "region": "korea", "exchange": "coinone"},
+        "okx": {"cl": False, "region": "asia", "exchange": "okx"},
+        "gateio": {"cl": False, "region": "asia", "exchange": "gateio"},
+        "bybit": {"cl": False, "region": "asia", "exchange": "bybit"},
+        "binance": {"cl": False, "region": "ne", "exchange": "binance"},
+        "kraken": {"cl": False, "region": "ne", "exchange": "kraken"},
+    }
 
-# ---- 북미/유럽 거래소 파라미터 설정 ------
-# Binance, Kraken
-binance_config = create_connection_params(cl=False, region="ne", exchange="binance", symbol=["btc"])
-kraken_config = create_connection_params(cl=False, region="ne", exchange="kraken", symbol=["btc"])
+    if exchange_name not in exchange_settings:
+        raise ValueError(f"지원하지 않는 거래소: {exchange_name}")
+
+    settings = exchange_settings[exchange_name]
+
+    return create_connection_params(
+        cl=settings["cl"],
+        region=settings["region"],
+        exchange=settings["exchange"],
+        symbol=["btc"],
+        req_type=request_type,
+    )
