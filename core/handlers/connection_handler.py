@@ -7,7 +7,6 @@ from adapters.base.event.types.event_types import (
     ConnectionClosePayload,
     EventMetadata,
     DataPayload,
-    BatchPayload,
 )
 import json
 from adapters.exchange import WorldWebSocket
@@ -19,7 +18,6 @@ from dataclasses import dataclass
 from collections import defaultdict
 from messaging.data_interaction import KafkaMessageSender
 import time
-import asyncio
 
 
 # 파이프라인 로거 설정
@@ -44,10 +42,16 @@ class EventPublisher:
             EventMetadata(source=f"{exchange_name}_connection_handler"),
         )
 
-    async def connection_failure_publish(self, exchange_name: str) -> None:
+    async def connection_failure_publish(
+        self, exchange_name: str, error: str, retry_count: int
+    ) -> None:
         await self.event_bus.publish(
             EventType.CONNECTION_FAILURE,
-            ConnectionFailurePayload(exchange=exchange_name),
+            ConnectionFailurePayload(
+                exchange=exchange_name,
+                error=error,
+                retry_count=retry_count,
+            ),
             EventMetadata(source=f"{exchange_name}_connection_handler"),
         )
 
@@ -80,7 +84,6 @@ class ConnectionHandlerRegistrar:
         """
         await handle_ticker(data)
 
-
     async def register_handlers(self) -> None:
         """연결 관련 이벤트 핸들러 등록"""
         await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 시작")
@@ -110,7 +113,6 @@ async def handle_ticker(data: DataPayload) -> None:
         current_time = time.time()
         
         message = {"exchange": exchange, "time": current_time, "data": batch}
-        await connection_logger.ainfo(f"배치 처리 시작: {exchange}, 건수: {len(batch)}, key: {key}")
         
         # Kafka로 메시지 전송
         await sender.produce_sending(message=message, topic="ticker", key=key)
@@ -118,7 +120,7 @@ async def handle_ticker(data: DataPayload) -> None:
         # 전송 성공 후 데이터 비우기 및 시간 초기화
         t_data[key].clear()
         last_flush_time[key] = time.time()
-        await connection_logger.ainfo(f"[FLUSHED] key={key}, 건수: {len(batch)}, new_last_flush_time={last_flush_time[key]}")
+        print(f"[FLUSHED] key={key}, 건수: {len(batch)}, new_last_flush_time={last_flush_time[key]}")
 
 
 # fmt: on
@@ -155,18 +157,17 @@ async def handle_connection_request(
         if connection:
             # 연결 성공 이벤트 발행
             await event_publisher.connection_publish(exchange_name=exchange_name)
-        else:
-            # 연결 실패 이벤트 발행
-            await event_publisher.connection_failure_publish(
-                exchange_name=exchange_name
-            )
 
     except AsyncException as e:
         # 예외 발생 시 연결 실패 이벤트 발행
         await connection_logger.aerror(
             f"연결 중 예외 발생: {str(e)}", exchange=exchange_name
         )
-        await event_publisher.connection_failure_publish(exchange_name=exchange_name)
+        await event_publisher.connection_failure_publish(
+            exchange_name=exchange_name,
+            error=str(e),
+            retry_count=3,
+        )
 
 
 # fmt: on

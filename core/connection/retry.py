@@ -5,12 +5,14 @@ from dataclasses import dataclass
 from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types.event_types import (
     EventType,
+    ConnectionRequestPayload,
     ConnectionRetryPayload,
     ConnectionFailurePayload,
     ConnectionMaxRetryPayload,
     EventMetadata,
 )
 from common.logger import PipelineLogger
+from common.registry import get_exchange
 
 # 파이프라인 로거 설정
 connection_logger = PipelineLogger.get_logger("connection", "retryconnection")
@@ -91,6 +93,19 @@ class ConnectionRetryService:
             f"재연결 시도 ({attempt}/{max_retries})",
             exchange=exchange_name,
             attempt=attempt,
+        )
+
+        # 재시도 시 원래 연결 요청 이벤트 다시 발행
+        socket_param = get_exchange(exchange_name)
+        await self.event_bus.publish(
+            EventType.CONNECTION_REQUEST,
+            ConnectionRequestPayload(
+                exchange_name=exchange_name,
+                parameter_info=socket_param["parameter_info"],
+                socket_instance=socket_param["socket"],
+                retry_count=attempt,
+            ),
+            EventMetadata(source="connection_retry_service"),
         )
 
     async def _failure_handler(self, data: ConnectionFailurePayload) -> None:

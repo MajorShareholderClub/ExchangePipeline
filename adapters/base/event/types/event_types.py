@@ -26,10 +26,6 @@ SubscribersList = list[CallbackFunction]
 SubscribersMap = dict[str, SubscribersList]
 
 
-class BatchPayload(TypedDict):
-    data: defaultdict(list)
-
-
 class DataPayload(TypedDict):
     exchange: str
     response_type: str

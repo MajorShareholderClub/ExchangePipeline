@@ -20,10 +20,11 @@ async def setup_event_handlers(event_bus: EventBus) -> None:
     """이벤트 핸들러 등록 함수"""
     manager_logger.info("이벤트 구독 등록")
 
-    # 새로운 연결 관련 핸들러 등록
+    # 새로운 연결 관련 핸들러 및 retry 서비스 등록
+    retry_service = ConnectionRetryService(event_bus)
     await ConnectionHandlerRegistrar(
         event_bus,
-        ConnectionRetryService(event_bus),
+        retry_service,
     ).register_handlers()
 
     manager_logger.info("이벤트 구독 완료")
@@ -46,13 +47,11 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
         if not exchange_names:
             exchange_names = list(get_all_exchanges().keys())
             manager_logger.info(
-                f"모든 거래소 연결 시작 ({len(exchange_names)}개)",
-                exchanges=", ".join(exchange_names),
+                f"모든 거래소 연결 시작 ({len(exchange_names)}개) 거래소 목록: {', '.join(exchange_names)}"
             )
         else:
             manager_logger.info(
-                f"지정된 거래소 연결 시작 ({len(exchange_names)}개)",
-                exchanges=", ".join(exchange_names),
+                f"지정된 거래소 연결 시작 ({len(exchange_names)}개) 거래소 목록: {', '.join(exchange_names)}"
             )
 
         # 각 거래소에 대한 연결 요청을 병렬로 처리하기 위한 함수

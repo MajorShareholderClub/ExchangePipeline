@@ -109,11 +109,7 @@ class KafkaMessageSender:
         attempt = 1
         while attempt <= retries:
             try:
-                size: int = len(json.dumps(message, default=dsc).encode("utf-8"))
-                log_message: str = f"{datetime.now()}-Message to: {topic} --> size: {size} bytes, attempt {attempt}"
-                await self.logger.ainfo(msg=log_message)
                 await self.producer.send_and_wait(topic=topic, value=message, key=key)
-                await self.logger.ainfo(msg=f"{datetime.now()}-Message 전송 성공 on attempt {attempt}")
             except KafkaException as e:
                 await self.logger.ainfo(msg=f"{datetime.now()}-Message 전송 실패 on attempt {attempt}: {e}")
                 attempt += 1

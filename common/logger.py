@@ -94,8 +94,8 @@ class PipelineLogger:
         self.log_dir = log_dir
         self.rotation = rotation
 
-        # 로깅 큐 및 컨텍스트 초기화
-        self.log_queue: queue.Queue = queue.Queue(1000)  # 최대 1000개 메시지 버퍼링
+        # 로깅 큐 및 컨텍스트 초기화 (무제한 버퍼로 설정해 queue.Full 예외 방지)
+        self.log_queue: queue.Queue = queue.Queue()  # unlimited buffer
         self.context: dict[str, Any] = {}
 
         # 로거 및 핸들러 설정

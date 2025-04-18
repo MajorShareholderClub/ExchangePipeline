@@ -55,6 +55,7 @@ class CompositeKeyHashPartitioner(DefaultPartitioner):
     def __call__(
         cls, key: str | None, all_partitions: list[int], available: list[int]
     ) -> int:
+
         try:
             # 1) 키 디코딩 및 정규화
             key_str = cls._decode_key(key)
@@ -63,17 +64,14 @@ class CompositeKeyHashPartitioner(DefaultPartitioner):
             exchange, datatype, symbol = cls._parse_key(normalized_key)
             composite_key = cls._construct_composite_key(exchange, datatype, symbol)
 
-            # 3) murmur2 해시 함수 적용
-            hash_value = (
-                murmur2(composite_key.encode("utf-8")) & 0x7FFFFFFF
-            )  # 31비트 마스크
-            partition_idx = hash_value % len(all_partitions)
+            idx = murmur2(composite_key.encode("utf-8"))
+            idx &= 0x7FFFFFFF
+            idx %= len(all_partitions)
 
             logger.info(
-                f"키 '{normalized_key}' -> 복합 키 '{composite_key}' | 해시 값 {hash_value} -> "
-                f"파티션 인덱스: {partition_idx}"
+                f"키 '{normalized_key}' -> 복합 키 '{composite_key}' -> 파티션 인덱스: {idx}"
             )
-            return all_partitions[partition_idx]
+            return all_partitions[idx]
         except KafkaException as e:
             logger.error(f"Partitioning error with key '{key}': {e}")
             return random.choice(all_partitions)
