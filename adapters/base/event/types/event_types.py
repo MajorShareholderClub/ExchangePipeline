@@ -44,6 +44,7 @@ class ConnectionRequestPayload(TypedDict):
 
     exchange_name: str
     parameter_info: dict
+    request_type: str
     socket_instance: Any
     retry_count: int
 
@@ -53,12 +54,14 @@ class ConnectionClosePayload(TypedDict):
 
     exchange_name: str
     reason: str
+    request_type: str
 
 
 class ConnectionSuccessPayload(TypedDict):
     """연결 성공 이벤트"""
 
     exchange_name: str
+    request_type: str
 
 
 class ConnectionFailurePayload(TypedDict):
@@ -67,6 +70,7 @@ class ConnectionFailurePayload(TypedDict):
     exchange_name: str
     error: str
     retry_count: int
+    request_type: str
 
 
 class ConnectionRetryPayload(TypedDict):

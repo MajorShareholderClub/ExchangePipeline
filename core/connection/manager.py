@@ -30,7 +30,10 @@ async def setup_event_handlers(event_bus: EventBus) -> None:
     manager_logger.info("이벤트 구독 완료")
 
 
-async def run_all_exchanges(exchange_names: list[str] = None) -> None:
+async def run_all_exchanges(
+    request_type: str,
+    exchange_names: list[str] = None,
+) -> None:
     """모든 거래소를 동시에 실행하는 함수"""
     manager_logger.info("거래소 동시 연결 시작")
 
@@ -45,7 +48,7 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
 
         # 지정된 거래소가 없으면 모든 거래소 실행
         if not exchange_names:
-            exchange_names = list(get_all_exchanges().keys())
+            exchange_names = list(get_all_exchanges(request_type).keys())
             manager_logger.info(
                 f"모든 거래소 연결 시작 ({len(exchange_names)}개) 거래소 목록: {', '.join(exchange_names)}"
             )
@@ -55,8 +58,8 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
             )
 
         # 각 거래소에 대한 연결 요청을 병렬로 처리하기 위한 함수
-        async def request_connection(exchange_name):
-            socket_parameter = get_exchange(exchange_name)
+        async def request_connection(exchange_name: str, request_type: str) -> None:
+            socket_parameter = get_exchange(exchange_name, request_type)
             if not socket_parameter:
                 manager_logger.error(f"지원하지 않는 거래소: {exchange_name}")
                 return
@@ -66,6 +69,7 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
                 EventType.CONNECTION_REQUEST,
                 ConnectionRequestPayload(
                     exchange_name=exchange_name,
+                    request_type=request_type,
                     parameter_info=socket_parameter["parameter_info"],
                     socket_instance=socket_parameter["socket"],
                     retry_count=0,  # 초기값 0으로 설정
@@ -75,7 +79,9 @@ async def run_all_exchanges(exchange_names: list[str] = None) -> None:
             manager_logger.info(f"{exchange_name} 거래소 연결 요청 완료")
 
         # 모든 거래소 연결 요청을 동시에 처리
-        tasks = [request_connection(exchange) for exchange in exchange_names]
+        tasks = [
+            request_connection(exchange, request_type) for exchange in exchange_names
+        ]
         await asyncio.gather(*tasks)
 
         # 이벤트 루프 유지

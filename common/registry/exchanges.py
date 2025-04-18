@@ -15,11 +15,11 @@ from adapters.exchange.ne import KrakenWebsocketHandler
 from common.setting.parameter.connection_parameter import get_exchange_config
 
 
-def get_all_exchanges() -> dict[str, dict[str, WorldWebSocket]]:
+def get_all_exchanges(request_type: str) -> dict[str, dict[str, WorldWebSocket]]:
     """모든 거래소 정보를 반환하는 함수"""
     return {
         "upbit": {
-            "parameter_info": get_exchange_config("upbit", "ticker").build(),
+            "parameter_info": get_exchange_config("upbit", request_type).build(),
             "socket": UpbitWebsocketHandler,
         },
         # "bithumb": {
@@ -57,6 +57,8 @@ def get_all_exchanges() -> dict[str, dict[str, WorldWebSocket]]:
     }
 
 
-def get_exchange(exchange_name: str) -> dict[str, WorldWebSocket] | None:
+def get_exchange(
+    exchange_name: str, request_type: str
+) -> dict[str, WorldWebSocket] | None:
     """특정 거래소의 연결 정보를 반환하는 함수"""
-    return get_all_exchanges().get(exchange_name)
+    return get_all_exchanges(request_type).get(exchange_name)

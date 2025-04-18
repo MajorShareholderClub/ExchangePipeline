@@ -15,7 +15,7 @@ async def main():
         # 특정 거래소만 실행하려면 리스트에 추가 (비어있으면 모든 거래소 실행)
         exchanges_to_run = []
         main_logger.info("연결 관리 시작")
-        await run_all_exchanges(exchanges_to_run)
+        await run_all_exchanges("ticker", exchanges_to_run)
     except KeyboardInterrupt:
         main_logger.info("사용자가 프로그램을 중단했습니다.")
     except Exception as e:

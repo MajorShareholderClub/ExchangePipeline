@@ -35,15 +35,15 @@ MAX_RETRY_COUNT = 3
 class EventPublisher:
     event_bus: EventBus
 
-    async def connection_publish(self, exchange_name: str) -> None:
+    async def connection_publish(self, exchange_name: str, request_type: str) -> None:
         await self.event_bus.publish(
             EventType.CONNECTION_SUCCESS,
-            ConnectionSuccessPayload(exchange=exchange_name),
-            EventMetadata(source=f"{exchange_name}_connection_handler"),
+            ConnectionSuccessPayload(exchange=exchange_name, request_type=request_type),
+            EventMetadata(source=f"{exchange_name}_{request_type}_connection_handler"),
         )
 
     async def connection_failure_publish(
-        self, exchange_name: str, error: str, retry_count: int
+        self, exchange_name: str, error: str, retry_count: int, request_type: str
     ) -> None:
         await self.event_bus.publish(
             EventType.CONNECTION_FAILURE,
@@ -51,8 +51,9 @@ class EventPublisher:
                 exchange=exchange_name,
                 error=error,
                 retry_count=retry_count,
+                request_type=request_type,
             ),
-            EventMetadata(source=f"{exchange_name}_connection_handler"),
+            EventMetadata(source=f"{exchange_name}_{request_type}_connection_handler"),
         )
 
 
@@ -135,6 +136,7 @@ async def handle_connection_request(
     """
     exchange_name: str = data.get("exchange_name")
     parameter_info: dict = data.get("parameter_info")
+    request_type: str = data.get("request_type")
     sinstance: WorldWebSocket = data.get("socket_instance")(event_bus, exchange_name)
 
     event_publisher = EventPublisher(event_bus=event_bus)
@@ -145,7 +147,7 @@ async def handle_connection_request(
     )
 
     # 거래소 정보 조회
-    exchange_info = get_exchange(exchange_name)
+    exchange_info = get_exchange(exchange_name, request_type)
 
     if not exchange_info:
         await connection_logger.aerror(f"지원하지 않는 거래소: {exchange_name}")
@@ -156,7 +158,10 @@ async def handle_connection_request(
 
         if connection:
             # 연결 성공 이벤트 발행
-            await event_publisher.connection_publish(exchange_name=exchange_name)
+            await event_publisher.connection_publish(
+                exchange_name=exchange_name,
+                request_type=exchange_info["request_type"],
+            )
 
     except AsyncException as e:
         # 예외 발생 시 연결 실패 이벤트 발행
@@ -182,6 +187,7 @@ async def handle_connection_close(
     """
     exchange_name: str = data.get("exchange_name")
     reason: str = data.get("reason")
+    request_type: str = data.get("request_type")
 
     connection_logger.set_context(exchange=exchange_name)
     await connection_logger.ainfo(f"거래소 연결 종료: {exchange_name}, 이유: {reason}")
@@ -189,4 +195,9 @@ async def handle_connection_close(
 
     # 비정상적인 종료인 경우 재연결 시도 이벤트 발행
     if reason not in ["user_request", "normal_close", "shutdown"]:
-        await event_publisher.connection_failure_publish(exchange_name=exchange_name)
+        await event_publisher.connection_failure_publish(
+            exchange_name=exchange_name,
+            error=reason,
+            retry_count=3,
+            request_type=request_type,
+        )
