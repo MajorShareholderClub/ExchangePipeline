@@ -99,24 +99,26 @@ class ConnectionHandlerRegistrar:
 
 
 async def handle_ticker(data: DataPayload) -> None:    
+    region: str = data.get("region", "unknown")
     exchange: str = data.get("exchange", "unknown")
     response_type: str = data.get("response_type", "unknown")
     ticker_data: dict = data.get("data", {})
 
-    symbol = list(ticker_data.keys())[0]
-    key = f"{exchange}:{response_type}:{ticker_data[symbol]}"
+    symbol: str = list(ticker_data.keys())[0]
+    key: str = f"{exchange}:{response_type}:{ticker_data[symbol]}"
+    topic: str = f"{region}_{response_type}"
     t_data[key].append(json.dumps(ticker_data))
     elapsed: float = time.time() - last_flush_time[key]
 
     if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
         # 데이터 복사만 하고 아직 비우지 않음
-        batch = t_data[key].copy()
-        current_time = time.time()
+        batch: list = t_data[key].copy()
+        current_time: float = time.time()
         
         message = {"exchange": exchange, "time": current_time, "data": batch}
         
         # Kafka로 메시지 전송
-        await sender.produce_sending(message=message, topic="ticker", key=key)
+        await sender.produce_sending(message=message, topic=topic, key=key)
         
         # 전송 성공 후 데이터 비우기 및 시간 초기화
         t_data[key].clear()
@@ -134,6 +136,7 @@ async def handle_connection_request(
         event_bus: 이벤트 버스 인스턴스
         data: 연결 요청 페이로드
     """
+    region: str = data.get("region")
     exchange_name: str = data.get("exchange_name")
     parameter_info: dict = data.get("parameter_info")
     request_type: str = data.get("request_type")
@@ -143,7 +146,7 @@ async def handle_connection_request(
 
     connection_logger.set_context(exchange=exchange_name)
     await connection_logger.ainfo(
-        f"거래소 연결 요청: {exchange_name}, Parameter: {parameter_info}"
+        f"지역: {region}, 거래소: {exchange_name}, Parameter: {parameter_info}"
     )
 
     # 거래소 정보 조회
@@ -172,6 +175,7 @@ async def handle_connection_request(
             exchange_name=exchange_name,
             error=str(e),
             retry_count=3,
+            request_type=request_type,
         )
 
 

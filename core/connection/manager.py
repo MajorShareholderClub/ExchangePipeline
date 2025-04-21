@@ -45,21 +45,21 @@ async def run_all_exchanges(
     try:
         # 이벤트 핸들러 등록
         await setup_event_handlers(event_bus)
+        exchange: str = (
+            f"{len(exchange_names)}개) 거래소 목록: {', '.join(exchange_names)}"
+        )
 
         # 지정된 거래소가 없으면 모든 거래소 실행
         if not exchange_names:
             exchange_names = list(get_all_exchanges(request_type).keys())
-            manager_logger.info(
-                f"모든 거래소 연결 시작 ({len(exchange_names)}개) 거래소 목록: {', '.join(exchange_names)}"
-            )
+            manager_logger.info(f"모든 거래소 연결 시작 {exchange}")
         else:
-            manager_logger.info(
-                f"지정된 거래소 연결 시작 ({len(exchange_names)}개) 거래소 목록: {', '.join(exchange_names)}"
-            )
+            manager_logger.info(f"지정된 거래소 연결 시작 {exchange}")
 
         # 각 거래소에 대한 연결 요청을 병렬로 처리하기 위한 함수
         async def request_connection(exchange_name: str, request_type: str) -> None:
             socket_parameter = get_exchange(exchange_name, request_type)
+
             if not socket_parameter:
                 manager_logger.error(f"지원하지 않는 거래소: {exchange_name}")
                 return
@@ -68,11 +68,12 @@ async def run_all_exchanges(
             await event_bus.publish(
                 EventType.CONNECTION_REQUEST,
                 ConnectionRequestPayload(
+                    region=socket_parameter["parameter_info"]["region"],
                     exchange_name=exchange_name,
                     request_type=request_type,
                     parameter_info=socket_parameter["parameter_info"],
                     socket_instance=socket_parameter["socket"],
-                    retry_count=0,  # 초기값 0으로 설정
+                    retry_count=3,  # 초기값 0으로 설정
                 ),
                 EventMetadata(source=f"{exchange_name}_connection_manager"),
             )
@@ -90,7 +91,7 @@ async def run_all_exchanges(
             await asyncio.sleep(1)
 
     except AsyncException as e:
-        manager_logger.error(f"예상치 못한 오류: {str(e)}")
+        manager_logger.error(f"오류: {str(e)}")
     finally:
         # 이벤트 버스 종료
         manager_logger.info("이벤트 버스 종료")

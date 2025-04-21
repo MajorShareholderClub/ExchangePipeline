@@ -16,7 +16,7 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
     """Gate.io 거래소 웹소켓 핸들러"""
 
     def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
-        super().__init__(event_bus, exchange_name)
+        super().__init__(event_bus, exchange_name, region="asia")
         self.heartbeat_interval = 20  # 20초마다 핑 전송
 
     @override

@@ -41,9 +41,9 @@ class CompositeKeyHashPartitioner(DefaultPartitioner):
             raise ValueError(
                 f"키 형식 오류: '{key_str}'. 최소 'exchange:datatype' 형식을 필요로 합니다."
             )
-        exchange = parts[0].lower()
-        datatype = parts[1].lower()
-        symbol = parts[2].lower() if len(parts) > 2 else ""
+        exchange = parts[0]
+        datatype = parts[1]
+        symbol = parts[2] if len(parts) > 2 else ""
         return exchange, datatype, symbol
 
     @classmethod
@@ -58,19 +58,19 @@ class CompositeKeyHashPartitioner(DefaultPartitioner):
 
         try:
             # 1) 키 디코딩 및 정규화
-            key_str = cls._decode_key(key)
-            normalized_key = key_str.lower().strip()
+            key_str: str = cls._decode_key(key)
+            normalized_key: str = key_str.strip()
             # 2) 키 파싱: exchange, datatype, symbol (symbol은 선택사항)
             exchange, datatype, symbol = cls._parse_key(normalized_key)
-            composite_key = cls._construct_composite_key(exchange, datatype, symbol)
+            composite_key: str = cls._construct_composite_key(
+                exchange, datatype, symbol
+            )
 
-            idx = murmur2(composite_key.encode("utf-8"))
+            idx: int = murmur2(composite_key.encode("utf-8"))
             idx &= 0x7FFFFFFF
             idx %= len(all_partitions)
 
-            logger.info(
-                f"키 '{normalized_key}' -> 복합 키 '{composite_key}' -> 파티션 인덱스: {idx}"
-            )
+            logger.info(f"키 '{normalized_key}' -> 파티션 인덱스: {idx}")
             return all_partitions[idx]
         except KafkaException as e:
             logger.error(f"Partitioning error with key '{key}': {e}")

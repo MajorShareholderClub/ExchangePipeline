@@ -24,8 +24,12 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
     공통 메시지 루프 및 핑-퐁 메커니즘을 제공하여 코드 중복을 최소화합니다.
     """
 
-    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
-        super().__init__(event_bus, exchange_name)
+    def __init__(self, event_bus: EventBus, exchange_name: str, region: str) -> None:
+        super().__init__(
+            event_bus=event_bus,
+            exchange_name=exchange_name,
+            region=region,
+        )
         self.last_heartbeat_time = 0  # 최근 하트비트 시간
         self.heartbeat_interval = 30  # 기본 30초 간격
 
@@ -122,6 +126,13 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
 
 class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
     """한국 거래소 웹소켓 핸들러"""
+
+    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
+        super().__init__(
+            event_bus=event_bus,
+            exchange_name=exchange_name,
+            region="korea",
+        )
 
     async def process_ticker_message(self, message: dict) -> TickerResponseData:
         """

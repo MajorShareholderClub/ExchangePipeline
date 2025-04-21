@@ -5,12 +5,11 @@ from .korea import (
     CoinoneWebsocketHandler,
 )
 from .asia import (
-    BinanceWebsocketHandler,
     BybitWebsocketHandler,
     OkxWebsocketHandler,
     GateioWebsocketHandler,
 )
-from .ne import KrakenWebsocketHandler
+from .ne import KrakenWebsocketHandler, BinanceWebsocketHandler
 
 
 WorldWebSocket = (

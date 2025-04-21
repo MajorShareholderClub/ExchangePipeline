@@ -25,8 +25,8 @@ single_logger.propagate = False  # 다른 로거로 전파 방지
 class BaseWebsocketHandler(TickerHandler, ABC):
     """웹소켓 핸들러 추상 기본 클래스"""
 
-    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
-        super().__init__(event_bus, exchange_name)
+    def __init__(self, event_bus: EventBus, exchange_name: str, region: str) -> None:
+        super().__init__(event_bus, exchange_name, region)
 
     async def _event_publish(self, status: str) -> None:
         """연결 상태 이벤트를 발행합니다"""

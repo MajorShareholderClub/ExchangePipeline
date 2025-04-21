@@ -23,7 +23,7 @@ from adapters.base.event.event_process import (
 class EventBus(IEventBus):
     """이벤트 기반 메시징 시스템"""
 
-    def __init__(self, batch_config: EventBatchConfig = None):
+    def __init__(self, batch_config: EventBatchConfig = None) -> None:
         """EventBus 초기화"""
         # 로깅 설정
         self.logger = logging.getLogger("EventBus")

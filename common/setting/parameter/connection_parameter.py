@@ -63,6 +63,8 @@ class ConnectionParams:
         )
         parameter = {
             "url": url,
+            "region": self._region,
+            "request_type": self._req_type,
             "parameters": socket_parameters,
             "timeout": self._timeout,
         }
@@ -94,7 +96,7 @@ def get_exchange_config(exchange_name: str, request_type: str) -> ConnectionPara
     """거래소 이름과 요청 타입을 받아 적절한 config를 반환"""
 
     # 거래소별 기본 설정
-    exchange_settings = {
+    exchange_settings: dict[str, dict[str, bool | str]] = {
         "upbit": {"cl": False, "region": "korea", "exchange": "upbit"},
         "bithumb": {"cl": False, "region": "korea", "exchange": "bithumb"},
         "korbit": {"cl": False, "region": "korea", "exchange": "korbit"},

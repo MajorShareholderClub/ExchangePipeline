@@ -27,6 +27,9 @@ SubscribersMap = dict[str, SubscribersList]
 
 
 class DataPayload(TypedDict):
+    """마켓 티커 이벤트 페이로드"""
+
+    region: str
     exchange: str
     response_type: str
     timestamp: float
@@ -42,6 +45,7 @@ class ConnectPayload(TypedDict):
 class ConnectionRequestPayload(TypedDict):
     """연결 요청 이벤트"""
 
+    region: str
     exchange_name: str
     parameter_info: dict
     request_type: str
