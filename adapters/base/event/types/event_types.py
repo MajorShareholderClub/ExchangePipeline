@@ -31,7 +31,7 @@ class DataPayload(TypedDict):
 
     region: str
     exchange: str
-    response_type: str
+    request_type: str
     timestamp: float
     data: Any
 
@@ -39,6 +39,7 @@ class DataPayload(TypedDict):
 class ConnectPayload(TypedDict):
     exchange: str
     status: str
+    request_type: str
 
 
 # 연결 관리 관련 이벤트 페이로드

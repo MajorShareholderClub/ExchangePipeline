@@ -1,11 +1,18 @@
 # 데이터 소스(거래소 웹소켓 연결) 관련 코드
 import json
+import asyncio
 import websockets
+from dataclasses import dataclass
+
 from typing import Any
 from abc import ABC, abstractmethod
 from common.exceptions import handle_exchange_exceptions
-from core.pipeline.processor import TickerHandler
-from adapters.base.event.types import EventType, EventMetadata, ConnectPayload
+from adapters.base.event.types import (
+    EventType,
+    EventMetadata,
+    ConnectPayload,
+    DataPayload,
+)
 from adapters.base.event.event_bus import EventBus
 
 import logging
@@ -22,11 +29,60 @@ single_logger.setLevel(logging.INFO)
 single_logger.propagate = False  # 다른 로거로 전파 방지
 
 
-class BaseWebsocketHandler(TickerHandler, ABC):
+@dataclass
+class BaseMessageHandler:
+    """거래소 데이터 핸들러 기본 클래스"""
+
+    event_bus: EventBus
+    region: str
+    exchange_name: str
+    request_type: str
+    event_type: EventType  # 이벤트 타입을 속성으로 추가
+
+    @handle_exchange_exceptions()
+    async def _process_message(self, message: Any) -> None:
+        """수신된 메시지 처리 및 이벤트 발행"""
+
+        # 데이터 이벤트 발행
+        await self.event_bus.publish(
+            self.event_type,  # 각 핸들러의 이벤트 타입 사용
+            DataPayload(
+                region=self.region,
+                exchange=self.exchange_name,
+                request_type=self.request_type,
+                timestamp=asyncio.get_event_loop().time(),
+                data=message,
+            ),
+            EventMetadata(source=f"{self.exchange_name}_{self.request_type}"),
+        )
+
+
+class BaseWebsocketHandler(BaseMessageHandler, ABC):
     """웹소켓 핸들러 추상 기본 클래스"""
 
-    def __init__(self, event_bus: EventBus, exchange_name: str, region: str) -> None:
-        super().__init__(event_bus, exchange_name, region)
+    REQUEST_EVENT_TYPE_MAP = {
+        "ticker": EventType.MARKET_TICKER,
+        "orderbook": EventType.MARKET_ORDERBOOK,
+    }
+
+    def __init__(
+        self,
+        event_bus: EventBus,
+        exchange_name: str,
+        region: str,
+        request_type: str,
+    ) -> None:
+        event_type: EventType | None = self.REQUEST_EVENT_TYPE_MAP.get(request_type)
+        if not event_type:
+            raise ValueError(f"Invalid request type: {request_type}")
+
+        super().__init__(
+            event_bus=event_bus,
+            exchange_name=exchange_name,
+            region=region,
+            event_type=event_type,
+            request_type=request_type,
+        )
 
     async def _event_publish(self, status: str) -> None:
         """연결 상태 이벤트를 발행합니다"""
@@ -35,8 +91,9 @@ class BaseWebsocketHandler(TickerHandler, ABC):
             ConnectPayload(
                 exchange=self.exchange_name,
                 status=status,
+                request_type=self.request_type,
             ),
-            EventMetadata(source=f"{self.exchange_name}_{self.response_type}"),
+            EventMetadata(source=f"{self.exchange_name}_{self.request_type}"),
         )
 
     async def _sending_socket_parameter(self, params: dict[str, Any]) -> str:

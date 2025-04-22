@@ -70,8 +70,8 @@ async def run_all_exchanges(
                 ConnectionRequestPayload(
                     region=socket_parameter["parameter_info"]["region"],
                     exchange_name=exchange_name,
-                    request_type=request_type,
                     parameter_info=socket_parameter["parameter_info"],
+                    request_type=request_type,
                     socket_instance=socket_parameter["socket"],
                     retry_count=3,  # 초기값 0으로 설정
                 ),

@@ -12,8 +12,8 @@ logger = logging.getLogger("websocket_handler")
 class KrakenWebsocketHandler(BaseAsiaEuropeHandler):
     """크라켄 거래소 웹소켓 핸들러"""
 
-    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
-        super().__init__(event_bus, exchange_name, region="ne")
+    def __init__(self, event_bus: EventBus, exchange_name: str, region: str, request_type: str) -> None:
+        super().__init__(event_bus, exchange_name, region, request_type)
         self.heartbeat_interval = 30  # 30초마다 핑 체크
 
     @override

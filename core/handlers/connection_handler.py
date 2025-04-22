@@ -101,15 +101,16 @@ class ConnectionHandlerRegistrar:
 async def handle_ticker(data: DataPayload) -> None:    
     region: str = data.get("region", "unknown")
     exchange: str = data.get("exchange", "unknown")
-    response_type: str = data.get("response_type", "unknown")
+    request_type: str = data.get("request_type", "unknown")
     ticker_data: dict = data.get("data", {})
 
     symbol: str = list(ticker_data.keys())[0]
-    key: str = f"{exchange}:{response_type}:{ticker_data[symbol]}"
-    topic: str = f"{region}_{response_type}"
+    key: str = f"{exchange}:{request_type}:{ticker_data[symbol]}"
+    topic: str = f"{region}_{request_type}"
     t_data[key].append(json.dumps(ticker_data))
     elapsed: float = time.time() - last_flush_time[key]
 
+    print(f"[DATA] key={key}, 건수: {len(t_data[key])}, elapsed={elapsed}")
     if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
         # 데이터 복사만 하고 아직 비우지 않음
         batch: list = t_data[key].copy()
@@ -136,16 +137,21 @@ async def handle_connection_request(
         event_bus: 이벤트 버스 인스턴스
         data: 연결 요청 페이로드
     """
-    region: str = data.get("region")
     exchange_name: str = data.get("exchange_name")
     parameter_info: dict = data.get("parameter_info")
     request_type: str = data.get("request_type")
-    sinstance: WorldWebSocket = data.get("socket_instance")(event_bus, exchange_name)
+    region: str = data.get("region")
+    sinstance: WorldWebSocket = data.get("socket_instance")(
+        event_bus,
+        exchange_name,
+        region,
+        request_type,
+    )
 
     event_publisher = EventPublisher(event_bus=event_bus)
 
     connection_logger.set_context(exchange=exchange_name)
-    await connection_logger.ainfo(
+    connection_logger.info(
         f"지역: {region}, 거래소: {exchange_name}, Parameter: {parameter_info}"
     )
 

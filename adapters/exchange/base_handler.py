@@ -3,7 +3,7 @@ import logging
 import json
 from websockets import connect
 from abc import ABC, abstractmethod
-from typing import Any, override
+from typing import Any, override, Callable, Awaitable
 
 
 from adapters.base.event.event_bus import EventBus
@@ -15,7 +15,9 @@ from core.pipeline.source import BaseWebsocketHandler
 
 logger = logging.getLogger("websocket_handler_testting")
 TickerResponseData = dict[str, int | float]
-OrderbookReponseData = dict[str, list[str, int]]
+OrderbookResponseData = dict[str, list[str, int]]
+AsyncTradeType = Awaitable[TickerResponseData | OrderbookResponseData | None]
+MessageHandler = dict[str, Callable[[dict[str, Any]], AsyncTradeType]]
 
 
 class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
@@ -24,11 +26,18 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
     공통 메시지 루프 및 핑-퐁 메커니즘을 제공하여 코드 중복을 최소화합니다.
     """
 
-    def __init__(self, event_bus: EventBus, exchange_name: str, region: str) -> None:
+    def __init__(
+        self,
+        event_bus: EventBus,
+        exchange_name: str,
+        region: str,
+        request_type: str,
+    ) -> None:
         super().__init__(
             event_bus=event_bus,
             exchange_name=exchange_name,
             region=region,
+            request_type=request_type,
         )
         self.last_heartbeat_time = 0  # 최근 하트비트 시간
         self.heartbeat_interval = 30  # 기본 30초 간격
@@ -127,14 +136,21 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
 class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
     """한국 거래소 웹소켓 핸들러"""
 
-    def __init__(self, event_bus: EventBus, exchange_name: str) -> None:
+    def __init__(
+        self,
+        event_bus: EventBus,
+        exchange_name: str,
+        region: str,
+        request_type: str,
+    ) -> None:
         super().__init__(
             event_bus=event_bus,
             exchange_name=exchange_name,
-            region="korea",
+            region=region,
+            request_type=request_type,
         )
 
-    async def process_ticker_message(self, message: dict) -> TickerResponseData:
+    async def process_ticker_message(self, message: Any) -> TickerResponseData:
         """
         티커 메시지 처리 함수.
 
@@ -162,16 +178,30 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
         ticker_format: list[str] | None = ticker_config(self.exchange_name)
         return {field: message.get(field, None) for field in ticker_format}
 
-    async def process_orderbook_message(self, message: dict) -> OrderbookReponseData:
+    async def process_orderbook_message(self, message: Any) -> OrderbookResponseData:
+        """
+        오더북 메시지 처리 함수.
+        (거래소별로 필요한 경우만 오버라이드)
+        """
+        # 기본적으로 None 반환. 거래소별로 오버라이드 필요
         pass
 
     @override
     async def _handle_message_loop(self, websocket: connect, timeout: int) -> None:
-        """메시지 수신 및 처리 루프 (티커)"""
+        """메시지 수신 및 처리 루프 (티커/오더북 모두 처리)"""
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
-            parsed_message: dict = json.loads(message)
-            data: TickerResponseData = await self.process_ticker_message(parsed_message)
+            parsed_message = json.loads(message)
 
-            if data:
-                await self._process_message(data)
+            handler_map: MessageHandler = {
+                "ticker": self.process_ticker_message,
+                "orderbook": self.process_orderbook_message,
+            }
+            handler = handler_map.get(self.request_type)
+            if handler:
+                data: AsyncTradeType = await handler(parsed_message)
+                if data:
+                    await self._process_message(data)
+            else:
+                # 알 수 없는 타입 처리 (로깅 등)
+                pass
