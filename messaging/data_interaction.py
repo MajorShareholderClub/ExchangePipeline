@@ -10,7 +10,6 @@ from aiokafka import AIOKafkaProducer
 from common.exceptions import KafkaException
 from messaging.data_partitional import CompositeKeyHashPartitioner
 
-from common.logger import PipelineLogger
 from common.setting.properties import (
     BOOTSTRAP_SERVER,
     SECURITY_PROTOCOL,
@@ -50,7 +49,6 @@ class KafkaMessageSender:
     producer: AIOKafkaProducer | None = None
     producer_started: bool = False
     partition_pol: CompositeKeyHashPartitioner = CompositeKeyHashPartitioner()
-    logger: PipelineLogger = PipelineLogger.get_logger("kafka", "sender")
 
     # 실행할 비동기 함수, 예: self.producer.start 또는 self.producer.stop
     async def _execute_with_logging(
@@ -59,10 +57,9 @@ class KafkaMessageSender:
         """지정된 action을 실행하며 로깅을 처리하는 헬퍼 비동기 메서드"""
         try:
             await action()
-            await self.logger.ainfo(msg=f"{datetime.now()} - {success}")
             return True
         except KafkaException as e:
-            await self.logger.ainfo(msg=f"{datetime.now()} - {failure}: {e}")
+            print(f"Kafka Error: {failure}: {e}")  # 에러는 표준 출력에만 기록
             return False
 
     # fmt: off
@@ -110,8 +107,11 @@ class KafkaMessageSender:
         while attempt <= retries:
             try:
                 await self.producer.send_and_wait(topic=topic, value=message, key=key)
+                return  # 성공 시 즉시 반환
             except KafkaException as e:
-                await self.logger.ainfo(msg=f"{datetime.now()}-Message 전송 실패 on attempt {attempt}: {e}")
+                print(f"Kafka Error: Message 전송 실패 (시도 {attempt}/{retries}): {e}")  # 에러는 표준 출력에만 기록
                 attempt += 1
                 await asyncio.sleep(attempt)
-        raise KafkaException(f"{datetime.now()}-메시지를 {retries}회 시도 후에도 전송하지 못했습니다.")
+        
+        # 최대 재시도 후에도 실패 시 예외 발생
+        raise KafkaException(f"메시지를 {retries}회 시도 후에도 전송하지 못했습니다.")

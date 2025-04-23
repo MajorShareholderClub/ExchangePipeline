@@ -3,8 +3,8 @@ from aiokafka.partitioner import DefaultPartitioner, murmur2
 from common.logger import PipelineLogger
 from common.exceptions import KafkaException
 
-# 로거 설정 - 운영 환경에서는 별도 설정 파일이나 centralized logging 사용 권장
-logger = PipelineLogger.get_logger("kafka", "partitional")
+# Kafka 로그 통합
+# logger = PipelineLogger.get_logger("kafka", "partitional")
 
 
 class CompositeKeyHashPartitioner(DefaultPartitioner):
@@ -70,8 +70,8 @@ class CompositeKeyHashPartitioner(DefaultPartitioner):
             idx &= 0x7FFFFFFF
             idx %= len(all_partitions)
 
-            logger.info(f"키 '{normalized_key}' -> 파티션 인덱스: {idx}")
+            # logger.info(f"키 '{normalized_key}' -> 파티션 인덱스: {idx}")
             return all_partitions[idx]
         except KafkaException as e:
-            logger.error(f"Partitioning error with key '{key}': {e}")
+            # logger.error(f"Partitioning error with key '{key}': {e}")
             return random.choice(all_partitions)
