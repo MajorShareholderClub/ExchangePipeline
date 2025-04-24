@@ -59,12 +59,14 @@ class EventBus(IEventBus):
         event_type: EventType | str,
         data: Any = None,
         metadata: EventMetadata = None,
+        retry_on_failure: bool = True,
     ) -> None:
         """이벤트 발행 및 모든 구독자에게 비동기 전파
         Args:
             event_type: 발행할 이벤트 타입 (Enum 또는 문자열)
             data: 이벤트와 함께 전달할 데이터
             metadata: 이벤트 메타데이터 (우선순위, 소스 등 포함)
+            retry_on_failure: 이벤트 처리 실패 시 재시도 여부 (기본 구현에서는 사용하지 않음)
         """
         event_key = self.event_type_registry.get_event_key(event_type)
 

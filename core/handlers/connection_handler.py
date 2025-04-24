@@ -126,13 +126,14 @@ class ConnectionHandlerRegistrar:
         await self.event_bus.subscribe(EventType.CONNECTION_REQUEST, self.request_wrapper)
         await self.event_bus.subscribe(EventType.CONNECTION_CLOSE, self.close_wrapper)
         await self.event_bus.subscribe(EventType.MARKET_TICKER, self.data_wrapper)
+        await self.event_bus.subscribe(EventType.MARKET_ORDERBOOK, self.data_wrapper)
 
         await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 완료")
 
 
 
 
-async def handle_data(data: DataPayload) -> None:    
+async def handle_data(data: DataPayload) -> None:
     region: str = data.get("region", "unknown")
     exchange: str = data.get("exchange", "unknown")
     request_type: str = data.get("request_type", "unknown")
@@ -166,8 +167,8 @@ async def handle_data(data: DataPayload) -> None:
             "data": batch
         }
         
-        # Kafka로 메시지 전송
-        await sender.produce_sending(message=message, topic=topic, key=key)
+        # # Kafka로 메시지 전송
+        # await sender.produce_sending(message=message, topic=topic, key=key)
         
         # 전송 성공 후 데이터 비우기 및 시간 초기화
         t_data[key].clear()
@@ -223,9 +224,7 @@ class ConnectionRequestHandler:
                     exchange_name=context.exchange_name,
                     request_type=context.exchange_info["request_type"],
                 )
-                return True
                 
-            return False
         except AsyncException as e:
             # 예외 처리 로직...
             await context.event_publisher.connection_failure_publish(
@@ -234,7 +233,6 @@ class ConnectionRequestHandler:
                 retry_count=1,
                 request_type=context.request_type
             )
-            return False
 
 
 # fmt: on

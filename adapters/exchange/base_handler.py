@@ -133,7 +133,7 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
                     self.last_heartbeat_time = current_time
 
 
-class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
+class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
     """한국 거래소 웹소켓 핸들러"""
 
     def __init__(
@@ -181,10 +181,18 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
     async def process_orderbook_message(self, message: Any) -> OrderbookResponseData:
         """
         오더북 메시지 처리 함수.
-        (거래소별로 필요한 경우만 오버라이드)
+        각 거래소별로 구현해야 함
+
+        Args:
+            message: 오더북 메시지
+
+        Returns:
+            OrderbookResponseData: 표준화된 오더북 데이터
         """
-        # 기본적으로 None 반환. 거래소별로 오버라이드 필요
-        pass
+        if not isinstance(message, dict):
+            message = json.loads(message)
+
+        return message
 
     @override
     async def _handle_message_loop(self, websocket: connect, timeout: int) -> None:
@@ -192,6 +200,9 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
             parsed_message = json.loads(message)
+            logger.info(
+                f"{self.exchange_name}: 메시지 수신: {parsed_message[:100] if isinstance(parsed_message, str) else str(parsed_message)[:100]}..."
+            )
 
             handler_map: MessageHandler = {
                 "ticker": self.process_ticker_message,
@@ -202,6 +213,3 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler):
                 data: AsyncTradeType = await handler(parsed_message)
                 if data:
                     await self._process_message(data)
-            else:
-                # 알 수 없는 타입 처리 (로깅 등)
-                pass

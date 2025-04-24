@@ -33,26 +33,26 @@ def get_all_exchanges(request_type: str) -> dict[str, dict[str, WorldWebSocket]]
             "parameter_info": get_exchange_config("coinone", request_type).build(),
             "socket": CoinoneWebsocketHandler,
         },
-        "binance": {
-            "parameter_info": get_exchange_config("binance", request_type).build(),
-            "socket": BinanceWebsocketHandler,
-        },
-        "bybit": {
-            "parameter_info": get_exchange_config("bybit", request_type).build(),
-            "socket": BybitWebsocketHandler,
-        },
-        "okx": {
-            "parameter_info": get_exchange_config("okx", request_type).build(),
-            "socket": OkxWebsocketHandler,
-        },
-        "gateio": {
-            "parameter_info": get_exchange_config("gateio", request_type).build(),
-            "socket": GateioWebsocketHandler,
-        },
-        "kraken": {
-            "parameter_info": get_exchange_config("kraken", request_type).build(),
-            "socket": KrakenWebsocketHandler,
-        },
+        # "binance": {
+        #     "parameter_info": get_exchange_config("binance", request_type).build(),
+        #     "socket": BinanceWebsocketHandler,
+        # },
+        # "bybit": {
+        #     "parameter_info": get_exchange_config("bybit", request_type).build(),
+        #     "socket": BybitWebsocketHandler,
+        # },
+        # "okx": {
+        #     "parameter_info": get_exchange_config("okx", request_type).build(),
+        #     "socket": OkxWebsocketHandler,
+        # },
+        # "gateio": {
+        #     "parameter_info": get_exchange_config("gateio", request_type).build(),
+        #     "socket": GateioWebsocketHandler,
+        # },
+        # "kraken": {
+        #     "parameter_info": get_exchange_config("kraken", request_type).build(),
+        #     "socket": KrakenWebsocketHandler,
+        # },
     }
 
 

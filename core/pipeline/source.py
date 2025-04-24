@@ -42,7 +42,6 @@ class BaseMessageHandler:
     @handle_exchange_exceptions()
     async def _process_message(self, message: Any) -> None:
         """수신된 메시지 처리 및 이벤트 발행"""
-
         # 데이터 이벤트 발행
         await self.event_bus.publish(
             self.event_type,  # 각 핸들러의 이벤트 타입 사용

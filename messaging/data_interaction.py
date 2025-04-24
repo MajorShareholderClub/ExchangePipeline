@@ -51,9 +51,7 @@ class KafkaMessageSender:
     partition_pol: CompositeKeyHashPartitioner = CompositeKeyHashPartitioner()
 
     # 실행할 비동기 함수, 예: self.producer.start 또는 self.producer.stop
-    async def _execute_with_logging(
-        self, action: Callable, success: str, failure: str
-    ) -> bool:
+    async def _execute_with_logging(self, action: Callable, failure: str) -> bool:
         """지정된 action을 실행하며 로깅을 처리하는 헬퍼 비동기 메서드"""
         try:
             await action()
@@ -82,7 +80,6 @@ class KafkaMessageSender:
         # 헬퍼 메서드를 통해 시작 시도
         result = await self._execute_with_logging(
             action=self.producer.start,
-            success="Kafka Producer 시작 성공",
             failure="Producer 시작 실패",
         )
         if result:
@@ -93,7 +90,6 @@ class KafkaMessageSender:
         if self.producer_started and self.producer is not None:
             result = await self._execute_with_logging(
                 action=self.producer.stop,
-                success="Kafka Producer 종료 성공",
                 failure="Producer 종료 실패",
             )
             if result:

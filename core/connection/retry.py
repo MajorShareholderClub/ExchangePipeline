@@ -1,6 +1,6 @@
 import asyncio
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Any
 
 from adapters.base.event.event_bus import EventBus
 from adapters.base.event.types.event_types import (
@@ -22,7 +22,8 @@ class RetryContext:
     error: str
     retry_count: int
     request_type: str
-    params: Optional[Dict[str, Any]] = None
+    parameter_info: dict[str, Any] | None = None
+    socket_instance: Any = None
     max_retries: int = 3
 
 
@@ -39,13 +40,6 @@ class ConnectionRetryService:
     event_bus: EventBus
     max_retries: int = 3
     _initialized: bool = field(default=False, init=False)
-
-    def __post_init__(self) -> None:
-        """
-        동기적 초기화 작업 수행
-        비동기 초기화 작업은 initialize() 메서드에서 수행
-        """
-        pass
 
     async def initialize(self) -> None:
         """
@@ -83,7 +77,8 @@ class ConnectionRetryService:
             error=data.get("error"),
             retry_count=data.get("retry_count", 0),
             request_type=data.get("request_type"),
-            params=data.get("params"),
+            parameter_info=data.get("parameter_info"),
+            socket_instance=data.get("socket_instance"),
             max_retries=self.max_retries,
         )
 
@@ -101,7 +96,8 @@ class ConnectionRetryService:
                 error=context.error,
                 max_retries=context.max_retries,
                 request_type=context.request_type,
-                params=context.params,
+                parameter_info=context.parameter_info,
+                socket_instance=context.socket_instance,
             ),
             EventMetadata(source="retry_service"),
         )
@@ -118,20 +114,34 @@ class ConnectionRetryService:
 
         exchange_name = data.get("exchange_name")
         attempt = data.get("attempt", 1)
-        params = data.get("params")
         request_type = data.get("request_type")
+        parameter_info = data.get("parameter_info")
+        socket_instance = data.get("socket_instance")
+
+        # 재연결에 필요한 추가 정보가 없는 경우 거래소 정보 조회
+        if not parameter_info or not socket_instance:
+            exchange_info = get_exchange(exchange_name, request_type)
+            if not exchange_info:
+                return  # 거래소 정보가 없으면 재시도 불가
+
+            parameter_info = exchange_info.get("parameter_info", {})
+            socket_instance = exchange_info.get("socket")
 
         # 지수 백오프 적용 (2^attempt 초, 최대 30초)
         delay = min(2**attempt, 30)
         await asyncio.sleep(delay)
 
         # 연결 요청 재발행
+        region = parameter_info.get("region", "")
+
         await self.event_bus.publish(
             EventType.CONNECTION_REQUEST,
             ConnectionRequestPayload(
+                region=region,
                 exchange_name=exchange_name,
+                parameter_info=parameter_info,
                 request_type=request_type,
-                params=params,
+                socket_instance=socket_instance,
                 retry_count=attempt,
             ),
             EventMetadata(source="retry_service"),

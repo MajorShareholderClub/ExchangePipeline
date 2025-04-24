@@ -1,9 +1,8 @@
 from __future__ import annotations
 from typing import Callable, TypeVar, Union, Any, TypedDict
-from collections import defaultdict
+from dataclasses import dataclass, field
 from enum import Enum
 import asyncio
-from dataclasses import dataclass, field
 import uuid
 import time
 
@@ -76,6 +75,8 @@ class ConnectionFailurePayload(TypedDict):
     error: str
     retry_count: int
     request_type: str
+    parameter_info: dict | None
+    socket_instance: Any | None
 
 
 class ConnectionRetryPayload(TypedDict):
@@ -85,6 +86,9 @@ class ConnectionRetryPayload(TypedDict):
     attempt: int
     error: str
     max_retries: int
+    request_type: str
+    parameter_info: dict | None
+    socket_instance: Any | None
 
 
 class ConnectionMaxRetryPayload(TypedDict):
@@ -93,6 +97,7 @@ class ConnectionMaxRetryPayload(TypedDict):
     exchange_name: str
     max_retries: int
     error: str
+    request_type: str
 
 
 # fmt: off
