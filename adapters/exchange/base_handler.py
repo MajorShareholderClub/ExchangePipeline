@@ -114,11 +114,13 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
 
                 # 3. 메시지 파싱
                 parsed_message = await self._parse_message(message)
-                if parsed_message:
+                if self.request_type == "ticker":
                     cleaned_message: TickerResponseData = (
                         await self._preprocess_message(parsed_message)
                     )
                     await self._process_message(cleaned_message)
+
+                await self._process_message(parsed_message)
 
             except AsyncException:
                 # 타임아웃 발생 - 하트비트 필요 확인

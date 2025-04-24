@@ -183,6 +183,7 @@ class ConnectionRequestHandler:
     event_bus: EnhancedEventBus
     
     async def handle_request(self, data: ConnectionRequestPayload) -> None:
+        print(data)
         exchange_name: str = data.get("exchange_name")
         parameter_info: dict[str, any] = data.get("parameter_info")
         request_type: str = data.get("request_type")

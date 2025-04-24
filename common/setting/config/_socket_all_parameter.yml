@@ -41,7 +41,6 @@ kraken:
     symbol: "{kraken_symbols}"
     event_trigger: "trades"
     snapshot: false
-    req_id: 1234
 
 # 게이티오
 gateio:

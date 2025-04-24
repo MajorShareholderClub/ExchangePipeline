@@ -108,15 +108,30 @@ def get_exchange_config(exchange_name: str, request_type: str) -> ConnectionPara
         "kraken": {"cl": False, "region": "ne", "exchange": "kraken"},
     }
 
+    # 거래소별 요청 타입 매핑
+    request_type_mapping: dict[str, dict[str, str]] = {
+        "kraken": {"orderbook": "book"}  # kraken은 orderbook 대신 book 사용
+        # 다른 거래소의 특수 요청 타입 매핑도 여기에 추가 가능
+    }
+
     if exchange_name not in exchange_settings:
         raise ValueError(f"지원하지 않는 거래소: {exchange_name}")
 
     settings = exchange_settings[exchange_name]
+
+    # 거래소별 요청 타입 변환
+    mapped_request_type = request_type
+    condition: bool = (
+        exchange_name in request_type_mapping
+        and request_type in request_type_mapping[exchange_name]
+    )
+    if condition:
+        mapped_request_type = request_type_mapping[exchange_name][request_type]
 
     return create_connection_params(
         cl=settings["cl"],
         region=settings["region"],
         exchange=settings["exchange"],
         symbol=["btc"],
-        req_type=request_type,
+        req_type=mapped_request_type,
     )
