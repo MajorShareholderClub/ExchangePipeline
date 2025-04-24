@@ -49,10 +49,10 @@ def get_all_exchanges(request_type: str) -> dict[str, dict[str, WorldWebSocket]]
         #     "parameter_info": get_exchange_config("gateio", request_type).build(),
         #     "socket": GateioWebsocketHandler,
         # },
-        "kraken": {
-            "parameter_info": get_exchange_config("kraken", request_type).build(),
-            "socket": KrakenWebsocketHandler,
-        },
+        # "kraken": {
+        #     "parameter_info": get_exchange_config("kraken", request_type).build(),
+        #     "socket": KrakenWebsocketHandler,
+        # },
     }
 
 

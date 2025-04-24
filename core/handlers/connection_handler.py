@@ -134,6 +134,7 @@ class ConnectionHandlerRegistrar:
 
 
 async def handle_data(data: DataPayload) -> None:
+    print(data)
     region: str = data.get("region", "unknown")
     exchange: str = data.get("exchange", "unknown")
     request_type: str = data.get("request_type", "unknown")

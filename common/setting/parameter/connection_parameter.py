@@ -110,7 +110,8 @@ def get_exchange_config(exchange_name: str, request_type: str) -> ConnectionPara
 
     # 거래소별 요청 타입 매핑
     request_type_mapping: dict[str, dict[str, str]] = {
-        "kraken": {"orderbook": "book"}  # kraken은 orderbook 대신 book 사용
+        "kraken": {"orderbook": "book"},  # kraken은 orderbook 대신 book 사용
+        "okx": {"orderbook": "book"},  # okx는 orderbook 대신 book 사용
         # 다른 거래소의 특수 요청 타입 매핑도 여기에 추가 가능
     }
 

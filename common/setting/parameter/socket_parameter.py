@@ -54,6 +54,17 @@ class SocketParameterBuilder:
 
     def build_mapping(self) -> MappingDict:
         """매핑 딕셔너리 생성"""
+
+        # 바이낸스 파라미터 형식 결정
+        def get_binance_param(symbol: str) -> str:
+            symbol_lower = symbol.lower()
+            if self.req_type.lower() == "orderbook":
+                # 오더북인 경우 depth 형식 사용 (전체 오더북은 @depth, 상위 10개 호가는 @depth10)
+                return f"{symbol_lower}usdt@depth"
+            else:
+                # 그 외(ticker 등)는 기존 형식 유지
+                return f"{symbol_lower}usdt@{self.req_type}"
+
         return MappingDict(
             uuid=str(uuid.uuid4()),
             req_type=self.req_type,
@@ -64,9 +75,7 @@ class SocketParameterBuilder:
             # 각 거래소별 다중 코인 처리를 위한 리스트 치환
             symbol_code_list=self.map_symbols(lambda s: f"KRW-{s.upper()}"),
             symbol_list=self.map_symbols(lambda s: f"{s.lower()}_krw"),
-            binance_params=self.map_symbols(
-                lambda s: f"{s.lower()}usdt@{self.req_type}"
-            ),
+            binance_params=self.map_symbols(get_binance_param),
             kraken_symbols=self.map_symbols(lambda s: f"{s.upper()}/USD"),
             gateio_payload=self.map_symbols(lambda s: f"{s.upper()}_USDT"),
             bybit_args=self.map_symbols(lambda s: f"{self.req_type}s.{s.upper()}USDT"),
