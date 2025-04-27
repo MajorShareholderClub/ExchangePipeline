@@ -6,6 +6,7 @@ from adapters.base.event.types.event_types import (
     ConnectionRequestPayload,
     EventMetadata,
 )
+from core.connection.retry import ConnectionRetryService, RetryConfig
 from common.exceptions import AsyncException
 from common.logger import PipelineLogger
 from common.registry import get_exchange
@@ -21,8 +22,14 @@ async def setup_event_handlers(event_bus: EventBus) -> None:
     # 핸들러 등록기 생성 및 초기화
     registrar = ConnectionHandlerRegistrar(event_bus)
 
+    # ConnectionRetryService 초기화 및 핸들러 등록
+    retry_service = ConnectionRetryService(
+        event_bus, config=RetryConfig(max_retries=3, base_delay=1.0)
+    )
+
     # 핸들러 등록
     await registrar.register_handlers()
+    await retry_service.register_handlers()
     manager_logger.info("이벤트 핸들러 등록 완료")
 
 
