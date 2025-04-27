@@ -1,5 +1,4 @@
 import asyncio
-import logging
 import json
 from websockets import connect
 from abc import ABC, abstractmethod
@@ -13,7 +12,6 @@ from common.setting.config.yml_config import ticker_config
 from core.pipeline.source import BaseWebsocketHandler
 
 
-logger = logging.getLogger("websocket_handler_testting")
 TickerResponseData = dict[str, int | float]
 OrderbookResponseData = dict[str, list[str, int]]
 AsyncTradeType = Awaitable[TickerResponseData | OrderbookResponseData | None]
@@ -151,6 +149,25 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
             region=region,
             request_type=request_type,
         )
+        # 한국 거래소 웹소켓 핸들러의 경우 30초 간격으로 ping을 전송
+        self.ping_interval = 30
+        self.last_ping_time = 0
+
+    async def _handle_timeout(self, websocket: connect) -> None:
+        """타임아웃 발생 시 기본 처리 - 자식 클래스에서 오버라이드 가능한 템플릿 메서드"""
+        current_time = asyncio.get_event_loop().time()
+
+        # ping 전송 필요 여부 확인
+        if current_time - self.last_ping_time > self.ping_interval:
+            try:
+                # ping 전송
+                await websocket.ping()
+                self.last_ping_time = current_time
+                print(f"{self.exchange_name}: ping 전송")
+            except Exception as e:
+                print(f"{self.exchange_name}: ping 전송 실패: {e}")
+                # ping 전송 실패 시 예외 발생
+                raise AsyncException(f"PING 전송 실패: {e}")
 
     async def process_ticker_message(self, message: Any) -> TickerResponseData:
         """
@@ -200,15 +217,18 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
     async def _handle_message_loop(self, websocket: connect, timeout: int) -> None:
         """메시지 수신 및 처리 루프 (티커/오더북 모두 처리)"""
         while True:
-            message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
-            parsed_message = json.loads(message)
+            try:
+                message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
+                parsed_message = json.loads(message)
 
-            handler_map: MessageHandler = {
-                "ticker": self.process_ticker_message,
-                "orderbook": self.process_orderbook_message,
-            }
-            handler = handler_map.get(self.request_type)
-            if handler:
-                data: AsyncTradeType = await handler(parsed_message)
-                if data:
-                    await self._process_message(data)
+                handler_map: MessageHandler = {
+                    "ticker": self.process_ticker_message,
+                    "orderbook": self.process_orderbook_message,
+                }
+                handler = handler_map.get(self.request_type)
+                if handler:
+                    data: AsyncTradeType = await handler(parsed_message)
+                    if data:
+                        await self._process_message(data)
+            except AsyncException:
+                await self._handle_timeout(websocket)
