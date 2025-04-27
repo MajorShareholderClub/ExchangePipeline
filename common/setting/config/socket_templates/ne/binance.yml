@@ -1,0 +1,43 @@
+# Binance 웹소켓 API 템플릿
+# 참고 문서: https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams
+
+_common: &BASE
+  method: "SUBSCRIBE"
+  params:
+    - ""  # 스트림명 - 각 섹션에서 오버라이드됨
+
+_common_unsub: &BASE_UNSUB
+  method: "UNSUBSCRIBE"
+  params:
+    - ""  # 스트림명 - 각 섹션에서 오버라이드됨
+
+ticker:
+  <<: *BASE
+  params:
+    - "{symbols_lower}@ticker"
+  id: "{req_id}"
+
+orderbook:
+  <<: *BASE
+  params:
+    - "{symbols_lower}@depth"
+  id: "{req_id}"
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  params:
+    - "{symbols_lower}@ticker"
+  id: "{req_id}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  params:
+    - "{symbols_lower}@depth"
+  id: "{req_id}"
+
+# 참고:
+# 1. Binance Spot WebSocket 엔드포인트: wss://stream.binance.com:9443/ws
+# 2. 스트림명 예시: btcusdt@ticker, btcusdt@depth
+# 3. {symbols_lower}: 심볼 리스트를 소문자로 변환하여 치환 (예: BTCUSDT → btcusdt)
+# 4. {req_id}: 요청 고유 ID, 파이프라인에서 동적으로 치환
+# 5. params는 리스트로 여러 심볼 동시 구독/해제 가능

@@ -11,53 +11,69 @@ from adapters.exchange import (
     GateioWebsocketHandler,
 )
 from adapters.exchange.ne import KrakenWebsocketHandler, BinanceWebsocketHandler
-from common.setting.parameter.connection_parameter import get_exchange_config
+from common.setting.exchange import SocketParameterFactory
+from common.setting.types import ExchangeSocketParameter, ExchangeMetadata
+from common.setting.properties import get_symbol_collect_url
 
 
-def get_all_exchanges(request_type: str) -> dict[str, dict[str, WorldWebSocket]]:
-    """모든 거래소 정보를 반환하는 함수"""
-    return {
-        # "upbit": {
-        #     "parameter_info": get_exchange_config("upbit", request_type).build(),
-        #     "socket": UpbitWebsocketHandler,
-        # },
-        # "bithumb": {
-        #     "parameter_info": get_exchange_config("bithumb", request_type).build(),
-        #     "socket": BithumbWebsocketHandler,
-        # },
-        # "korbit": {
-        #     "parameter_info": get_exchange_config("korbit", request_type).build(),
-        #     "socket": KorbitWebsocketHandler,
-        # },
-        # "coinone": {
-        #     "parameter_info": get_exchange_config("coinone", request_type).build(),
-        #     "socket": CoinoneWebsocketHandler,
-        # },
-        # "binance": {
-        #     "parameter_info": get_exchange_config("binance", request_type).build(),
-        #     "socket": BinanceWebsocketHandler,
-        # },
-        # "bybit": {
-        #     "parameter_info": get_exchange_config("bybit", request_type).build(),
-        #     "socket": BybitWebsocketHandler,
-        # },
-        # "okx": {
-        #     "parameter_info": get_exchange_config("okx", request_type).build(),
-        #     "socket": OkxWebsocketHandler,
-        # },
-        # "gateio": {
-        #     "parameter_info": get_exchange_config("gateio", request_type).build(),
-        #     "socket": GateioWebsocketHandler,
-        # },
-        # "kraken": {
-        #     "parameter_info": get_exchange_config("kraken", request_type).build(),
-        #     "socket": KrakenWebsocketHandler,
-        # },
+# 1. 거래소 이름 → handler class 매핑
+EXCHANGE_HANDLERS = {
+    "upbit": UpbitWebsocketHandler,
+    "bithumb": BithumbWebsocketHandler,
+    "korbit": KorbitWebsocketHandler,
+    "coinone": CoinoneWebsocketHandler,
+    "binance": BinanceWebsocketHandler,
+    "kraken": KrakenWebsocketHandler,
+    "bybit": BybitWebsocketHandler,
+    "okx": OkxWebsocketHandler,
+    "gateio": GateioWebsocketHandler,
+}
+
+
+# 2. 단일 함수로 handler/parameter 반환
+def get_exchange(
+    exchange: str,
+    request_type: str,
+    symbols: list[str],
+) -> ExchangeSocketParameter:
+    """
+    거래소 이름에 따라 handler class와 소켓 파라미터 생성 결과를 반환
+    """
+    handler_class: WorldWebSocket | None = EXCHANGE_HANDLERS.get(exchange)
+    if handler_class is None:
+        raise ValueError(f"지원하지 않는 거래소: {exchange}")
+
+    # 거래소별 기본 설정
+    exchange_settings: dict[str, str] = {
+        "upbit": "korea",
+        "bithumb": "korea",
+        "korbit": "korea",
+        "coinone": "korea",
+        "okx": "asia",
+        "gateio": "asia",
+        "bybit": "asia",
+        "binance": "ne",
+        "kraken": "ne",
     }
 
+    # 거래소 설정 가져오기
+    region: str | None = exchange_settings.get(exchange)
+    url: str | None = get_symbol_collect_url(exchange, region, "socket")
 
-def get_exchange(
-    exchange_name: str, request_type: str
-) -> dict[str, WorldWebSocket] | None:
-    """특정 거래소의 연결 정보를 반환하는 함수"""
-    return get_all_exchanges(request_type).get(exchange_name)
+    metadata = ExchangeMetadata(
+        region=region,
+        url=url,
+        exchange_name=exchange,
+        request_type=request_type,
+    )
+
+    parameter_info: dict | list[dict] = SocketParameterFactory.create_socket_parameter(
+        exchange=exchange,
+        symbols=symbols,
+        req_type=request_type,
+    )
+    return ExchangeSocketParameter(
+        metadata=metadata,
+        parameter_info=parameter_info,
+        socket_instance=handler_class,
+    )

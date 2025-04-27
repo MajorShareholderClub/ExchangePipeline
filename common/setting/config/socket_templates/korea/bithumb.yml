@@ -1,0 +1,30 @@
+# 배열 형태로 요청을 구성할 때 사용할 템플릿
+_common: &BASE
+  # bithumb은 unsubscribe 시 type만 변경
+  ticket: "{uuid}"
+
+ticker:
+  -
+    <<: *BASE
+    type: "ticker"
+    codes: "{bithumb_symbols}"  # 실제 codes 값은 코드에서 동적으로 채워짐: ["BTC_KRW", "ETH_KRW"]
+    is_only_realtime: true
+
+orderbook:
+  -
+    <<: *BASE
+    type: "orderbook"
+    codes: "{bithumb_symbols}"
+    is_only_realtime: true
+
+unsubscribe_ticker:
+  -
+    <<: *BASE
+    type: "unsubscribe"
+    codes: "{bithumb_symbols}"
+
+unsubscribe_orderbook:
+  -
+    <<: *BASE
+    type: "unsubscribe"
+    codes: "{bithumb_symbols}"

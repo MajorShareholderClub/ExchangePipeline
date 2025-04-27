@@ -119,8 +119,8 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
                         await self._preprocess_message(parsed_message)
                     )
                     await self._process_message(cleaned_message)
-
-                await self._process_message(parsed_message)
+                elif self.request_type == "orderbook":
+                    await self._process_message(parsed_message)
 
             except AsyncException:
                 # 타임아웃 발생 - 하트비트 필요 확인
@@ -202,9 +202,6 @@ class BaseKoreaWebsocketHandler(BaseWebsocketHandler, ABC):
         while True:
             message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
             parsed_message = json.loads(message)
-            logger.info(
-                f"{self.exchange_name}: 메시지 수신: {parsed_message[:100] if isinstance(parsed_message, str) else str(parsed_message)[:100]}..."
-            )
 
             handler_map: MessageHandler = {
                 "ticker": self.process_ticker_message,

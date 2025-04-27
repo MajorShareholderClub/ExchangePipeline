@@ -14,7 +14,7 @@ from adapters.base.event.types import (
     DataPayload,
 )
 from adapters.base.event.event_bus import EventBus
-
+from common.setting.types import ExchangeMetadata
 import logging
 
 logger = logging.getLogger("websocket_handler")
@@ -105,11 +105,14 @@ class BaseWebsocketHandler(BaseMessageHandler, ABC):
         raise NotImplementedError()
 
     @handle_exchange_exceptions()
-    async def connect_and_subscribe(self, config: dict[str, Any]) -> None:
+    async def connect_and_subscribe(
+        self, metadata: ExchangeMetadata, parameter_info: dict[str, Any]
+    ) -> None:
         """웹소켓에 연결하고 티커 데이터를 구독합니다. 공통 연결 로직 구현"""
-        url: str = config["url"]
-        socket_parameters: dict | list = config["parameters"]
-        timeout: int = config["timeout"]
+        print("DEBUG-1: 연결 시작", metadata, parameter_info)
+        url: str = metadata["url"]
+        socket_parameters: dict | list = parameter_info
+        timeout: int = 60  # 기본값 설정. parameter_info에 없을 수 있음
 
         if not socket_parameters:
             logger.warning(f"{self.exchange_name}: 소켓 파라미터가 없습니다.")
@@ -119,23 +122,35 @@ class BaseWebsocketHandler(BaseMessageHandler, ABC):
         await self._event_publish("connecting")
         logger.info(f"{self.exchange_name}: 연결 시도 중... {url}")
 
-        async with websockets.connect(
-            uri=url,
-            ping_interval=30,
-            ping_timeout=60,
-        ) as websocket:
-            logger.info(f"{self.exchange_name}: 연결 성공")
+        try:
+            print("DEBUG-2: 웹소켓 연결 직전", url)
+            async with websockets.connect(
+                uri=url,
+                ping_interval=30,
+                ping_timeout=60,
+            ) as websocket:
+                print("DEBUG-3: 웹소켓 연결 성공")
+                logger.info(f"{self.exchange_name}: 연결 성공")
 
-            # 연결 성공 이벤트 발행
-            await self._event_publish("connected")
+                # 연결 성공 이벤트 발행
+                await self._event_publish("connected")
+                print("DEBUG-5: 연결 이벤트 발행 완료")
 
-            # 파라미터 전송 - 거래소별 구현으로 위임
-            subscription_message = await self._sending_socket_parameter(
-                socket_parameters
-            )
-            await websocket.send(subscription_message)
-            # 별도 로거를 사용하여 로그 중복 출력을 방지합니다.
-            single_logger.info(f"{self.exchange_name}: 구독 파라미터 전송 완료")
+                # 파라미터 전송 - 거래소별 구현으로 위임
+                subscription_message = await self._sending_socket_parameter(
+                    socket_parameters
+                )
+                print(f"DEBUG-6: 구독 메시지 준비 완료: {subscription_message}")
+                await websocket.send(subscription_message)
+                print("DEBUG-7: 구독 메시지 전송 완료")
 
-            # 메시지 수신 및 처리 루프 - 거래소별 구현으로 위임
-            await self._handle_message_loop(websocket, timeout)
+                # 별도 로거를 사용하여 로그 중복 출력을 방지합니다.
+                single_logger.info(f"{self.exchange_name}: 구독 파라미터 전송 완료")
+
+                # 메시지 수신 및 처리 루프 - 거래소별 구현으로 위임
+                print("DEBUG-8: 메시지 루프 시작")
+                await self._handle_message_loop(websocket, timeout)
+        except Exception as e:
+            print(f"DEBUG-ERROR: 연결 중 오류 발생: {e}, {self.exchange_name}")
+            logger.error(f"{self.exchange_name}: 연결 중 오류 발생: {e}")
+            raise

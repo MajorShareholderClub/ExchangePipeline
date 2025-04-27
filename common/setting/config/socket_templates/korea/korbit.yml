@@ -1,0 +1,35 @@
+# 코빗 WebSocket API 형식
+# 요청은 반드시 배열([]) 안에 객체를 포함해야 함
+
+_common: &BASE
+  method: "subscribe"
+
+_common_unsub: &BASE_UNSUB
+  method: "unsubscribe"
+
+# 티커 구독
+ticker:
+  - # 배열로 감싸서 전송
+    <<: *BASE
+    type: "ticker"
+    symbols: "{korbit_symbols}"  # 예: ["btc_krw", "eth_krw"] - 소문자 사용
+
+# 오더북 구독
+orderbook:
+  - # 배열로 감싸서 전송
+    <<: *BASE
+    type: "orderbook"
+    symbols: "{korbit_symbols}"  # 예: ["btc_krw", "eth_krw"] - 소문자 사용
+
+# 구독 해제
+unsubscribe_ticker:
+  - # 배열로 감싸서 전송
+    <<: *BASE_UNSUB
+    type: "ticker"
+    symbols: "{korbit_symbols}"
+
+unsubscribe_orderbook:
+  - # 배열로 감싸서 전송
+    <<: *BASE_UNSUB
+    type: "orderbook"
+    symbols: "{korbit_symbols}"

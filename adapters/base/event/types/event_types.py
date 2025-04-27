@@ -45,9 +45,8 @@ class ConnectPayload(TypedDict):
 class ConnectionRequestPayload(TypedDict):
     """연결 요청 이벤트"""
 
-    region: str
-    exchange_name: str
-    parameter_info: dict
+    metadata: dict[str, str]
+    parameter_info: dict | list[dict]
     request_type: str
     socket_instance: Any
     retry_count: int

@@ -1,0 +1,36 @@
+# Gate.io 웹소켓 API 템플릿
+# 참고 문서: https://www.gate.io/docs/developers/apiv4/ws/en/
+
+_common: &BASE
+  time: "__TIME__"  # 현재 UNIX 타임스탬프(초) - 숫자 형태로 유지 ({})
+  event: "subscribe"  # 구독 이벤트
+
+_common_unsub: &BASE_UNSUB
+  time: "__TIME__"
+  event: "unsubscribe"
+
+ticker:
+  <<: *BASE
+  channel: "spot.tickers"  # 티커 데이터 채널
+  payload: "{gateio_symbols}"  # 예: ["BTC_USDT", "ETH_USDT"] 형식의 트레이딩 페어
+
+orderbook:
+  <<: *BASE
+  channel: "spot.order_book"  # 오더북 데이터 채널
+  payload: "{gateio_orderbook_params}"  # [[페어, 깊이, 업데이트 주기], [페어, 깊이, 업데이트 주기]]
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  channel: "spot.tickers"
+  payload: "{gateio_symbols}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  channel: "spot.order_book"
+  payload: "{gateio_orderbook_params}"
+
+# 참고:
+# 1. payload는 배열형태로 전달되며, 각 영역별 payload가 다릅니다.
+# 2. 티커의 경우 단순 문자열 배열: ["BTC_USDT", "ETH_USDT"]
+# 3. 오더북의 경우 각 요소가 [페어, 깊이, 업데이트 주기] 형태의 배열이어야 합니다.
+# 4. time 값은 반드시 정수(int) 형태여야 합니다.

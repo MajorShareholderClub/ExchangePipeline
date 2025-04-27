@@ -15,7 +15,9 @@ logger = logging.getLogger("websocket_handler")
 class GateioWebsocketHandler(BaseAsiaEuropeHandler):
     """Gate.io 거래소 웹소켓 핸들러"""
 
-    def __init__(self, event_bus: EventBus, exchange_name: str, region: str, request_type: str) -> None:
+    def __init__(
+        self, event_bus: EventBus, exchange_name: str, region: str, request_type: str
+    ) -> None:
         super().__init__(event_bus, exchange_name, region, request_type)
         self.heartbeat_interval = 20  # 20초마다 핑 전송
 
@@ -103,9 +105,10 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
                     self.last_heartbeat_time = current_time
 
                 # 응답 처리
-                parsed_message = await self._parse_message(message)
-                if parsed_message:  # None이면 처리 무시
-                    await self._process_message(parsed_message)
+                if self.request_type == "ticker":
+                    parsed_message = await self._parse_message(message)
+                    if parsed_message:  # None이면 처리 무시
+                        await self._process_message(parsed_message)
 
             except AsyncException:
                 # 타임아웃 발생 시 핑 및 재연결 시도

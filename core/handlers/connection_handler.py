@@ -11,9 +11,8 @@ from adapters.base.event.types.event_types import (
 import json
 from adapters.exchange import WorldWebSocket
 from common.exceptions import AsyncException
+from common.setting.types import ExchangeMetadata
 from common.logger import PipelineLogger
-from common.registry import get_exchange
-from core.connection.retry import ConnectionRetryService
 from dataclasses import dataclass, field
 from collections import defaultdict
 from messaging.data_interaction import KafkaMessageSender
@@ -63,34 +62,22 @@ class EventPublisher:
 class ConnectionContext:
     """연결 시도에 필요한 모든 컨텍스트 정보를 포함하는 데이터 클래스"""
 
+    metadata: ExchangeMetadata
     sinstance: WorldWebSocket
     event_publisher: EventPublisher
-    exchange_name: str
-    exchange_info: dict
     parameter_info: dict
-    request_type: str
-    region: str
 
 
 # fmt: off
 @dataclass
 class ConnectionHandlerRegistrar:
     event_bus: EnhancedEventBus
-    retry_service: ConnectionRetryService
     _initialized: bool = field(default=False, init=False)
     
     def __post_init__(self) -> None:
         """동기적 초기화 작업"""
         self.connection_handler = ConnectionRequestHandler(self.event_bus)
-        
-    async def initialize(self) -> None:
-        """비동기 초기화 작업"""
-        if self._initialized:
-            return
-            
-        # 이미 초기화된 retry_service를 사용합니다.
-        self._initialized = True
-        await connection_logger.ainfo("ConnectionHandlerRegistrar 초기화 완료")
+
 
     # 각 이벤트 타입에 대한 핸들러 등록
     async def request_wrapper(self, data: ConnectionRequestPayload) -> None:
@@ -118,10 +105,6 @@ class ConnectionHandlerRegistrar:
         """연결 관련 이벤트 핸들러 등록"""
         await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 시작")
 
-        # 초기화 확인
-        if not self._initialized:
-            await self.initialize()
-
         # 이벤트 핸들러 등록
         await self.event_bus.subscribe(EventType.CONNECTION_REQUEST, self.request_wrapper)
         await self.event_bus.subscribe(EventType.CONNECTION_CLOSE, self.close_wrapper)
@@ -134,7 +117,6 @@ class ConnectionHandlerRegistrar:
 
 
 async def handle_data(data: DataPayload) -> None:
-    print(data)
     region: str = data.get("region", "unknown")
     exchange: str = data.get("exchange", "unknown")
     request_type: str = data.get("request_type", "unknown")
@@ -148,14 +130,15 @@ async def handle_data(data: DataPayload) -> None:
         await connection_logger.awarning("수신된 티커 데이터가 비어있습니다.")
         return
     
-    symbol: str = list(ticker_data.keys())[0]
+    symbol_key: str = list(ticker_data.keys())[0]
+    symbol: str = ticker_data[symbol_key]
+    
     key: str = f"{exchange}:{request_type}:{symbol}"
     topic: str = f"{region}_{request_type}"
     t_data[key].append(json.dumps(ticker_data))
     elapsed: float = time.time() - last_flush_time[key]
-
     await connection_logger.adebug(f"데이터 수신: key={key}, 건수: {len(t_data[key])}, 경과시간={elapsed:.2f}초")
-    
+
     # 배치 크기 도달 또는 일정 시간 경과 시 Kafka로 전송
     if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
         # 데이터 복사만 하고 아직 비우지 않음
@@ -167,9 +150,8 @@ async def handle_data(data: DataPayload) -> None:
             "time": current_time, 
             "data": batch
         }
-        
-        # # Kafka로 메시지 전송
-        # await sender.produce_sending(message=message, topic=topic, key=key)
+        # Kafka로 메시지 전송
+        await sender.produce_sending(message=message, topic=topic, key=key)
         
         # 전송 성공 후 데이터 비우기 및 시간 초기화
         t_data[key].clear()
@@ -184,29 +166,22 @@ class ConnectionRequestHandler:
     event_bus: EnhancedEventBus
     
     async def handle_request(self, data: ConnectionRequestPayload) -> None:
-        print(data)
-        exchange_name: str = data.get("exchange_name")
+        metadata: ExchangeMetadata = data.get("metadata")
         parameter_info: dict[str, any] = data.get("parameter_info")
-        request_type: str = data.get("request_type")
-        region: str = data.get("region")
         sinstance: WorldWebSocket = data.get("socket_instance")(
             self.event_bus,
-            exchange_name,
-            region,
-            request_type,
+            metadata["exchange_name"],
+            metadata["region"],
+            metadata["request_type"],
         )
         event_publisher = EventPublisher(event_bus=self.event_bus)
-        exchange_info = get_exchange(exchange_name, request_type)
         
         # 컨텍스트 객체 생성
         context = ConnectionContext(
             sinstance=sinstance,
             event_publisher=event_publisher,
-            exchange_name=exchange_name,
-            exchange_info=exchange_info,
+            metadata=metadata,
             parameter_info=parameter_info,
-            request_type=request_type,
-            region=region
         )
 
         # 컨텍스트 객체 하나만 전달
@@ -217,23 +192,23 @@ class ConnectionRequestHandler:
         try:
             # 연결 및 구독 시도
             connection = await context.sinstance.connect_and_subscribe(
-                config=context.parameter_info
+                metadata=context.metadata,
+                parameter_info=context.parameter_info
             )
-
             if connection:
                 # 연결 성공 이벤트 발행
                 await context.event_publisher.connection_publish(
-                    exchange_name=context.exchange_name,
-                    request_type=context.exchange_info["request_type"],
+                    exchange_name=context.metadata["exchange_name"],
+                    request_type=context.metadata["request_type"],
                 )
                 
         except AsyncException as e:
             # 예외 처리 로직...
             await context.event_publisher.connection_failure_publish(
-                exchange_name=context.exchange_name,
+                exchange_name=context.metadata["exchange_name"],
                 error=str(e),
                 retry_count=1,
-                request_type=context.request_type
+                request_type=context.metadata["request_type"]
             )
 
 

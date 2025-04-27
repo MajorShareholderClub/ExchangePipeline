@@ -1,0 +1,43 @@
+# OKX의 웹소켓 요청 형식을 정의하는 파일
+# 참고 문서: https://www.okx.com/docs-v5/en/ (WebSocket API)
+
+_common: &BASE
+  op: "subscribe"
+  args: []
+
+_common_unsub: &BASE_UNSUB
+  op: "unsubscribe"
+  args: []
+
+ticker:
+  <<: *BASE
+  args:
+    - 
+      channel: "tickers"
+      instId: "{symbol_upper}-USDT"  # 예: BTC-USDT, ETH-USDT 등 형식으로 변환됨
+
+orderbook:
+  <<: *BASE
+  args:
+    - 
+      channel: "books"  # 400 depth의 오더북 데이터
+      instId: "{symbol_upper}-USDT"  # 예: BTC-USDT, ETH-USDT 등 형식으로 변환됨
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  args:
+    -
+      channel: "tickers"
+      instId: "{symbol_upper}-USDT"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  args:
+    -
+      channel: "books"
+      instId: "{symbol_upper}-USDT"
+
+# 참고: 
+# 1. "books5"는 5 depth의 간소화된 오더북 데이터를 제공합니다.
+# 2. "bbo-tbt"는 tick-by-tick 1 depth 데이터를 제공합니다.
+# 3. 필요시 args 배열에 여러 구독 요청을 추가할 수 있습니다.

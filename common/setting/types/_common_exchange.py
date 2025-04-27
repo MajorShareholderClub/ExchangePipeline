@@ -1,4 +1,10 @@
-from typing import TypedDict, TypeVar, Generic, Union
+from typing import TypedDict, TypeVar, Generic, Union, Any, TYPE_CHECKING
+
+# 순환 참조 방지를 위한 조건부 임포트
+if TYPE_CHECKING:
+    from adapters.exchange import WorldWebSocket
+else:
+    WorldWebSocket = Any  # 런타임에는 Any 타입으로 처리
 
 T = TypeVar("T")  # 성공 타입
 E = TypeVar("E")  # 오류 타입
@@ -41,3 +47,20 @@ class URLs(TypedDict):
     korea: KoreaRegionURLs
     asia: AsiaRegionURLs
     ne: NERegionURLs
+
+
+class ExchangeMetadata(TypedDict):
+    region: str
+    url: str
+    exchange_name: str
+    request_type: str
+
+
+class ExchangeSocketParameter(TypedDict):
+    """거래소 소켓 파라미터"""
+
+    metadata: ExchangeMetadata
+    parameter_info: dict | list[dict]
+    socket_instance: (
+        WorldWebSocket  # 실제로는 type[WorldWebSocket] 이지만 순환 참조 방지
+    )
