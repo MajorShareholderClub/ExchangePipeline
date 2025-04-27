@@ -1,15 +1,15 @@
 import configparser
 from pathlib import Path
-from common.core.types import (
+from common.setting.types import (
     URLs,
-    RegionURLs,
+    KoreaRegionURLs,
     AsiaRegionURLs,
     NERegionURLs,
-    ResponseExchangeURL,
     Result,
     Ok,
     Err,
 )
+
 
 # ConfigParser 설정
 path = Path(__file__).parent
@@ -22,68 +22,123 @@ KOREA_REAL_TOPIC_NAME = parser.get("REALTIMETOPICNAME", "KOREA_REAL_TOPIC_NAME")
 ASIA_REAL_TOPIC_NAME = parser.get("REALTIMETOPICNAME", "ASIA_REAL_TOPIC_NAME")
 NE_REAL_TOPIC_NAME = parser.get("REALTIMETOPICNAME", "NE_REAL_TOPIC_NAME")
 
-
 # KAFKA
 BOOTSTRAP_SERVER = parser.get("KAFKA", "bootstrap_servers")
 SECURITY_PROTOCOL = parser.get("KAFKA", "security_protocol")
 MAX_BATCH_SIZE = parser.get("KAFKA", "max_batch_size")
 MAX_REQUEST_SIZE = parser.get("KAFKA", "max_request_size")
-ARCKS = parser.get("KAFKA", "acks")
+ACKS = parser.get("KAFKA", "acks")
 
 
-# URL 가져오는 함수
-# fmt: off
-def get_exchange_urls() -> URLs:
-    return URLs(
-        korea=RegionURLs(
-            upbit=ResponseExchangeURL(socket=parser.get("SOCKETURL", "UPBIT"), rest=parser.get("RESTURL", "UPBIT")),
-            bithumb=ResponseExchangeURL(socket=parser.get("SOCKETURL", "BITHUMB"), rest=parser.get("RESTURL", "BITHUMB")),
-            korbit=ResponseExchangeURL(socket=parser.get("SOCKETURL", "KORBIT"), rest=parser.get("RESTURL", "KORBIT")),
-            coinone=ResponseExchangeURL(socket=parser.get("SOCKETURL", "COINONE"), rest=parser.get("RESTURL", "COINONE")),
-        ),
-        asia=AsiaRegionURLs(
-            okx=ResponseExchangeURL(socket=parser.get("SOCKETURL", "OKX"),  rest=parser.get("RESTURL", "OKX")),
-            gateio=ResponseExchangeURL(socket=parser.get("SOCKETURL", "GATEIO"), rest=parser.get("RESTURL", "GATEIO")),
-            bybit=ResponseExchangeURL(socket=parser.get("SOCKETURL", "BYBIT"), rest=parser.get("RESTURL", "BYBIT")),
-        ),
-        ne=NERegionURLs(
-            binance=ResponseExchangeURL(socket=parser.get("SOCKETURL", "BINANCE"), rest=parser.get("RESTURL", "BINANCE")),
-            kraken=ResponseExchangeURL(socket=parser.get("SOCKETURL", "KRAKEN"), rest=parser.get("RESTURL", "KRAKEN")),
-        ),
-    )
+# URL 관리 클래스
+class ExchangeURLManager:
+    """거래소 URL 관리 클래스
+
+    거래소 URL을 지역 및 유형별로 관리하고 조회하는 기능을 제공합니다.
+    40개 이상의 거래소 연결 확장성을 고려하여 구현되었습니다.
+    """
+
+    def __init__(self, config_parser: configparser.ConfigParser | None = None):
+        """ExchangeURLManager 초기화
+
+        Args:
+            config_parser: 설정 파서 객체 (기본값: None, None일 경우 전역 parser 사용)
+        """
+        self.parser = config_parser or parser
+
+    def get_exchange_urls(self, uri_type: str) -> URLs:
+        """모든 거래소 URL 정보를 반환합니다.
+
+        Args:
+            uri_type (str): URL 종류 (socket, rest)
+
+        Returns:
+            URLs: URL 정보 (socket, rest)
+        """
+        return URLs(
+            korea=KoreaRegionURLs(
+                upbit=self.parser.get(f"{uri_type}URL", "UPBIT"),
+                bithumb=self.parser.get(f"{uri_type}URL", "BITHUMB"),
+                korbit=self.parser.get(f"{uri_type}URL", "KORBIT"),
+                coinone=self.parser.get(f"{uri_type}URL", "COINONE"),
+            ),
+            asia=AsiaRegionURLs(
+                okx=self.parser.get(f"{uri_type}URL", "OKX"),
+                gateio=self.parser.get(f"{uri_type}URL", "GATEIO"),
+                bybit=self.parser.get(f"{uri_type}URL", "BYBIT"),
+            ),
+            ne=NERegionURLs(
+                binance=self.parser.get(f"{uri_type}URL", "BINANCE"),
+                kraken=self.parser.get(f"{uri_type}URL", "KRAKEN"),
+            ),
+        )
+
+    def get_symbol_collect_url(
+        self, market: str, location: str, url_type: str
+    ) -> Result[Ok[str], Err[str]]:
+        """특정 거래소와 지역에 대한 URL을 반환합니다.
+
+        Args:
+            market (str): 거래소 이름
+            location (str): 지역 정보
+            url_type (str): URL 종류 (socket, rest)
+
+        Returns:
+            Result[Ok[str], Err[str]]: 매칭된 URL (성공, 실패)
+        """
+        # location에 해당하는 딕셔너리 가져오기
+        urls: URLs = self.get_exchange_urls(url_type.upper())
+        region_urls: dict[str, str] = urls.get(location)
+
+        # 1. 지역 URL이 존재하는지 확인
+        if not region_urls:
+            return Err(f"지역이 등록되지 않았습니다: {location}").error
+
+        # 2. 거래소 URL이 존재하는지 확인
+        ex_urls: str | None = region_urls.get(market)
+        if not ex_urls:
+            return Err(
+                f"{location} 지역에서 등록되지 않은 거래소입니다: {market}"
+            ).error
+
+        # 3. 모든 조건이 만족되면 URI 반환
+        return Ok(ex_urls).value
+
+    def get_region_urls(self, region: str, uri_type: str) -> dict[str, str]:
+        """특정 지역의 모든 거래소 URL을 반환합니다.
+
+        Args:
+            region (str): 지역 이름 (korea, asia, ne)
+            uri_type (str): URL 종류 (socket, rest)
+
+        Returns:
+            dict[str, str]: 해당 지역의 거래소 URL 정보
+        """
+        urls: URLs = self.get_exchange_urls(uri_type.upper())
+        return urls.get(region)
 
 
-def get_symbol_collect_url(market: str, type_: str, location: str) -> Result[str, str]:
-    """URL 매칭
+# 싱글톤 인스턴스 생성
+url_manager = ExchangeURLManager()
+
+
+def get_symbol_collect_url(
+    market: str, location: str, url_type: str
+) -> Result[Ok[str], Err[str]]:
+    return url_manager.get_symbol_collect_url(market, location, url_type)
+
+
+def get_all_region_urls(region: str, url_type: str) -> dict[str, str]:
+    return url_manager.get_region_urls(region, url_type.upper())
+
+
+def get_all_urls(url_type: str) -> URLs:
+    """특정 종류의 모든 거래소 URL을 반환합니다.
 
     Args:
-        market (str): 거래소 이름
-        type_ (str): URL 타입 (socket 또는 rest)
-        location (str): 지역 정보
-
-    Raises:
-        ValueError: 등록되지 않은 지역 또는 거래소
+        url_type (str): URL 종류 (socket, rest)
 
     Returns:
-        str: 매칭된 URL
+        URLs: URL 정보 (socket, rest)
     """
-    # location에 해당하는 딕셔너리 가져오기
-    urls: URLs = get_exchange_urls()
-    region_urls = urls.get(location)
-    ex_urls = region_urls.get(market)
-    response_url = ex_urls.get(type_)
-    
-    # 1. 지역 URL이 존재하는지 확인
-    if not (region_urls := urls.get(location)):
-        return Err(f"지역이 등록되지 않았습니다: {location}").error
-
-    # 2. 거래소 URL이 존재하는지 확인
-    if not ex_urls:
-        return Err(f"{location} 지역에서 등록되지 않은 거래소입니다: {market} ({type_})").error
-
-    # 3. URI가 등록되었는지 확인
-    if not response_url:
-        return Err(f"URI가 등록되지 않았습니다: {market} ({type_})").error
-
-    # 4. 모든 조건이 만족되면 URI 반환
-    return Ok(response_url).value
+    return url_manager.get_exchange_urls(url_type.upper())

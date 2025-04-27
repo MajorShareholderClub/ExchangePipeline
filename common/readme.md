@@ -1,39 +1,86 @@
-## common folder 의 역할 
+# 공통 모듈 (Common Module)
 
-📂 common
-
-🛠️ 공통으로 사용되는 모듈을 모아놓은 디렉토리
-이 디렉토리는 다양한 모듈들이 서로 상호작용할 수 있도록 공통 기능과 인터페이스를 제공하여, 코드의 재사용성과 유지 보수성을 높이는 역할을 합니다.
-
-
-### 📂 common                   # 🛠️ 공통으로 사용되는 모듈을 모아놓은 디렉토리
+## 디렉토리 구조
 ```
-├── 📂 client                   # 🌐 API 클라이언트와 거래소 인터페이스 관련 모듈
-│   ├── 📂 market_rest          # REST API 클라이언트 관련 모듈
-│   │   ├── 🐍 async_api_client.py        # 비동기 API 호출을 위한 클라이언트 구현
-│   │   └── 🐍 rest_interface.py          # 거래소 REST 호출 인터페이스 정의
-│   └── 📂 market_socket        # 소켓 클라이언트 관련 모듈
-│       ├── 🐍 async_socket_client.py     # 비동기 소켓 클라이언트 구현
-│       └── 🐍 websocket_interface.py     # 거래소 웹소켓 호출 인터페이스 정의
-├── 📂 core                     # ⚙️ 핵심 로직 및 추상화된 구조를 포함한 디렉토리
-│   ├── 📂 abstract             # 📝 추상화된 클래스들을 모아둔 하위 디렉토리
-│   │   ├── 🐍 __init__.py      # 추상 모듈 초기화 파일
-│   │   ├── 🐍 abstract_async_request.py  # 비동기 요청을 추상화한 클래스
-│   │   ├── 🐍 abstract_stream.py        # 스트림 처리 추상 클래스
-│   │   └── 🐍 abstract_trade_api.py     # 거래 API 추상 클래스
-│   ├── 🐍 data_format.py       # 데이터 포맷 변환 및 처리 모듈
-│   └── 📂 types               # 🗂️ 공통 데이터 타입 정의 모듈
-│       ├── 🐍 __init__.py      # 타입 모듈 초기화 파일
-│       └── 🐍 _common_exchange.py # 거래소 관련 공통 데이터 타입 정의
-├── 📂 exception                # ❗ 예외 처리를 위한 모듈
-│   ├── 🐍 __init__.py          # 예외 처리 모듈 초기화 파일
-│   └── 🐍 exception.py         # 커스텀 예외 정의
-├── 📜 readme.md               # common 디렉토리에 대한 설명을 담고 있는 파일
-├── 📂 setting                  # ⚙️ 설정 파일 관련 모듈
-│   ├── 🐍 properties.py         # 기본 속성 및 설정 값 관리
-│   ├── 🐍 socket_parameter.py    # 소켓 연결 파라미터 정의
-│   └── 🐍 urls.conf            # API 엔드포인트 URL 설정
-└── 📂 utils                   # 🧰 공통 유틸리티 함수 모음
-    ├── 🐍 logger.py           # 로그 관리 모듈
-    └── 🐍 other_util.py       # 기타 유틸리티 함수들
+common/
+├── exceptions.py         # 맞춤형 예외 처리
+├── logger.py             # 로깅 시스템
+│
+├── registry/             # 거래소 및 리소스 등록
+│   ├── __init__.py
+│   └── exchanges.py      # 거래소 정보 관리
+│
+└── setting/              # 설정 및 구성 관리
+    ├── config/           # 구성 파일
+    │   ├── _market_all_ticker.yml   # 거래소별 티커 포맷
+    │   └── yml_config.py            # YAML 설정 유틸리티
+    │
+    ├── parameter/        # 연결 파라미터
+    │   ├── connection_parameter.py  # 연결 설정
+    │   └── socket_parameter.py      # 소켓 파라미터
+    │
+    └── types/            # 타입 정의
+        ├── __init__.py
+        └── _common_exchange.py      # 거래소 공통 타입
 ```
+
+## 주요 구성 요소
+
+### 1. 데이터 관리
+- **registry/exchanges.py**: 거래소 메타데이터 관리
+
+### 2. 설정 및 파라미터
+```python
+# 연결 파라미터 생성 예시
+config = create_connection_params(
+    region="korea", 
+    exchange="upbit", 
+    symbol="btc"
+)
+```
+
+### 3. 티커 포맷 관리
+```python
+# 거래소별 티커 파라미터 조회
+ticker_format = get_ticker_format("upbit")
+# ['timestamp', 'opening_price', 'trade_price', ...]
+```
+
+## 주요 기능
+
+### 연결 파라미터 빌더
+- 유연한 연결 설정 지원
+- 거래소/지역별 맞춤 파라미터 구성
+- 타임아웃 및 스트림 타입 설정 가능
+
+### 이벤트 기반 아키텍처
+- 중앙화된 이벤트 버스
+- 연결 재시도 및 장애 처리
+- 이벤트 타입: 
+  - `CONNECTION_REQUEST`
+  - `CONNECTION_RETRY`
+  - `CONNECTION_FAILURE`
+
+## 지원 거래소
+| 지역   | 거래소     | 상태     | 티커 지원 |
+|--------|------------|----------|-----------|
+| 한국   | 업비트     | 완료  | 지원   |
+| 한국   | 빗썸       | 완료  | 지원   |
+| 한국   | 코인원     | 완료  | 지원   |
+| 한국   | 코빗       | 완료  | 지원   |
+| 아시아 | gateio     | 완료  | 지원   |
+| 아시아 | 바이비트   | 완료  | 지원   |
+| 아시아 | OKX      | 완료  | 지원   |
+| 아시아 | 바이낸스   | 완료  | 지원   |
+| 북미   | 크라켄     | 완료  | 지원   |
+
+
+
+## 의존성
+- Python 3.12+
+- PyYAML
+
+## 로드맵
+- [ ] 오더북 데이터 표준화  (진행중)
+- [ ] 추가 거래소 지원
+- [ ] 성능 최적화 및 메모리 관리

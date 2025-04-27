@@ -169,7 +169,9 @@ kafka-docker/kafka/
 kafka-docker/zookeeper/
 
 
-mq/kafka-docker/.kafkalogging
-mq/kafka-docker/visualization
-mq/kafka-docker/init.sql
-mq/kafka-docker/minio-data
+messaging/kafka-docker/visualization
+messaging/kafka-docker/.kafkalogging
+messaging/kafka-docker/init.sql
+messaging/kafka-docker/minio-data
+logs/
+.windsurfrules

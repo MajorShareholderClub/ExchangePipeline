@@ -1,0 +1,37 @@
+_common: &BASE
+  request_type: "SUBSCRIBE"
+
+_common_unsub: &BASE_UNSUB
+  request_type: "UNSUBSCRIBE"
+
+# 코인원은 하나의 심볼만 구독할 수 있으므로, 심볼마다 동적으로 구독 메시지를 생성해야 합니다.
+# 코드에서 이를 처리하도록 설정
+
+ticker:
+  <<: *BASE
+  channel: "TICKER"  # 대문자로 변경
+  topic:
+    quote_currency: "KRW"
+    target_currency: "{symbol_upper}"  # 코인원은 개별적으로 구독 채널 생성
+  # coinone_symbols 사용하여 코드에서 여러 구독 메시지 생성 가능
+
+orderbook:
+  <<: *BASE
+  channel: "ORDERBOOK"  # 대문자로 변경
+  topic:
+    quote_currency: "KRW"
+    target_currency: "{symbol_upper}"  # 코인원은 개별적으로 구독 채널 생성
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  channel: "TICKER"
+  topic:
+    quote_currency: "KRW"
+    target_currency: "{symbol_upper}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  channel: "ORDERBOOK"
+  topic:
+    quote_currency: "KRW"
+    target_currency: "{symbol_upper}"

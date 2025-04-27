@@ -1,0 +1,44 @@
+# Kraken 웹소켓 API V2 템플릿
+# 참고 문서: https://docs.kraken.com/api/docs/websocket-v2/
+
+_common: &BASE
+  method: "subscribe"
+  params:
+    channel: ""  # 채널명 - 각 섹션에서 오버라이드됨
+
+_common_unsub: &BASE_UNSUB
+  method: "unsubscribe"
+  params:
+    channel: ""  # 채널명 - 각 섹션에서 오버라이드됨
+
+ticker:
+  <<: *BASE
+  params:
+    channel: "ticker"
+    symbol: "{kraken_symbols}"  # 여러 심볼 지원: ["BTC/USD", "ETH/USD"]
+    # 옵션: snapshot: true (기본값)로 설정하면 초기 스냅샷 데이터 수신
+
+orderbook:
+  <<: *BASE
+  params:
+    channel: "book"
+    symbol: "{kraken_symbols}"  # 여러 심볼 지원: ["BTC/USD", "ETH/USD"]
+    depth: 100  # 오더북 깊이 - 10, 25, 100, 500, 1000 중 선택 가능
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  params:
+    channel: "ticker"
+    symbol: "{kraken_symbols}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  params:
+    channel: "book"
+    symbol: "{kraken_symbols}"
+    depth: 100
+
+# 참고: 
+# 1. Kraken API v2는 wss://ws.kraken.com/v2 엔드포인트를 사용합니다.
+# 2. 추가 채널: trades(거래 데이터), ohlc(캔들스틱), spread(스프레드) 등이 있습니다.
+# 3. 인증이 필요한 개인 채널: orders, balances, executions 등도 지원합니다.
