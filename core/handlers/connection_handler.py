@@ -17,6 +17,7 @@ from dataclasses import dataclass, field
 from collections import defaultdict
 from messaging.data_interaction import KafkaMessageSender
 import time
+import asyncio
 
 
 # 파이프라인 로거 설정
@@ -28,6 +29,10 @@ sender = KafkaMessageSender()
 BATCH_SIZE = 50
 BATCH_INTERVAL = 10
 MAX_RETRY_COUNT = 3
+
+# ----- Buffer maintenance settings -----
+PURGE_INTERVAL: float = 60  # seconds between maintenance sweeps
+IDLE_BUFFER_LIFETIME: float = 300  # seconds without flush before purge
 
 
 @dataclass
@@ -73,11 +78,11 @@ class ConnectionContext:
 class ConnectionHandlerRegistrar:
     event_bus: EnhancedEventBus
     _initialized: bool = field(default=False, init=False)
+    _purge_task: asyncio.Task | None = field(default=None, init=False)
     
     def __post_init__(self) -> None:
         """동기적 초기화 작업"""
         self.connection_handler = ConnectionRequestHandler(self.event_bus)
-
 
     # 각 이벤트 타입에 대한 핸들러 등록
     async def request_wrapper(self, data: ConnectionRequestPayload) -> None:
@@ -113,58 +118,95 @@ class ConnectionHandlerRegistrar:
 
         await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 완료")
 
+        # 버퍼 정리 태스크 시작
+        self._start_buffer_maintenance()
 
+    async def _start_buffer_maintenance(self) -> None:
+        """버퍼 정리 백그라운드 태스크를 시작합니다."""
+        if self._purge_task is None or self._purge_task.done():
+            self._purge_task = asyncio.create_task(self._purge_idle_buffers())
+            await connection_logger.ainfo("Idle buffer purge task started")
+
+    async def _purge_idle_buffers(self) -> None:
+        """주기적으로 전송 지연 버퍼를 정리해 메모리 사용을 제한합니다."""
+        while True:
+            try:
+                now: float = time.time()
+                # t_data 복사본으로 작업하여 순회 중 변경 방지
+                keys_to_check = list(t_data.keys())
+                
+                for k in keys_to_check:
+                    # 각 키에 대해 별도 검사하여 경쟁 조건 감소
+                    if k in t_data and k in last_flush_time:
+                        if now - last_flush_time[k] > IDLE_BUFFER_LIFETIME:
+                            cnt: int = len(t_data[k])
+                            t_data.pop(k, None)
+                            last_flush_time.pop(k, None)
+                            await connection_logger.awarning(
+                                f"Idle buffer purged: {k} (dropped {cnt} messages)"
+                            )
+                
+                await asyncio.sleep(PURGE_INTERVAL)
+            except asyncio.CancelledError:
+                # 작업 취소 시 정상 종료
+                break
+            except Exception as exc:  # pragma: no cover
+                await connection_logger.error(f"Buffer purge task error: {exc}")
+                # 오류 발생해도 계속 실행
+                await asyncio.sleep(PURGE_INTERVAL)
 
 
 async def handle_data(data: DataPayload) -> None:
     region: str = data.get("region", "unknown")
     exchange: str = data.get("exchange", "unknown")
     request_type: str = data.get("request_type", "unknown")
-    ticker_data: dict = data.get("data", {})
-
+    dict_data: dict = data.get("data", {})
 
     # 로깅 컨텍스트 설정
-    connection_logger.set_context(exchange=exchange, request_type=request_type, region=region)
-    
-    if not ticker_data:
-        await connection_logger.awarning("수신된 티커 데이터가 비어있습니다.")
+    connection_logger.set_context(
+        exchange=exchange, request_type=request_type, region=region
+    )
+
+    if not dict_data:
+        await connection_logger.awarning("수신된 데이터가 비어있습니다.")
         return
-    
-    symbol_key: str = list(ticker_data.keys())[0]
-    symbol: str = ticker_data[symbol_key]
-    
+
+    symbol_key: str = list(dict_data.keys())[0]
+    symbol: str = dict_data[symbol_key]
+
     key: str = f"{exchange}:{request_type}:{symbol}"
     topic: str = f"{region}_{request_type}"
-    t_data[key].append(json.dumps(ticker_data))
+
+    t_data[key].append(json.dumps(dict_data))
     elapsed: float = time.time() - last_flush_time[key]
-    await connection_logger.adebug(f"데이터 수신: key={key}, 건수: {len(t_data[key])}, 경과시간={elapsed:.2f}초")
+    await connection_logger.adebug(
+        f"데이터 수신: key={key}, 건수: {len(t_data[key])}, 경과시간={elapsed:.2f}초"
+    )
 
     # 배치 크기 도달 또는 일정 시간 경과 시 Kafka로 전송
     if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
-        # 데이터 복사만 하고 아직 비우지 않음
         batch: list[str] = t_data[key].copy()
         current_time: float = time.time()
-        
         message: dict = {
-            "exchange": exchange, 
-            "time": current_time, 
-            "data": batch
+            "exchange": exchange,
+            "time": current_time,
+            "data": batch,
         }
-        # Kafka로 메시지 전송
+        # Kafka 전송
         await sender.produce_sending(message=message, topic=topic, key=key)
-        
+
         # 전송 성공 후 데이터 비우기 및 시간 초기화
         t_data[key].clear()
         last_flush_time[key] = time.time()
-        await connection_logger.ainfo(f"데이터 전송 완료: key={key}, 건수: {len(batch)}, 새로운 마지막 전송시간={last_flush_time[key]}")
-
-
+        await connection_logger.ainfo(
+            f"데이터 전송 완료: key={key}, 건수: {len(batch)}, 새로운 마지막 전송시간={last_flush_time[key]}"
+        )
 
 
 @dataclass
 class ConnectionRequestHandler:
     event_bus: EnhancedEventBus
-    
+
     async def handle_request(self, data: ConnectionRequestPayload) -> None:
         metadata: ExchangeMetadata = data.get("metadata")
         parameter_info: dict[str, any] = data.get("parameter_info")
@@ -175,7 +217,7 @@ class ConnectionRequestHandler:
             metadata["request_type"],
         )
         event_publisher = EventPublisher(event_bus=self.event_bus)
-        
+
         # 컨텍스트 객체 생성
         context = ConnectionContext(
             sinstance=sinstance,
@@ -192,8 +234,7 @@ class ConnectionRequestHandler:
         try:
             # 연결 및 구독 시도
             connection = await context.sinstance.connect_and_subscribe(
-                metadata=context.metadata,
-                parameter_info=context.parameter_info
+                metadata=context.metadata, parameter_info=context.parameter_info
             )
             if connection:
                 # 연결 성공 이벤트 발행
@@ -201,18 +242,17 @@ class ConnectionRequestHandler:
                     exchange_name=context.metadata["exchange_name"],
                     request_type=context.metadata["request_type"],
                 )
-                
+
         except AsyncException as e:
             # 예외 처리 로직...
             await context.event_publisher.connection_failure_publish(
                 exchange_name=context.metadata["exchange_name"],
                 error=str(e),
                 retry_count=1,
-                request_type=context.metadata["request_type"]
+                request_type=context.metadata["request_type"],
             )
 
 
-# fmt: on
 async def handle_connection_close(
     event_bus: EnhancedEventBus, data: ConnectionClosePayload
 ) -> None:

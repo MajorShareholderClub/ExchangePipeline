@@ -53,6 +53,7 @@ class RetryConfig:
 
     max_retries: int = 3
     base_delay: float = 1.0  # seconds
+    max_concurrent_retries: int = 5  # 동시 재시도 제한
 
 
 class ConnectionRetryService:
@@ -68,6 +69,9 @@ class ConnectionRetryService:
         self._request_cache: dict[tuple[str, str], ConnectionRequestPayload] = {}
         # (exchange, request_type)  → current retry count
         self._retry_tracker: defaultdict[tuple[str, str], int] = defaultdict(int)
+
+        # 동시 재시도를 제한하기 위한 세마포어
+        self._retry_semaphore = asyncio.Semaphore(self.config.max_concurrent_retries)
 
         self.logger = PipelineLogger.get_logger("connection", "retry_service")
 
@@ -159,21 +163,24 @@ class ConnectionRetryService:
     async def _retry_after_delay(self, key: tuple[str, str], delay: float) -> None:
         """Sleep for `delay` seconds then republish cached CONNECTION_REQUEST."""
         await asyncio.sleep(delay)
-        payload = self._request_cache.get(key)
-        if payload is None:
-            # 해당 요청 캐시가 없으면 중단 (예: 최대 재시도 초과 후 정리됨)
-            self.logger.debug(f"{key} 에 대한 재시도 payload 없음 – 중단")
-            return
 
-        # retry_count 증가 반영
-        payload["retry_count"] = self._retry_tracker[key]
+        # 동시 재시도 제한
+        async with self._retry_semaphore:
+            payload = self._request_cache.get(key)
+            if payload is None:
+                # 해당 요청 캐시가 없으면 중단 (예: 최대 재시도 초과 후 정리됨)
+                self.logger.debug(f"{key} 에 대한 재시도 payload 없음 – 중단")
+                return
 
-        await self.event_bus.publish(
-            EventType.CONNECTION_REQUEST,
-            payload,
-            EventMetadata(source="ConnectionRetryService"),
-            retry_on_failure=True,
-        )
-        self.logger.info(
-            f"[{key[0]}:{key[1]}] {self._retry_tracker[key]}차 CONNECTION_REQUEST 재발행 완료"
-        )
+            # retry_count 증가 반영
+            payload["retry_count"] = self._retry_tracker[key]
+
+            await self.event_bus.publish(
+                EventType.CONNECTION_REQUEST,
+                payload,
+                EventMetadata(source="ConnectionRetryService"),
+                retry_on_failure=True,
+            )
+            self.logger.info(
+                f"[{key[0]}:{key[1]}] {self._retry_tracker[key]}차 CONNECTION_REQUEST 재발행 완료"
+            )
