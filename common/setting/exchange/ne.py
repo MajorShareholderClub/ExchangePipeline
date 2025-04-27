@@ -40,7 +40,7 @@ class BinanceSocketParameter(BaseSocketParameter):
             # 1. 심볼을 소문자로 변환하고 '_' 제거 (BTC_USDT -> btcusdt)
             formatted_symbol = symbol.lower().replace("_", "")
             # 2. 스트림 형식 구성 (예: btcusdt@ticker)
-            stream = f"{formatted_symbol}@{stream_suffix}"
+            stream = f"{formatted_symbol}usdt@{stream_suffix}"
             formatted_streams.append(stream)
 
         # params 필드 업데이트

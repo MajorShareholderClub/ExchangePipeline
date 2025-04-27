@@ -1,3 +1,10 @@
+import time
+import json
+import asyncio
+from dataclasses import dataclass, field
+from collections import defaultdict, deque
+
+from adapters.exchange import WorldWebSocket
 from adapters.base.event.enhanced_event_bus import EnhancedEventBus
 from adapters.base.event.types import EventType
 from adapters.base.event.types.event_types import (
@@ -8,31 +15,54 @@ from adapters.base.event.types.event_types import (
     EventMetadata,
     DataPayload,
 )
-import json
-from adapters.exchange import WorldWebSocket
 from common.exceptions import AsyncException
 from common.setting.types import ExchangeMetadata
 from common.logger import PipelineLogger
-from dataclasses import dataclass, field
-from collections import defaultdict
 from messaging.data_interaction import KafkaMessageSender
-import time
-import asyncio
+from cachetools import TTLCache  # type: ignore
 
 
-# 파이프라인 로거 설정
+try:
+    from cachetools import TTLCache  # type: ignore
+except ModuleNotFoundError:
+    TTLCache = None  # type: ignore
+
+"""
+connection_logger -> 로깅
+t_data -> 담을 데이터 
+last_flush_time -> 마지막 플러시 시간
+sender -> Kafka 메시지 전송
+exchange_stats -> 각 거래소별 전송 통계 추적
+"""
 connection_logger = PipelineLogger.get_logger("connection", "handler")
-t_data = defaultdict(list)
+t_data: defaultdict[str, deque[dict]] = defaultdict(deque)
 last_flush_time = defaultdict(lambda: time.time())
 sender = KafkaMessageSender()
+exchange_stats = defaultdict(
+    lambda: {"count": 0, "messages": 0, "last_report": time.time()}
+)
 
-BATCH_SIZE = 50
-BATCH_INTERVAL = 10
+"""
+# ----- 상수 설정 -----
+STAT_REPORT_INTERVAL -> 통계 로그 출력 주기 (5분)
+BATCH_SIZE ->  배치 사이즈
+BATCH_INTERVAL -> 배치 시간 
+MAX_RETRY_COUNT -> 최대 재시도 횟수
+
+"""
+STAT_REPORT_INTERVAL = 300
+BATCH_SIZE = 20
+BATCH_INTERVAL = 5
 MAX_RETRY_COUNT = 3
 
-# ----- Buffer maintenance settings -----
-PURGE_INTERVAL: float = 60  # seconds between maintenance sweeps
-IDLE_BUFFER_LIFETIME: float = 300  # seconds without flush before purge
+# purge 관련 상수 (idle buffer → 메모리 누수 방지)
+IDLE_BUFFER_LIFETIME = 300  # 초
+PURGE_INTERVAL = 60  # 초
+
+
+# TTLCache 초기화 (위에서 try-import)
+if TTLCache:
+    last_flush_time = TTLCache(maxsize=10_000, ttl=IDLE_BUFFER_LIFETIME)  # type: ignore
 
 
 @dataclass
@@ -77,12 +107,12 @@ class ConnectionContext:
 @dataclass
 class ConnectionHandlerRegistrar:
     event_bus: EnhancedEventBus
-    _initialized: bool = field(default=False, init=False)
     _purge_task: asyncio.Task | None = field(default=None, init=False)
     
     def __post_init__(self) -> None:
         """동기적 초기화 작업"""
         self.connection_handler = ConnectionRequestHandler(self.event_bus)
+        self.data_batch_handler = DataBatchHandler(sender=sender, connection_logger=connection_logger)
 
     # 각 이벤트 타입에 대한 핸들러 등록
     async def request_wrapper(self, data: ConnectionRequestPayload) -> None:
@@ -104,7 +134,7 @@ class ConnectionHandlerRegistrar:
         Args:
             data: DataPayload
         """
-        await handle_data(data)
+        await self.data_batch_handler.accumulate_data(data)
 
     async def register_handlers(self) -> None:
         """연결 관련 이벤트 핸들러 등록"""
@@ -119,7 +149,7 @@ class ConnectionHandlerRegistrar:
         await connection_logger.ainfo("연결 관련 이벤트 핸들러 등록 완료")
 
         # 버퍼 정리 태스크 시작
-        self._start_buffer_maintenance()
+        await self._start_buffer_maintenance()
 
     async def _start_buffer_maintenance(self) -> None:
         """버퍼 정리 백그라운드 태스크를 시작합니다."""
@@ -156,51 +186,78 @@ class ConnectionHandlerRegistrar:
                 await asyncio.sleep(PURGE_INTERVAL)
 
 
-async def handle_data(data: DataPayload) -> None:
-    region: str = data.get("region", "unknown")
-    exchange: str = data.get("exchange", "unknown")
-    request_type: str = data.get("request_type", "unknown")
-    dict_data: dict = data.get("data", {})
+@dataclass
+class DataBatchHandler:
+    sender: KafkaMessageSender
+    connection_logger: PipelineLogger
 
-    # 로깅 컨텍스트 설정
-    connection_logger.set_context(
-        exchange=exchange, request_type=request_type, region=region
-    )
+    async def accumulate_data(self, data: DataPayload) -> None:
+        """데이터 적재 및 플러시 여부 판단"""
+        region = data.get("region", "unknown")
+        exchange = data.get("exchange", "unknown")
+        request_type = data.get("request_type", "unknown")
+        dict_data = data.get("data", {})
 
-    if not dict_data:
-        await connection_logger.awarning("수신된 데이터가 비어있습니다.")
-        return
+        if not dict_data:
+            await self.connection_logger.awarning("수신된 데이터가 비어있습니다.")
+            return
 
-    symbol_key: str = list(dict_data.keys())[0]
-    symbol: str = dict_data[symbol_key]
+        # key/topic 생성
+        symbol_key: str = next(iter(dict_data))
+        symbol: str = dict_data[symbol_key]
+        key: str = f"{exchange}:{request_type}:{symbol}"
+        topic: str = f"{region}_{request_type}"
 
-    key: str = f"{exchange}:{request_type}:{symbol}"
-    topic: str = f"{region}_{request_type}"
+        # 데이터 적재
+        t_data[key].append(dict_data)
 
-    t_data[key].append(json.dumps(dict_data))
-    elapsed: float = time.time() - last_flush_time[key]
-    await connection_logger.adebug(
-        f"데이터 수신: key={key}, 건수: {len(t_data[key])}, 경과시간={elapsed:.2f}초"
-    )
+        # 첫 접근 시 타임스탬프 초기화
+        now: float = time.time()
+        last_flush_time.setdefault(key, now)
+        elapsed = now - last_flush_time[key]
 
-    # 배치 크기 도달 또는 일정 시간 경과 시 Kafka로 전송
-    if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
-        batch: list[str] = t_data[key].copy()
+        # 배치 조건 검사
+        if len(t_data[key]) >= BATCH_SIZE or elapsed >= BATCH_INTERVAL:
+            await self._flush_batch_if_needed(key, topic, exchange)
+
+    async def _flush_batch_if_needed(self, key: str, topic: str, exchange: str) -> None:
+        """배치 전송, 클리어, 통계 업데이트 및 로깅"""
+        batch = t_data[key].copy()
+        if not batch:
+            return
+
         current_time: float = time.time()
-        message: dict = {
+        # JSON 직렬화
+        json_batch: list[str] = [json.dumps(item, default=str) for item in batch]
+
+        # Kafka 전송
+        message: dict[str, float | list[str] | str] = {
             "exchange": exchange,
             "time": current_time,
-            "data": batch,
+            "data": json_batch,
         }
-        # Kafka 전송
-        await sender.produce_sending(message=message, topic=topic, key=key)
+        await self.sender.produce_sending(message=message, topic=topic, key=key)
 
-        # 전송 성공 후 데이터 비우기 및 시간 초기화
+        # 전송 후 초기화
         t_data[key].clear()
-        last_flush_time[key] = time.time()
-        await connection_logger.ainfo(
-            f"데이터 전송 완료: key={key}, 건수: {len(batch)}, 새로운 마지막 전송시간={last_flush_time[key]}"
-        )
+        last_flush_time[key] = current_time
+
+        # 통계 업데이트
+        stats = exchange_stats[exchange]
+        stats["count"] += 1
+        stats["messages"] += len(batch)
+
+        # 주기적 통계 로깅 (5분마다)
+        if current_time - stats.get("last_report", 0) >= STAT_REPORT_INTERVAL:
+            stats_logger = self.connection_logger.get_logger("stats", exchange, location2="exchange")
+            stats_logger.set_context(exchange=exchange)
+            await stats_logger.ainfo(
+                f"5분 통계: {exchange} - 배치수: {stats['count']}, 메시지수: {stats['messages']}"
+            )
+            # 통계 리셋
+            stats["count"] = 0
+            stats["messages"] = 0
+            stats["last_report"] = current_time
 
 
 @dataclass

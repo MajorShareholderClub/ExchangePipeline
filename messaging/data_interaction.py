@@ -2,10 +2,10 @@ import json
 import asyncio
 from pathlib import Path
 from typing import Any, TypedDict, Callable
-from datetime import datetime
 from dataclasses import dataclass
 
 from decimal import Decimal
+from collections import deque
 from aiokafka import AIOKafkaProducer
 from common.exceptions import KafkaException
 from messaging.data_partitional import CompositeKeyHashPartitioner
@@ -21,8 +21,11 @@ from common.setting.properties import (
 present_path = Path(__file__).parent
 Serializer = Callable[[Any], bytes]
 
-# decimal string converting
-dsc: Serializer = lambda obj: str(obj) if isinstance(obj, Decimal) else obj
+dsc: Serializer = lambda obj: (
+    str(obj)
+    if isinstance(obj, Decimal)
+    else list(obj) if isinstance(obj, deque) else obj
+)
 serializer: bytes = lambda value: json.dumps(value, default=dsc).encode("utf-8")
 
 

@@ -73,6 +73,7 @@ class PipelineLogger:
         log_to_console: bool = True,
         log_dir: str = "logs",
         rotation: str = "midnight",
+        location2: str | None = None,
     ):
         """
         로거 초기화
@@ -85,6 +86,7 @@ class PipelineLogger:
             log_to_console: 콘솔에 로깅 여부
             log_dir: 로그 디렉토리
             rotation: 로그 로테이션 주기
+            location2: 로그 파일의 추가 위치
         """
         self.name = name
         self.component = component
@@ -93,18 +95,19 @@ class PipelineLogger:
         self.log_to_console = log_to_console
         self.log_dir = log_dir
         self.rotation = rotation
+        self.location2: str | None = location2
 
         # 로깅 큐 및 컨텍스트 초기화 (무제한 버퍼로 설정해 queue.Full 예외 방지)
         self.log_queue: queue.Queue = queue.Queue()  # unlimited buffer
         self.context: dict[str, Any] = {}
 
         # 로거 및 핸들러 설정
-        self._setup_logger()
+        self._setup_logger(location2)
 
         # 비동기 이벤트 루프 참조 (필요시 설정)
         self._loop: Optional[asyncio.AbstractEventLoop] = None
 
-    def _setup_logger(self) -> None:
+    def _setup_logger(self, location2: str | None = None) -> None:
         """
         로거, 핸들러, 포맷터 설정
         """
@@ -132,7 +135,7 @@ class PipelineLogger:
             handlers.append(console)
 
         if self.log_to_file:
-            log_filename = self._get_log_filename()
+            log_filename = self._get_log_filename(location2=location2)
             ensure_file_exists(log_filename)
 
             file_handler = TimedRotatingFileHandler(
@@ -152,13 +155,18 @@ class PipelineLogger:
         )
         self.listener.start()
 
-    def _get_log_filename(self) -> str:
+    def _get_log_filename(self, location2: str | None = None) -> str:
         """
         로그 파일 이름 생성
         """
         today = datetime.now().strftime("%Y-%m-%d")
         component_part = f"{self.component}/" if self.component else ""
-        return f"{self.log_dir}/{component_part}{self.name}_{today}.log"
+        # location2가 비어 있지 않으면 로그 디렉토리 바로 아래에 파일을 생성
+        path = f"{self.log_dir}"
+        if location2 is not None:
+            path = f"{path}/{location2}"
+
+        return f"{path}/{component_part}{self.name}_{today}.log"
 
     def set_context(self, **kwargs) -> None:
         """

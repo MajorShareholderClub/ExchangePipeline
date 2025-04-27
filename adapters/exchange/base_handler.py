@@ -129,7 +129,7 @@ class BaseAsiaEuropeHandler(BaseWebsocketHandler, ABC):
                 if condition:
                     # 설정된 시간 이상 하트비트 없으면 발송
                     await self._send_heartbeat(websocket)
-                    logger.debug(f"{self.exchange_name}: 하트비트 전송")
+                    print(f"{self.exchange_name}: 하트비트 전송")
                     self.last_heartbeat_time = current_time
 
 
