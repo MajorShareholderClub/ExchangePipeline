@@ -73,6 +73,7 @@ async def run_all_exchanges(
                 await event_bus.publish(
                     EventType.CONNECTION_REQUEST,
                     ConnectionRequestPayload(
+                        coin_symbol=exchange_info.get("coin_symbol", ""),
                         metadata=exchange_info.get("metadata", {}),
                         parameter_info=exchange_info.get("parameter_info", {}),
                         request_type=request_type,

@@ -19,7 +19,10 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         self, event_bus: EventBus, exchange_name: str, region: str, request_type: str
     ) -> None:
         super().__init__(event_bus, exchange_name, region, request_type)
-        self.heartbeat_interval = 20  # 20초마다 핑 전송
+        # Gate.io 애플리케이션 레이어 ping 주기 (20초)
+        self.heartbeat_interval = 20
+        # 마지막 메시지 수신 시간 (프로토콜 & 애플리케이션 레이어 메시지 모두 포함)
+        self.last_message_time = 0
 
     @override
     def _is_heartbeat(self, message: Any) -> bool:
@@ -31,10 +34,11 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         Returns:
             하트비트 메시지 여부
         """
-        # Gate.io는 서버에서 하트비트를 받지 않고 클라이언트에서 보내는 방식을 사용함
+        # 1. 프로토콜 레이어 ping/pong (웹소켓 라이브러리에서 자동 처리)
+        # 2. 애플리케이션 레이어 ping (spot.ping 채널로 전송)
         try:
             json_msg = json.loads(message) if isinstance(message, str) else message
-            return "method" in json_msg and json_msg["method"] == "ping"
+            return "channel" in json_msg and json_msg["channel"] == "spot.ping"
         except Exception:
             return False
 
@@ -46,8 +50,11 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
             websocket: 웹소켓 객체
             message: 하트비트 메시지
         """
-        # Gate.io는 핑에 대한 특별한 응답이 필요 없음
-        pass
+        # Gate.io 애플리케이션 레이어 핑 응답은 서버에서 자동으로 처리함
+        # 단, 메시지를 받았으므로 타임스탬프 업데이트
+        self.last_heartbeat_time = asyncio.get_event_loop().time()
+        self.last_message_time = self.last_heartbeat_time
+        logger.debug(f"{self.exchange_name}: 핑 응답 수신")
 
     @override
     async def _send_heartbeat(self, websocket) -> None:
@@ -56,12 +63,14 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         Args:
             websocket: 웹소켓 객체
         """
+        # Gate.io 애플리케이션 레이어 핑 메시지 전송
         current_time = int(time.time())  # 초 단위 시간
         ping_message = json.dumps(
             {"time": current_time, "channel": "spot.ping", "event": ""}
         )
         await websocket.send(ping_message)
-        logger.debug(f"{self.exchange_name}: 하트비트 전송")
+        logger.debug(f"{self.exchange_name}: 애플리케이션 레이어 핑 전송")
+        # 핑을 보냈을 때는 타임스탬프를 업데이트하지 않고 응답이 왔을 때 업데이트
 
     @override
     async def _parse_message(self, message: Any) -> dict:
@@ -69,48 +78,81 @@ class GateioWebsocketHandler(BaseAsiaEuropeHandler):
         if isinstance(message, bytes):
             message = message.decode("utf-8")
 
+        # 모든 메시지 수신 시 타임스탬프 업데이트 (프로토콜 레이어 ping/pong 포함)
+        self.last_message_time = asyncio.get_event_loop().time()
+
         # Gate.io는 필터링이 필요한 메시지 처리
-        json_msg: dict = json.loads(message)
+        try:
+            json_msg: dict = json.loads(message)
 
-        # 시스템/에러 메시지 처리
-        if "error" in json_msg and json_msg["error"] is not None:
-            logger.error(f"Gate.io API 오류: {json_msg['error']}")
+            # 에러 메시지 처리
+            if "error" in json_msg and json_msg["error"] is not None:
+                logger.error(f"Gate.io API 오류: {json_msg['error']}")
+                return None
+
+            # 핑 응답 메시지 필터링
+            if "channel" in json_msg and json_msg["channel"] == "spot.ping":
+                logger.debug(f"{self.exchange_name}: 핑 응답: {json_msg}")
+                return None
+
+            # 구독 확인 메시지 필터링
+            if json_msg.get("event") == "subscribe":
+                logger.debug(f"{self.exchange_name}: 구독 확인: {json_msg}")
+                return None
+
+            # 일반 메시지 처리
+            ticker_format: list[str] = ticker_config(self.exchange_name)
+            message: dict = update_dict(json_msg, "result")
+            return {field: message.get(field, None) for field in ticker_format}
+        except json.JSONDecodeError as e:
+            logger.warning(
+                f"{self.exchange_name}: JSON 파싱 실패: {message}, 오류: {e}"
+            )
             return None
-
-        # 핑 응답
-        if "channel" in json_msg and json_msg["channel"] == "spot.ping":
-            return None
-
-        if json_msg.get("event") == "subscribe":
-            return None
-
-        ticker_format: list[str] = ticker_config(self.exchange_name)
-        message: dict = update_dict(json_msg, "result")
-        return {field: message.get(field, None) for field in ticker_format}
 
     @override
     async def _handle_message_loop(self, websocket, timeout: int) -> None:
         """Gate.io 메시지 수신 및 처리 루프"""
-        # Gate.io는 주기적인 핑 메시지 필요
-        self.last_heartbeat_time = asyncio.get_event_loop().time()  # 초기화
+        # 초기화
+        self.last_heartbeat_time = asyncio.get_event_loop().time()
+        self.last_message_time = self.last_heartbeat_time
+
+        # 프로토콜 레이어 ping/pong 자동 응답 활성화 (대부분의 웹소켓 라이브러리에서 기본 지원)
+        # 이는 websockets 라이브러리에서 기본 활성화되어 있음
 
         while True:
             try:
+                # 메시지 수신 (타임아웃 설정)
                 message = await asyncio.wait_for(websocket.recv(), timeout=timeout)
 
-                # 주기적 핑 메시지 전송
+                # 주기적 애플리케이션 레이어 핑 메시지 전송 검사
                 current_time = asyncio.get_event_loop().time()
                 if current_time - self.last_heartbeat_time > self.heartbeat_interval:
                     await self._send_heartbeat(websocket)
                     self.last_heartbeat_time = current_time
 
-                # 응답 처리
+                # 메시지 처리
                 if self.request_type == "ticker":
                     parsed_message = await self._parse_message(message)
                     if parsed_message:  # None이면 처리 무시
                         await self._process_message(parsed_message)
+                elif self.request_type == "orderbook":
+                    parsed_message = await self._parse_message(message)
+                    if parsed_message:
+                        await self._process_message(parsed_message)
 
             except AsyncException:
-                # 타임아웃 발생 시 핑 및 재연결 시도
-                await self._send_heartbeat(websocket)
-                self.last_heartbeat_time = asyncio.get_event_loop().time()
+                # 마지막 메시지 수신 후 일정 시간이 지나면 애플리케이션 레이어 핑 전송
+                current_time = asyncio.get_event_loop().time()
+                if (
+                    current_time - self.last_message_time > timeout * 0.8
+                ):  # 타임아웃의 80%에 해당하는 시간이 지나면
+                    await self._send_heartbeat(websocket)
+                    logger.info(
+                        f"{self.exchange_name}: 타임아웃 발생, 애플리케이션 레이어 핑 전송"
+                    )
+                    self.last_heartbeat_time = current_time
+            except Exception as e:
+                logger.error(f"{self.exchange_name}: 메시지 처리 중 예외 발생: {e}")
+                # 연결 문제 가능성이 있으므로 상위 핸들러에게 예외 전파
+                raise
