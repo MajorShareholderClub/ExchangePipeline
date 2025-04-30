@@ -20,7 +20,6 @@ ExchangePipeline/
 ## 3. 주요 기능 (Key Features)
 - **멀티-익스체인지 지원**: 업비트·바이낸스·크라켄 등 10+ 거래소 어댑터 내장
 - **실시간 수집**: asyncio 기반 WebSocket 핸들러로 50k msg/sec 이상 처리
-- **표준 스키마**: Pydantic 모델(`Ticker`, `Orderbook`)로 데이터 정규화
 - **Kafka 통합**: 파티셔닝 전략·토픽 자동 생성·프로듀서 재시도 로직 포함
 - **높은 가용성**: 자동 재연결, 지수 백오프, 구조화 로그, 예외 통합 처리
 - **확장성**: 신규 거래소는 `adapters/exchange/new_exchange.py` 파일만 추가하면 즉시 통합
