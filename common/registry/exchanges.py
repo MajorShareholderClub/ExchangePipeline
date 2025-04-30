@@ -22,11 +22,11 @@ EXCHANGE_HANDLERS = {
     "bithumb": BithumbWebsocketHandler,
     "korbit": KorbitWebsocketHandler,
     "coinone": CoinoneWebsocketHandler,
-    "binance": BinanceWebsocketHandler,
-    "kraken": KrakenWebsocketHandler,
-    "bybit": BybitWebsocketHandler,
-    "okx": OkxWebsocketHandler,
-    "gateio": GateioWebsocketHandler,
+    # "binance": BinanceWebsocketHandler,
+    # "kraken": KrakenWebsocketHandler,
+    # "bybit": BybitWebsocketHandler,
+    # "okx": OkxWebsocketHandler,
+    # "gateio": GateioWebsocketHandler,
 }
 
 
@@ -73,6 +73,7 @@ def get_exchange(
         req_type=request_type,
     )
     return ExchangeSocketParameter(
+        coin_symbol=",".join(i for i in symbols),
         metadata=metadata,
         parameter_info=parameter_info,
         socket_instance=handler_class,

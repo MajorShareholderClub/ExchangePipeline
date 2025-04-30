@@ -45,6 +45,7 @@ class ConnectPayload(TypedDict):
 class ConnectionRequestPayload(TypedDict):
     """연결 요청 이벤트"""
 
+    coin_symbol: str
     metadata: dict[str, str]
     parameter_info: dict | list[dict]
     request_type: str

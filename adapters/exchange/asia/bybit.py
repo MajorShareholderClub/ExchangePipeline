@@ -17,7 +17,8 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
         self, event_bus: EventBus, exchange_name: str, region: str, request_type: str
     ) -> None:
         super().__init__(event_bus, exchange_name, region, request_type)
-        self.heartbeat_interval = 20  # 20초마다 핑 체크
+        # 현재 핑 체크 주기를 15초로 변경
+        self.heartbeat_interval = 15  # 15초마다 핑 체크
 
     @override
     def _is_heartbeat(self, message: Any) -> bool:
@@ -52,7 +53,9 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
                 }
             )
             await websocket.send(pong_message)
-            logger.debug(f"{self.exchange_name}: 핑-퐁 메시지 교환")
+            logger.debug(
+                f"{self.exchange_name}: 핑-퐁 메시지 교환 (pong 응답: {{'op': 'pong', 'ts': {json_msg.get('ts', time)}}})"
+            )
             self.last_heartbeat_time = asyncio.get_event_loop().time()
         except AsyncException as e:
             logger.warning(f"{self.exchange_name}: 핑 응답 처리 중 오류 - {str(e)}")
@@ -65,15 +68,16 @@ class BybitWebsocketHandler(BaseAsiaEuropeHandler):
             websocket: 웹소켓 객체
         """
         time = int(asyncio.get_event_loop().time() * 1000)
-        await websocket.send(
-            json.dumps(
-                {
-                    "op": "ping",
-                    "ts": time,
-                }
-            )
+        ping_message = json.dumps(
+            {
+                "op": "ping",
+                "ts": time,
+            }
         )
-        logger.debug(f"{self.exchange_name}: 하트비트 전송")
+        await websocket.send(ping_message)
+        logger.debug(
+            f"{self.exchange_name}: 하트비트 전송 ({{'op': 'ping', 'ts': {time}}})"
+        )
 
     @override
     async def _parse_message(self, message: dict) -> dict:

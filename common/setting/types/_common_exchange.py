@@ -59,6 +59,7 @@ class ExchangeMetadata(TypedDict):
 class ExchangeSocketParameter(TypedDict):
     """거래소 소켓 파라미터"""
 
+    coin_symbol: str
     metadata: ExchangeMetadata
     parameter_info: dict | list[dict]
     socket_instance: (

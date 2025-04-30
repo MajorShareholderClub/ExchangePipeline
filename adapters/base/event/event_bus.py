@@ -18,6 +18,12 @@ from adapters.base.event.event_process import (
     EventTypeRegistry,
     EventSubscriptionManager,
 )
+from messaging.data_interaction import KafkaMessageSender
+from collections import defaultdict, deque
+
+
+sender = KafkaMessageSender()
+e_data: defaultdict[str, deque[dict]] = defaultdict(deque)
 
 
 class EventBus(IEventBus):
@@ -120,7 +126,14 @@ class EventBus(IEventBus):
             elif asyncio.iscoroutine(result):
                 await result
         except AsyncException as e:
-            self.logger.error(f"Error occurred during event processing: {e}, {data}")
+            error = f"이벤트 프로세싱에 에러가 일어났습니다. Error Topic 적재합니다. {e}, {data}"
+            self.logger.error(error)
+
+            e_data["error"] = {"error": str(e), "data": data}
+
+            if len(e_data["error"]) >= 30:
+                await sender.produce_sending("error", e_data["error"])
+                e_data["error"].clear()
 
     async def start(self) -> None:
         """이벤트 버스 시작 시스템 시작 이벤트 발행"""

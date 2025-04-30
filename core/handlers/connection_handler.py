@@ -1,3 +1,4 @@
+from cgitb import small
 import time
 import json
 import asyncio
@@ -36,6 +37,7 @@ exchange_stats -> 각 거래소별 전송 통계 추적
 """
 connection_logger = PipelineLogger.get_logger("connection", "handler")
 t_data: defaultdict[str, deque[dict]] = defaultdict(deque)
+
 last_flush_time = defaultdict(lambda: time.time())
 sender = KafkaMessageSender()
 exchange_stats = defaultdict(
@@ -197,17 +199,23 @@ class DataBatchHandler:
         exchange = data.get("exchange", "unknown")
         request_type = data.get("request_type", "unknown")
         dict_data = data.get("data", {})
-
         if not dict_data:
             await self.connection_logger.awarning("수신된 데이터가 비어있습니다.")
             return
 
         # key/topic 생성
         symbol_key: str = next(iter(dict_data))
-        symbol: str = dict_data[symbol_key]
-        key: str = f"{exchange}:{request_type}:{symbol}"
+        symbol_raw: str = dict_data[symbol_key]
+        
+        if symbol_raw.startswith("KRW-"):
+            symbol: str = symbol_raw.split("-")[1].upper()
+        else:
+            symbol: str = symbol_raw[:3].upper()
+        
+        # 키 생성
+        key: str = f"{exchange}:{request_type}:{symbol}-{region}"
         topic: str = f"{region}_{request_type}"
-
+        
         # 데이터 적재
         t_data[key].append(dict_data)
 
