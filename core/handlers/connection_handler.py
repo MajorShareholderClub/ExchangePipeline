@@ -206,7 +206,13 @@ class DataBatchHandler:
         # key/topic 생성
         symbol_key: str = next(iter(dict_data))
         symbol_raw: str = dict_data[symbol_key]
-        symbol: str = symbol_raw.split("-")[1].upper() if symbol_raw.startswith("KRW-") else symbol_raw[:3].upper()
+        
+        if symbol_raw.startswith("KRW-"):
+            symbol: str = symbol_raw.split("-")[1].upper()
+        else:
+            symbol: str = symbol_raw[:3].upper()
+        
+        # 키 생성
         key: str = f"{exchange}:{request_type}:{symbol}-{region}"
         topic: str = f"{region}_{request_type}"
         

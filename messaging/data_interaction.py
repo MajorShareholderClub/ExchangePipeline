@@ -16,6 +16,7 @@ from common.setting.properties import (
     MAX_BATCH_SIZE,
     MAX_REQUEST_SIZE,
     ACKS,
+    LINGER_MS,
 )
 
 present_path = Path(__file__).parent
@@ -72,8 +73,9 @@ class KafkaMessageSender:
                 security_protocol=SECURITY_PROTOCOL,
                 max_batch_size=int(MAX_BATCH_SIZE),
                 max_request_size=int(MAX_REQUEST_SIZE),
+                linger_ms=int(LINGER_MS),
                 partitioner=self.partition_pol,
-                acks=ACKS,
+                acks="all",
                 value_serializer=serializer,
                 key_serializer=serializer,
                 enable_idempotence=True,

@@ -22,11 +22,11 @@ EXCHANGE_HANDLERS = {
     "bithumb": BithumbWebsocketHandler,
     "korbit": KorbitWebsocketHandler,
     "coinone": CoinoneWebsocketHandler,
-    "binance": BinanceWebsocketHandler,
-    "kraken": KrakenWebsocketHandler,
-    "bybit": BybitWebsocketHandler,
-    "okx": OkxWebsocketHandler,
-    "gateio": GateioWebsocketHandler,
+    # "binance": BinanceWebsocketHandler,
+    # "kraken": KrakenWebsocketHandler,
+    # "bybit": BybitWebsocketHandler,
+    # "okx": OkxWebsocketHandler,
+    # "gateio": GateioWebsocketHandler,
 }
 
 

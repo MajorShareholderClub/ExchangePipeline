@@ -27,6 +27,7 @@ BOOTSTRAP_SERVER = parser.get("KAFKA", "bootstrap_servers")
 SECURITY_PROTOCOL = parser.get("KAFKA", "security_protocol")
 MAX_BATCH_SIZE = parser.get("KAFKA", "max_batch_size")
 MAX_REQUEST_SIZE = parser.get("KAFKA", "max_request_size")
+LINGER_MS = parser.get("KAFKA", "linger_ms")
 ACKS = parser.get("KAFKA", "acks")
 
 
