@@ -75,7 +75,7 @@ class KafkaMessageSender:
                 max_request_size=int(MAX_REQUEST_SIZE),
                 linger_ms=int(LINGER_MS),
                 partitioner=self.partition_pol,
-                acks="all",
+                acks=int(ACKS),
                 value_serializer=serializer,
                 key_serializer=serializer,
                 enable_idempotence=True,

@@ -1,10 +1,6 @@
 import random
 from aiokafka.partitioner import DefaultPartitioner, murmur2
-from common.logger import PipelineLogger
 from common.exceptions import KafkaException
-
-# Kafka 로그 통합
-# logger = PipelineLogger.get_logger("kafka", "partitional")
 
 
 class CompositeKeyHashPartitioner(DefaultPartitioner):
