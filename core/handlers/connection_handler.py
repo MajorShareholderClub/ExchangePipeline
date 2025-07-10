@@ -1,4 +1,3 @@
-from cgitb import small
 import time
 import json
 import asyncio
@@ -211,9 +210,9 @@ class DataBatchHandler:
             symbol: str = symbol_raw.split("-")[1].upper()
         else:
             symbol: str = symbol_raw[:3].upper()
-        
+
         # 키 생성
-        key: str = f"{exchange}:{request_type}:{symbol}-{region}"
+        key: str = f"{exchange}:{request_type}:{symbol}"
         topic: str = f"{region}_{request_type}"
         
         # 데이터 적재
